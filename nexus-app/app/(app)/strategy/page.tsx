@@ -302,7 +302,7 @@ function StrategicGoals() {
       />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {rows.map((g) => (
-          <Card key={g.id} className="group">
+          <Card key={g.id} dir="auto" className="group">
             <div className="flex items-center justify-between">
               <Badge tone="blue">{g.target}</Badge>
               <RowActions onEdit={() => openEdit(g)} onDelete={() => remove(g)} label={g.title} />
@@ -428,7 +428,7 @@ function Swot() {
               </div>
               <div className="space-y-1.5">
                 {items.map((s) => (
-                  <div key={s.id} className="group flex items-start gap-2 rounded-lg border p-2 text-[13px]">
+                  <div key={s.id} dir="auto" className="group flex items-start gap-2 rounded-lg border p-2 text-[13px]">
                     <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--muted)]" />
                     <span className="min-w-0 flex-1">{s.text}</span>
                     <RowActions onEdit={() => openEdit(s)} onDelete={() => remove(s)} label={s.text} />
@@ -549,7 +549,7 @@ function Okr() {
       />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {rows.map((o) => (
-          <Card key={o.id} className="group">
+          <Card key={o.id} dir="auto" className="group">
             <div className="flex items-center justify-between">
               <Badge tone="blue">{o.quarter}</Badge>
               <div className="flex items-center gap-2">

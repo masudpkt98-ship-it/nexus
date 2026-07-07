@@ -10,13 +10,16 @@ export function Card({
   children,
   className,
   glass = true,
+  dir,
 }: {
   children: React.ReactNode;
   className?: string;
   glass?: boolean;
+  dir?: "ltr" | "rtl" | "auto";
 }) {
   return (
     <div
+      dir={dir}
       className={cn(
         "card p-5 shadow-glass",
         glass ? "glass" : "bg-[rgb(var(--surface))]",
