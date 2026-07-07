@@ -170,6 +170,65 @@ export const objectives: Objective[] = [
   },
 ];
 
+// --- Strategic Planning: Vision, Mission, Core Values, Goals, SWOT ---------
+
+export interface StrategyStatement {
+  vision: string;
+  mission: string;
+}
+
+export const strategyStatement: StrategyStatement = {
+  vision: "To become the intelligent digital ecosystem for organizational excellence.",
+  mission:
+    "To empower organizations through integrated competency and performance management — connecting people, competency, execution, and value into one operating system.",
+};
+
+export interface CoreValue {
+  id: string;
+  title: string;
+  description: string;
+}
+
+export const coreValues: CoreValue[] = [
+  { id: "cv-1", title: "Integrity", description: "We act with honesty and hold ourselves accountable for every outcome." },
+  { id: "cv-2", title: "Excellence", description: "We pursue the highest standards in everything we deliver." },
+  { id: "cv-3", title: "Collaboration", description: "We connect people and teams to achieve shared goals." },
+  { id: "cv-4", title: "Innovation", description: "We continuously improve through creativity and technology." },
+];
+
+export interface StrategicGoal {
+  id: string;
+  title: string;
+  description: string;
+  target: string;
+  owner: string;
+}
+
+export const strategicGoals: StrategicGoal[] = [
+  { id: "sg-1", title: "Build a competency-driven culture", description: "Embed competency assessment across every department.", target: "FY26", owner: "Arif Wibowo" },
+  { id: "sg-2", title: "Digitalize performance management", description: "Move all KPI tracking onto the Nexus platform.", target: "FY26", owner: "Sinta Larasati" },
+  { id: "sg-3", title: "Elevate internal customer satisfaction", description: "Reach internal-service NPS ≥ 60.", target: "FY27", owner: "Bagus Hartono" },
+];
+
+export type SwotType = "Strength" | "Weakness" | "Opportunity" | "Threat";
+
+export interface SwotItem {
+  id: string;
+  type: SwotType;
+  text: string;
+}
+
+export const swotItems: SwotItem[] = [
+  { id: "sw-1", type: "Strength", text: "Strong leadership commitment to digital transformation." },
+  { id: "sw-2", type: "Strength", text: "Skilled and motivated core team." },
+  { id: "sw-3", type: "Weakness", text: "Several legacy manual processes still in use." },
+  { id: "sw-4", type: "Weakness", text: "Uneven data quality across departments." },
+  { id: "sw-5", type: "Opportunity", text: "Growing demand for integrated HR platforms." },
+  { id: "sw-6", type: "Opportunity", text: "Executive sponsorship for automation initiatives." },
+  { id: "sw-7", type: "Threat", text: "Rapidly changing technology landscape." },
+  { id: "sw-8", type: "Threat", text: "Competition for skilled talent." },
+];
+
 export interface Program {
   id: string;
   name: string;
