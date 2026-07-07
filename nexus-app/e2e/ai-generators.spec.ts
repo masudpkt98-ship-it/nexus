@@ -69,6 +69,18 @@ test("Report generator: download .md exports the artifact", async ({ page }) => 
   expect(download.suggestedFilename()).toMatch(/^nexus-report-\d{4}-\d{2}-\d{2}\.md$/);
 });
 
+test("Report generator: export PDF", async ({ page }) => {
+  await page.getByRole("button", { name: /Generate Executive Report/i }).click();
+  await page.getByRole("button", { name: /^Generate$/ }).click();
+  await expect(page.getByRole("heading", { name: /Executive Report/i })).toBeVisible({ timeout: 25_000 });
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: /Export PDF/i }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/\.pdf$/);
+});
+
 test("Report generator: save to history and reopen", async ({ page }) => {
   const tag = "E2E-Hist-" + Date.now();
   await page.getByRole("button", { name: /Generate Executive Report/i }).click();

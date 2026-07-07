@@ -89,6 +89,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Saved generator artifacts (per-user history)
     Route::get('/ai/artifacts', [ArtifactController::class, 'index'])->middleware('permission:ai.view');
+    Route::post('/ai/artifacts/pdf', [ArtifactController::class, 'pdf'])->middleware('permission:ai.view');
     Route::post('/ai/artifacts', [ArtifactController::class, 'store'])->middleware('permission:ai.view');
     Route::get('/ai/artifacts/{id}', [ArtifactController::class, 'show'])->middleware('permission:ai.view');
     Route::delete('/ai/artifacts/{id}', [ArtifactController::class, 'destroy'])->middleware('permission:ai.view');

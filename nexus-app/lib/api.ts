@@ -95,6 +95,28 @@ export async function apiSend<T = any>(
   return (json && typeof json === "object" && "data" in json ? json.data : json) as T;
 }
 
+/** POST a body and download the binary response (e.g. a generated PDF). */
+export async function apiDownload(path: string, body: unknown, fallbackName = "download"): Promise<void> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new ApiError(`download ${path} failed`, res.status);
+  const blob = await res.blob();
+  const cd = res.headers.get("Content-Disposition") || "";
+  const match = cd.match(/filename=([^;]+)/i);
+  const name = match ? match[1].trim().replace(/["']/g, "") : fallbackName;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 /** True when a token exists (user authenticated against the real API). */
 export function isAuthenticated(): boolean {
   return !!getToken();

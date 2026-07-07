@@ -7,7 +7,7 @@ import { Markdown } from "@/components/Markdown";
 import { Icon } from "@/components/Icons";
 import { LiveBadge } from "@/components/LiveBadge";
 import { useApiData } from "@/lib/useApi";
-import { apiGet, apiSend, apiStream, getToken } from "@/lib/api";
+import { apiGet, apiSend, apiStream, apiDownload, getToken } from "@/lib/api";
 import { aiInsights as mockAiInsights, aiSuggestions as mockAiSuggestions, type AiInsight } from "@/lib/data";
 
 const typeMeta: Record<AiInsight["type"], { tone: "red" | "blue" | "gold" | "green"; label: string }> = {
@@ -404,6 +404,20 @@ export default function AiAssistantPage() {
   const closeGenerator = () => {
     genAbort.current?.abort();
     setGen((g) => ({ ...g, open: false, streaming: false }));
+  };
+
+  const artifactTitle = () => {
+    const h1 = gen.markdown.split("\n").find((l) => l.startsWith("# "));
+    return (h1 ? h1.replace(/^#\s+/, "") : gen.title).slice(0, 160);
+  };
+
+  const exportPdf = async () => {
+    if (!gen.markdown || !getToken()) return;
+    try {
+      await apiDownload("/ai/artifacts/pdf", { title: artifactTitle(), markdown: gen.markdown }, "nexus-artifact.pdf");
+    } catch {
+      /* ignore */
+    }
   };
 
   const downloadArtifact = () => {
@@ -983,6 +997,11 @@ export default function AiAssistantPage() {
                   <Btn variant="ghost" onClick={downloadArtifact}>
                     <Icon.document className="h-4 w-4" /> Download .md
                   </Btn>
+                  {getToken() && (
+                    <Btn variant="ghost" onClick={exportPdf}>
+                      <Icon.document className="h-4 w-4" /> Export PDF
+                    </Btn>
+                  )}
                 </>
               )}
               <Btn variant="ghost" onClick={closeGenerator}>
