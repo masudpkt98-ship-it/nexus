@@ -7,6 +7,7 @@ import { Icon } from "@/components/Icons";
 import { knowledgeDocs as mockKnowledgeDocs } from "@/lib/data";
 import { useApiData } from "@/lib/useApi";
 import { LiveBadge } from "@/components/LiveBadge";
+import { useI18n } from "@/lib/i18n";
 
 const typeTone: Record<string, "blue" | "green" | "amber" | "purple"> = {
   SOP: "blue",
@@ -18,6 +19,7 @@ const typeTone: Record<string, "blue" | "green" | "amber" | "purple"> = {
 const categories = ["All", "Competency", "Performance", "Development", "Customer"];
 
 export default function KnowledgePage() {
+  const { t } = useI18n();
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
   const { data: knowledgeDocs, live } = useApiData("/knowledge-docs", mockKnowledgeDocs);
@@ -44,7 +46,7 @@ export default function KnowledgePage() {
           <>
             <LiveBadge live={live} />
             <Btn variant="primary">
-              <Icon.plus className="h-4 w-4" /> Upload Document
+              <Icon.plus className="h-4 w-4" /> {t("Upload Document")}
             </Btn>
           </>
         }
@@ -53,7 +55,7 @@ export default function KnowledgePage() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map((s) => (
           <Card key={s.label}>
-            <div className="text-xs text-[var(--muted)]">{s.label}</div>
+            <div className="text-xs text-[var(--muted)]">{t(s.label)}</div>
             <div
               className={`mt-1 text-2xl font-bold ${
                 s.tone === "green"
@@ -83,7 +85,7 @@ export default function KnowledgePage() {
                   : "glass hover:bg-black/5 dark:hover:bg-white/5"
               }`}
             >
-              {c}
+              {t(c)}
             </button>
           ))}
         </div>
@@ -93,7 +95,7 @@ export default function KnowledgePage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search documents…"
+            placeholder={t("Search documents…")}
             className="w-full bg-transparent text-[13px] outline-none placeholder:text-[var(--muted)] lg:w-56"
           />
         </div>
@@ -114,13 +116,13 @@ export default function KnowledgePage() {
               <span className="font-medium text-royal-400">{d.version}</span>
               <span className="inline-flex items-center gap-1">
                 <Icon.clock className="h-3.5 w-3.5" />
-                Updated {new Date(d.updated).toLocaleDateString("en", { day: "numeric", month: "short", year: "numeric" })}
+                {t("Updated")} {new Date(d.updated).toLocaleDateString("en", { day: "numeric", month: "short", year: "numeric" })}
               </span>
             </div>
           </Card>
         ))}
         {filtered.length === 0 && (
-          <Card className="col-span-full text-center text-sm text-[var(--muted)]">No documents match your filters.</Card>
+          <Card className="col-span-full text-center text-sm text-[var(--muted)]">{t("No documents match your filters.")}</Card>
         )}
       </div>
     </>

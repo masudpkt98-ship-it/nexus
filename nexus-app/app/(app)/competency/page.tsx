@@ -7,10 +7,12 @@ import { competencies as mockCompetencies, developmentPlans as mockDevelopmentPl
 import { useApiData } from "@/lib/useApi";
 import { apiSend, apiDownload, getToken } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
+import { useI18n } from "@/lib/i18n";
 
 type Comp = { id: number; name: string; category: string; current: number; required: number };
 
 export default function CompetencyPage() {
+  const { t } = useI18n();
   const { data, live } = useApiData("/competency", {
     competencies: mockCompetencies,
     developmentPlans: mockDevelopmentPlans,
@@ -92,11 +94,11 @@ export default function CompetencyPage() {
             <LiveBadge live={live} />
             {getToken() && (
               <Btn onClick={() => apiDownload("/exports/competencies", undefined, "nexus-competencies.xlsx", "GET")}>
-                <Icon.document className="h-4 w-4" /> Excel
+                <Icon.document className="h-4 w-4" /> {t("Excel")}
               </Btn>
             )}
             <Btn variant="primary" onClick={openCreate}>
-              <Icon.plus className="h-4 w-4" /> New Competency
+              <Icon.plus className="h-4 w-4" /> {t("New Competency")}
             </Btn>
           </>
         }
@@ -104,24 +106,24 @@ export default function CompetencyPage() {
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Card>
-          <div className="text-xs text-[var(--muted)]">Competency Index</div>
+          <div className="text-xs text-[var(--muted)]">{t("Competency Index")}</div>
           <div className="mt-1 text-2xl font-bold gold-gradient">{index}%</div>
           <ProgressBar value={index} tone="gold" className="mt-2" />
         </Card>
         <Card>
-          <div className="text-xs text-[var(--muted)]">Critical Gaps</div>
+          <div className="text-xs text-[var(--muted)]">{t("Critical Gaps")}</div>
           <div className="mt-1 text-2xl font-bold text-rose-500">{gaps.length}</div>
-          <div className="mt-1 text-[11px] text-[var(--muted)]">across {rows.length} competencies</div>
+          <div className="mt-1 text-[11px] text-[var(--muted)]">{t("across")} {rows.length} {t("competencies")}</div>
         </Card>
         <Card>
-          <div className="text-xs text-[var(--muted)]">Assessed Staff</div>
+          <div className="text-xs text-[var(--muted)]">{t("Assessed Staff")}</div>
           <div className="mt-1 text-2xl font-bold">92%</div>
-          <div className="mt-1 text-[11px] text-[var(--muted)]">of department</div>
+          <div className="mt-1 text-[11px] text-[var(--muted)]">{t("of department")}</div>
         </Card>
         <Card>
-          <div className="text-xs text-[var(--muted)]">Certifications</div>
+          <div className="text-xs text-[var(--muted)]">{t("Certifications")}</div>
           <div className="mt-1 text-2xl font-bold text-royal-400">42</div>
-          <div className="mt-1 text-[11px] text-[var(--muted)]">active this year</div>
+          <div className="mt-1 text-[11px] text-[var(--muted)]">{t("active this year")}</div>
         </Card>
       </div>
 
@@ -150,7 +152,7 @@ export default function CompetencyPage() {
                         aria-label={`Edit ${c.name}`}
                         title="Edit"
                       >
-                        Edit
+                        {t("Edit")}
                       </button>
                       <button
                         onClick={() => removeRow(c)}
@@ -180,9 +182,9 @@ export default function CompetencyPage() {
             })}
           </div>
           <div className="mt-4 flex items-center gap-4 text-[11px] text-[var(--muted)]">
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-royal-500/40" /> Required</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-gold-400" /> Current (gap)</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-emerald-500" /> Met</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-royal-500/40" /> {t("Required")}</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-gold-400" /> {t("Current (gap)")}</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-emerald-500" /> {t("Met")}</span>
           </div>
         </Card>
 
@@ -194,10 +196,10 @@ export default function CompetencyPage() {
               <div key={c.id} className="rounded-xl border p-3">
                 <div className="text-[13px] font-medium">{c.name}</div>
                 <div className="mt-1 text-[11px] text-[var(--muted)]">
-                  Recommended: {c.category} advanced track · est. 6 weeks
+                  {t("Recommended:")} {c.category} {t("advanced track · est. 6 weeks")}
                 </div>
                 <button className="mt-2 text-[11px] font-medium text-royal-400 hover:underline">
-                  Add to IDP →
+                  {t("Add to IDP →")}
                 </button>
               </div>
             ))}
@@ -219,12 +221,12 @@ export default function CompetencyPage() {
                 </div>
               </div>
               <div className="mt-3 flex items-end justify-between">
-                <span className="text-[11px] text-[var(--muted)]">Readiness</span>
+                <span className="text-[11px] text-[var(--muted)]">{t("Readiness")}</span>
                 <span className="text-lg font-bold">{d.readiness}%</span>
               </div>
               <ProgressBar value={d.readiness} tone={d.readiness >= 90 ? "gold" : "blue"} className="mt-1" />
               <div className="mt-3 flex items-center gap-2 text-[11px]">
-                <Badge tone={d.gaps === 0 ? "green" : "amber"}>{d.gaps} gap{d.gaps !== 1 ? "s" : ""}</Badge>
+                <Badge tone={d.gaps === 0 ? "green" : "amber"}>{d.gaps} {d.gaps !== 1 ? t("gaps") : t("gap")}</Badge>
               </div>
               <div className="mt-2 flex items-start gap-1.5 text-[11px] text-[var(--muted)]">
                 <Icon.development className="mt-0.5 h-3.5 w-3.5 shrink-0 text-royal-400" />
@@ -241,7 +243,7 @@ export default function CompetencyPage() {
           <div className="relative z-10 w-full max-w-md glass card shadow-glass animate-fade-up">
             <div className="flex items-center gap-2 border-b p-4">
               <Icon.competency className="h-4 w-4 shrink-0 text-royal-400" />
-              <div className="text-sm font-semibold">{form.id == null ? "New Competency" : "Edit Competency"}</div>
+              <div className="text-sm font-semibold">{form.id == null ? t("New Competency") : t("Edit Competency")}</div>
               <button
                 onClick={() => setForm(empty)}
                 className="ml-auto rounded-lg px-2 py-1 text-[var(--muted)] transition hover:text-rose-400"
@@ -252,20 +254,20 @@ export default function CompetencyPage() {
             </div>
             <div className="space-y-3 p-5">
               <label className="block text-[11px] font-medium text-[var(--muted)]">
-                Name
+                {t("Name")}
                 <input
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Cloud Architecture"
+                  placeholder={t("e.g. Cloud Architecture")}
                   className="mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500"
                 />
               </label>
               <label className="block text-[11px] font-medium text-[var(--muted)]">
-                Category
+                {t("Category")}
                 <input
                   value={form.category}
                   onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                  placeholder="e.g. Technical"
+                  placeholder={t("e.g. Technical")}
                   list="competency-categories"
                   className="mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500"
                 />
@@ -277,7 +279,7 @@ export default function CompetencyPage() {
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block text-[11px] font-medium text-[var(--muted)]">
-                  Current level
+                  {t("Current level")}
                   <select
                     value={form.current}
                     onChange={(e) => setForm((f) => ({ ...f, current: Number(e.target.value) }))}
@@ -285,13 +287,13 @@ export default function CompetencyPage() {
                   >
                     {[1, 2, 3, 4, 5].map((n) => (
                       <option key={n} value={n}>
-                        Level {n}
+                        {t("Level")} {n}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="block text-[11px] font-medium text-[var(--muted)]">
-                  Required level
+                  {t("Required level")}
                   <select
                     value={form.required}
                     onChange={(e) => setForm((f) => ({ ...f, required: Number(e.target.value) }))}
@@ -299,7 +301,7 @@ export default function CompetencyPage() {
                   >
                     {[1, 2, 3, 4, 5].map((n) => (
                       <option key={n} value={n}>
-                        Level {n}
+                        {t("Level")} {n}
                       </option>
                     ))}
                   </select>
@@ -308,10 +310,10 @@ export default function CompetencyPage() {
             </div>
             <div className="flex justify-end gap-2 border-t p-3">
               <Btn variant="ghost" onClick={() => setForm(empty)}>
-                Cancel
+                {t("Cancel")}
               </Btn>
               <Btn variant="primary" onClick={saveForm}>
-                {form.id == null ? "Create" : "Save"}
+                {form.id == null ? t("Create") : t("Save")}
               </Btn>
             </div>
           </div>

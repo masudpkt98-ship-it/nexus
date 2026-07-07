@@ -6,6 +6,7 @@ import { Icon } from "@/components/Icons";
 import { serviceRequests as mockServiceRequests } from "@/lib/data";
 import { useApiData } from "@/lib/useApi";
 import { LiveBadge } from "@/components/LiveBadge";
+import { useI18n } from "@/lib/i18n";
 
 const priorityTone: Record<string, "red" | "amber" | "blue" | "gray"> = {
   Critical: "red",
@@ -30,6 +31,7 @@ function initials(name: string) {
 }
 
 export default function RequestsPage() {
+  const { t } = useI18n();
   const { data: serviceRequests, live } = useApiData("/service-requests", mockServiceRequests);
 
   const summary = [
@@ -44,13 +46,13 @@ export default function RequestsPage() {
       <PageHeader
         title="Customer Request"
         subtitle="Internal Service Request · Ticket · SLA · PIC · Approval"
-        actions={<><LiveBadge live={live} /><Btn variant="primary"><Icon.plus className="h-4 w-4" /> New Request</Btn></>}
+        actions={<><LiveBadge live={live} /><Btn variant="primary"><Icon.plus className="h-4 w-4" /> {t("New Request")}</Btn></>}
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {summary.map((s) => (
           <Card key={s.label}>
-            <div className="text-xs text-[var(--muted)]">{s.label}</div>
+            <div className="text-xs text-[var(--muted)]">{t(s.label)}</div>
             <div
               className={`mt-1 text-2xl font-bold ${
                 s.tone === "red" ? "text-rose-500" : s.tone === "gold" ? "gold-gradient" : ""
@@ -67,13 +69,13 @@ export default function RequestsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-black/10 text-left text-[11px] uppercase tracking-wide text-[var(--muted)] dark:border-white/10">
-                <th className="px-5 py-3 font-medium">Ticket</th>
-                <th className="px-5 py-3 font-medium">Requester</th>
-                <th className="px-5 py-3 font-medium">Priority</th>
+                <th className="px-5 py-3 font-medium">{t("Ticket")}</th>
+                <th className="px-5 py-3 font-medium">{t("Requester")}</th>
+                <th className="px-5 py-3 font-medium">{t("Priority")}</th>
                 <th className="px-5 py-3 font-medium">SLA</th>
-                <th className="px-5 py-3 font-medium">Status</th>
+                <th className="px-5 py-3 font-medium">{t("Status")}</th>
                 <th className="px-5 py-3 font-medium">PIC</th>
-                <th className="px-5 py-3 font-medium">Created</th>
+                <th className="px-5 py-3 font-medium">{t("Created")}</th>
               </tr>
             </thead>
             <tbody>

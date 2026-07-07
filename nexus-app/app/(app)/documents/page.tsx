@@ -6,6 +6,7 @@ import { Icon } from "@/components/Icons";
 import { knowledgeDocs as mockKnowledgeDocs } from "@/lib/data";
 import { useApiData } from "@/lib/useApi";
 import { LiveBadge } from "@/components/LiveBadge";
+import { useI18n } from "@/lib/i18n";
 
 const typeTone: Record<string, "blue" | "green" | "amber" | "purple"> = {
   SOP: "blue",
@@ -35,6 +36,7 @@ const pendingApprovals = [
 ];
 
 export default function DocumentsPage() {
+  const { t } = useI18n();
   const { data: knowledgeDocs, live } = useApiData("/knowledge-docs", mockKnowledgeDocs);
 
   return (
@@ -46,7 +48,7 @@ export default function DocumentsPage() {
           <>
             <LiveBadge live={live} />
             <Btn variant="primary">
-              <Icon.plus className="h-4 w-4" /> Upload
+              <Icon.plus className="h-4 w-4" /> {t("Upload")}
             </Btn>
           </>
         }
@@ -65,7 +67,7 @@ export default function DocumentsPage() {
                 >
                   <span className="inline-flex items-center gap-2">
                     <Icon.knowledge className="h-4 w-4 text-royal-400" />
-                    {f.name}
+                    {t(f.name)}
                   </span>
                   <span className="text-[11px] text-[var(--muted)]">{f.count}</span>
                 </button>
@@ -87,9 +89,9 @@ export default function DocumentsPage() {
                   </div>
                   <div className="mt-2 flex gap-2">
                     <Btn variant="ghost">
-                      <Icon.check className="h-3.5 w-3.5" /> Approve
+                      <Icon.check className="h-3.5 w-3.5" /> {t("Approve")}
                     </Btn>
-                    <Btn variant="ghost">Reject</Btn>
+                    <Btn variant="ghost">{t("Reject")}</Btn>
                   </div>
                 </div>
               ))}
@@ -105,12 +107,12 @@ export default function DocumentsPage() {
               <table className="w-full text-left text-[13px]">
                 <thead>
                   <tr className="border-b border-black/5 text-[11px] uppercase tracking-wide text-[var(--muted)] dark:border-white/5">
-                    <th className="px-2 py-2 font-medium">Name</th>
-                    <th className="px-2 py-2 font-medium">Type</th>
-                    <th className="px-2 py-2 font-medium">Version</th>
-                    <th className="px-2 py-2 font-medium">Owner</th>
-                    <th className="px-2 py-2 font-medium">Approval</th>
-                    <th className="px-2 py-2 font-medium">Updated</th>
+                    <th className="px-2 py-2 font-medium">{t("Name")}</th>
+                    <th className="px-2 py-2 font-medium">{t("Type")}</th>
+                    <th className="px-2 py-2 font-medium">{t("Version")}</th>
+                    <th className="px-2 py-2 font-medium">{t("Owner")}</th>
+                    <th className="px-2 py-2 font-medium">{t("Approval")}</th>
+                    <th className="px-2 py-2 font-medium">{t("Updated")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -139,7 +141,7 @@ export default function DocumentsPage() {
                           </span>
                         </td>
                         <td className="px-2 py-3">
-                          <Badge tone={approval === "Approved" ? "green" : "amber"}>{approval}</Badge>
+                          <Badge tone={approval === "Approved" ? "green" : "amber"}>{t(approval)}</Badge>
                         </td>
                         <td className="px-2 py-3 text-[11px] text-[var(--muted)]">
                           {new Date(d.updated).toLocaleDateString("en", { day: "numeric", month: "short", year: "numeric" })}

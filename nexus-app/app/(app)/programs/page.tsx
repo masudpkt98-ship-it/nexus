@@ -5,6 +5,7 @@ import { Icon } from "@/components/Icons";
 import { programs as mockPrograms } from "@/lib/data";
 import { useApiData } from "@/lib/useApi";
 import { LiveBadge } from "@/components/LiveBadge";
+import { useI18n } from "@/lib/i18n";
 
 const statusTone: Record<string, "green" | "amber" | "red" | "blue"> = {
   "On Track": "green",
@@ -15,6 +16,7 @@ const statusTone: Record<string, "green" | "amber" | "red" | "blue"> = {
 const riskTone: Record<string, "green" | "amber" | "red"> = { Low: "green", Medium: "amber", High: "red" };
 
 export default function ProgramsPage() {
+  const { t } = useI18n();
   const { data: programs, live } = useApiData("/programs", mockPrograms);
   const totalBudget = programs.reduce((s, p) => s + p.budget, 0);
   const totalSpent = programs.reduce((s, p) => s + p.spent, 0);
@@ -30,13 +32,13 @@ export default function ProgramsPage() {
       <PageHeader
         title="Program Management"
         subtitle="Program · Project · Milestone · Deliverables · Budget · Risk · Dependency"
-        actions={<><LiveBadge live={live} /><Btn variant="primary"><Icon.plus className="h-4 w-4" /> New Program</Btn></>}
+        actions={<><LiveBadge live={live} /><Btn variant="primary"><Icon.plus className="h-4 w-4" /> {t("New Program")}</Btn></>}
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {summary.map((s) => (
           <Card key={s.label}>
-            <div className="text-xs text-[var(--muted)]">{s.label}</div>
+            <div className="text-xs text-[var(--muted)]">{t(s.label)}</div>
             <div
               className={`mt-1 text-2xl font-bold ${
                 s.tone === "green" ? "text-emerald-500" : s.tone === "red" ? "text-rose-500" : s.tone === "gold" ? "gold-gradient" : ""
@@ -65,24 +67,24 @@ export default function ProgramsPage() {
 
               <div className="w-40">
                 <div className="mb-1 flex justify-between text-[11px]">
-                  <span className="text-[var(--muted)]">Progress</span>
+                  <span className="text-[var(--muted)]">{t("Progress")}</span>
                   <span className="font-semibold">{p.progress}%</span>
                 </div>
                 <ProgressBar value={p.progress} tone={riskTone[p.risk] === "red" ? "red" : riskTone[p.risk] === "amber" ? "gold" : "blue"} />
               </div>
 
               <div className="text-center">
-                <div className="text-[10px] text-[var(--muted)]">Milestones</div>
+                <div className="text-[10px] text-[var(--muted)]">{t("Milestones")}</div>
                 <div className="text-sm font-semibold">{p.milestonesDone}/{p.milestones}</div>
               </div>
 
               <div className="text-center">
-                <div className="text-[10px] text-[var(--muted)]">Budget</div>
+                <div className="text-[10px] text-[var(--muted)]">{t("Budget")}</div>
                 <div className="text-sm font-semibold">${p.spent}k / ${p.budget}k</div>
               </div>
 
               <div className="text-center">
-                <div className="text-[10px] text-[var(--muted)]">Risk</div>
+                <div className="text-[10px] text-[var(--muted)]">{t("Risk")}</div>
                 <Badge tone={riskTone[p.risk]}>{p.risk}</Badge>
               </div>
 

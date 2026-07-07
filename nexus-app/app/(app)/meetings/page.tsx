@@ -6,6 +6,7 @@ import { Icon } from "@/components/Icons";
 import { meetings as mockMeetings } from "@/lib/data";
 import { useApiData } from "@/lib/useApi";
 import { LiveBadge } from "@/components/LiveBadge";
+import { useI18n } from "@/lib/i18n";
 
 const agenda = [
   "Review Q3 KPI achievement vs. target",
@@ -22,6 +23,7 @@ const actionItems = [
 ];
 
 export default function MeetingsPage() {
+  const { t } = useI18n();
   const { data: meetings, live } = useApiData("/meetings", mockMeetings);
 
   return (
@@ -29,7 +31,7 @@ export default function MeetingsPage() {
       <PageHeader
         title="Meeting Management"
         subtitle="Agenda · Minutes · Attendance · Action Items · Task Creation"
-        actions={<><LiveBadge live={live} /><Btn variant="primary"><Icon.plus className="h-4 w-4" /> Schedule Meeting</Btn></>}
+        actions={<><LiveBadge live={live} /><Btn variant="primary"><Icon.plus className="h-4 w-4" /> {t("Schedule Meeting")}</Btn></>}
       />
 
       <SectionTitle title="Upcoming Meetings" subtitle="Scheduled sessions & action item load" />
@@ -51,9 +53,9 @@ export default function MeetingsPage() {
             <div className="mt-4 flex items-center justify-between border-t border-black/5 pt-3 text-[11px] text-[var(--muted)] dark:border-white/5">
               <span className="inline-flex items-center gap-1.5">
                 <Icon.users className="h-3.5 w-3.5" />
-                {m.attendees} attendees
+                {m.attendees} {t("attendees")}
               </span>
-              <Badge tone="amber">{m.actionItems} action items</Badge>
+              <Badge tone="amber">{m.actionItems} {t("action items")}</Badge>
             </div>
           </Card>
         ))}
@@ -68,7 +70,7 @@ export default function MeetingsPage() {
                 <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-royal-500/12 text-[11px] font-semibold text-royal-400">
                   {i + 1}
                 </span>
-                <span>{a}</span>
+                <span>{t(a)}</span>
               </li>
             ))}
           </ul>
@@ -80,14 +82,14 @@ export default function MeetingsPage() {
             {actionItems.map((item, i) => (
               <div key={i} className="flex items-center gap-3">
                 <Avatar initials={item.assignee} />
-                <span className="min-w-0 flex-1 text-sm">{item.text}</span>
+                <span className="min-w-0 flex-1 text-sm">{t(item.text)}</span>
                 <Badge tone={item.status === "Done" ? "green" : "gray"}>
                   {item.status === "Done" ? (
                     <>
-                      <Icon.check className="h-3 w-3" /> Done
+                      <Icon.check className="h-3 w-3" /> {t("Done")}
                     </>
                   ) : (
-                    "Open"
+                    t("Open")
                   )}
                 </Badge>
               </div>

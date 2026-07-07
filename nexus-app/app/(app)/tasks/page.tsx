@@ -6,6 +6,7 @@ import { Badge, Avatar, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { tasks as seed, taskColumns, type Task, type TaskStatus } from "@/lib/data";
 import { apiGet, apiSend, getToken } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 
 type LiveTask = Task & { dbId?: number };
 
@@ -19,6 +20,7 @@ const priorityTone: Record<string, "gray" | "blue" | "amber" | "red"> = {
 const views = ["Kanban", "List", "Calendar", "Gantt"] as const;
 
 export default function TasksPage() {
+  const { t } = useI18n();
   const [items, setItems] = useState<LiveTask[]>(seed);
   const [view, setView] = useState<(typeof views)[number]>("Kanban");
   const [dragId, setDragId] = useState<string | null>(null);
@@ -64,7 +66,7 @@ export default function TasksPage() {
   };
 
   const addTask = async () => {
-    const title = typeof window !== "undefined" ? window.prompt("New task title:") : null;
+    const title = typeof window !== "undefined" ? window.prompt(t("New task title:")) : null;
     if (!title) return;
     if (live) {
       try {
@@ -122,13 +124,13 @@ export default function TasksPage() {
                     view === v ? "bg-royal-500 text-white" : "text-[var(--muted)] hover:text-[var(--text)]"
                   )}
                 >
-                  {v}
+                  {t(v)}
                 </button>
               ))}
             </div>
             <Btn variant="primary">
               <span onClick={addTask} className="flex items-center gap-1.5">
-                <Icon.plus className="h-4 w-4" /> New Task
+                <Icon.plus className="h-4 w-4" /> {t("New Task")}
               </span>
             </Btn>
           </>
@@ -138,12 +140,12 @@ export default function TasksPage() {
       <div className="mb-4 flex items-center gap-2 text-[11px]">
         {live ? (
           <Badge tone="green">
-            <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" /> Live · Laravel API
+            <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t("Live · Laravel API")}
           </Badge>
         ) : (
-          <Badge tone="amber">Demo data (sign in to connect the API)</Badge>
+          <Badge tone="amber">{t("Demo data (sign in to connect the API)")}</Badge>
         )}
-        {loading && <span className="text-[var(--muted)]">loading…</span>}
+        {loading && <span className="text-[var(--muted)]">{t("loading…")}</span>}
       </div>
 
       {view === "Kanban" && (
@@ -210,13 +212,13 @@ export default function TasksPage() {
           <table className="w-full text-sm">
             <thead className="border-b text-left text-xs text-[var(--muted)]">
               <tr>
-                <th className="px-4 py-3 font-medium">Task</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Priority</th>
-                <th className="px-4 py-3 font-medium">Assignee</th>
-                <th className="px-4 py-3 font-medium">Program</th>
-                <th className="px-4 py-3 font-medium">Progress</th>
-                <th className="px-4 py-3 font-medium">Due</th>
+                <th className="px-4 py-3 font-medium">{t("Task")}</th>
+                <th className="px-4 py-3 font-medium">{t("Status")}</th>
+                <th className="px-4 py-3 font-medium">{t("Priority")}</th>
+                <th className="px-4 py-3 font-medium">{t("Assignee")}</th>
+                <th className="px-4 py-3 font-medium">{t("Program")}</th>
+                <th className="px-4 py-3 font-medium">{t("Progress")}</th>
+                <th className="px-4 py-3 font-medium">{t("Due")}</th>
               </tr>
             </thead>
             <tbody>
@@ -254,9 +256,9 @@ export default function TasksPage() {
           ) : (
             <Icon.analytics className="h-10 w-10 text-royal-400" />
           )}
-          <p className="mt-4 text-sm font-medium">{view} view</p>
+          <p className="mt-4 text-sm font-medium">{t(view)} {t("view")}</p>
           <p className="mt-1 max-w-sm text-xs text-[var(--muted)]">
-            {view} visualization renders the same connected task data on a timeline. Switch to Kanban or List to interact with tasks.
+            {t(view)} {t("visualization renders the same connected task data on a timeline. Switch to Kanban or List to interact with tasks.")}
           </p>
         </div>
       )}

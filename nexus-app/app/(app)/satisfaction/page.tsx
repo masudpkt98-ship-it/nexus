@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card, SectionTitle, ProgressBar, DonutChart, LineChart } from "@/components/ui";
 import { LiveBadge } from "@/components/LiveBadge";
 import { useApiData } from "@/lib/useApi";
+import { useI18n } from "@/lib/i18n";
 import {
   npsData as mockNps,
   satisfactionByService as mockByService,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/data";
 
 export default function SatisfactionPage() {
+  const { t } = useI18n();
   const { data, live } = useApiData("/satisfaction", {
     nps: mockNps,
     byService: mockByService,
@@ -54,7 +56,7 @@ export default function SatisfactionPage() {
             {distribution.map((d) => (
               <div key={d.label} className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
-                <span className="text-[var(--muted)]">{d.label}</span>
+                <span className="text-[var(--muted)]">{t(d.label)}</span>
               </div>
             ))}
           </div>
@@ -75,7 +77,7 @@ export default function SatisfactionPage() {
       <div className="mt-4 grid grid-cols-3 gap-4">
         {distribution.map((d) => (
           <Card key={d.label}>
-            <div className="text-xs text-[var(--muted)]">{d.label}</div>
+            <div className="text-xs text-[var(--muted)]">{t(d.label)}</div>
             <div className={`mt-1 text-2xl font-bold ${d.tone}`}>{d.value}%</div>
           </Card>
         ))}

@@ -5,6 +5,7 @@ import { Icon } from "@/components/Icons";
 import { developmentPlans as mockDevelopmentPlans } from "@/lib/data";
 import { useApiData } from "@/lib/useApi";
 import { LiveBadge } from "@/components/LiveBadge";
+import { useI18n } from "@/lib/i18n";
 
 const summary = [
   { label: "Active Programs", value: 6, tone: "blue" },
@@ -21,6 +22,7 @@ const trainingCalendar = [
 ];
 
 export default function DevelopmentPage() {
+  const { t } = useI18n();
   const { data, live } = useApiData("/competency", { developmentPlans: mockDevelopmentPlans });
   const developmentPlans = data.developmentPlans;
 
@@ -29,13 +31,13 @@ export default function DevelopmentPage() {
       <PageHeader
         title="Development Program"
         subtitle="Operator · Supervisor · Leadership Development · Training Calendar · Learning Journey"
-        actions={<><LiveBadge live={live} /><Btn variant="primary"><Icon.plus className="h-4 w-4" /> New Plan</Btn></>}
+        actions={<><LiveBadge live={live} /><Btn variant="primary"><Icon.plus className="h-4 w-4" /> {t("New Plan")}</Btn></>}
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {summary.map((s) => (
           <Card key={s.label}>
-            <div className="text-xs text-[var(--muted)]">{s.label}</div>
+            <div className="text-xs text-[var(--muted)]">{t(s.label)}</div>
             <div
               className={`mt-1 text-2xl font-bold ${
                 s.tone === "green" ? "text-emerald-500" : s.tone === "gold" ? "gold-gradient" : ""
@@ -64,21 +66,21 @@ export default function DevelopmentPage() {
 
                   <div className="w-44">
                     <div className="mb-1 flex justify-between text-[11px]">
-                      <span className="text-[var(--muted)]">Readiness</span>
+                      <span className="text-[var(--muted)]">{t("Readiness")}</span>
                       <span className="font-semibold">{p.readiness}%</span>
                     </div>
                     <ProgressBar value={p.readiness} tone="gold" />
                   </div>
 
                   <div className="text-center">
-                    <div className="text-[10px] text-[var(--muted)]">Gaps</div>
+                    <div className="text-[10px] text-[var(--muted)]">{t("Gaps")}</div>
                     <Badge tone={p.gaps === 0 ? "green" : p.gaps > 1 ? "amber" : "blue"}>{p.gaps}</Badge>
                   </div>
 
                   <div className="flex min-w-[200px] flex-1 items-center gap-2 text-[12px]">
                     <Icon.development className="h-4 w-4 text-royal-400" />
                     <div>
-                      <div className="text-[10px] text-[var(--muted)]">Next Step</div>
+                      <div className="text-[10px] text-[var(--muted)]">{t("Next Step")}</div>
                       <div className="font-medium">{p.nextStep}</div>
                     </div>
                   </div>
@@ -92,17 +94,17 @@ export default function DevelopmentPage() {
           <SectionTitle title="Training Calendar" subtitle="Upcoming sessions" />
           <Card>
             <div className="space-y-4">
-              {trainingCalendar.map((t) => (
-                <div key={t.name} className="flex items-start gap-3">
+              {trainingCalendar.map((tItem) => (
+                <div key={tItem.name} className="flex items-start gap-3">
                   <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-royal-500/12 text-royal-400">
                     <Icon.meeting className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{t.name}</div>
+                    <div className="truncate text-sm font-medium">{tItem.name}</div>
                     <div className="mt-0.5 flex items-center gap-2 text-[11px] text-[var(--muted)]">
-                      <span>{t.date}</span>
+                      <span>{tItem.date}</span>
                       <span>·</span>
-                      <span>{t.seats} seats</span>
+                      <span>{tItem.seats} {t("seats")}</span>
                     </div>
                   </div>
                 </div>

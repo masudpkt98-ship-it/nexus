@@ -5,6 +5,7 @@ import { Card, SectionTitle, Badge, ProgressBar, LineChart, BarChart, DonutChart
 import { Icon } from "@/components/Icons";
 import { LiveBadge } from "@/components/LiveBadge";
 import { useApiData } from "@/lib/useApi";
+import { useI18n } from "@/lib/i18n";
 import {
   kpiTrend as mockKpiTrend,
   satisfactionTrend as mockSatisfactionTrend,
@@ -22,6 +23,7 @@ const fallbackIndices = [
 const exportFormats = ["PDF", "Excel", "PowerPoint", "CSV"];
 
 export default function AnalyticsPage() {
+  const { t } = useI18n();
   const { data, live } = useApiData("/analytics", {
     indices: fallbackIndices,
     taskCompletion: { done: 68, active: 22, overdue: 10, completionPct: 68 },
@@ -75,7 +77,7 @@ export default function AnalyticsPage() {
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <SectionTitle title="Department Performance Trend" subtitle="Composite KPI index vs satisfaction" action={<Badge tone="green">Healthy</Badge>} />
+          <SectionTitle title="Department Performance Trend" subtitle="Composite KPI index vs satisfaction" action={<Badge tone="green">{t("Healthy")}</Badge>} />
           <LineChart data={kpiTrend.map((d) => d.v)} labels={kpiTrend.map((d) => d.m)} min={60} max={100} />
         </Card>
 
@@ -85,21 +87,21 @@ export default function AnalyticsPage() {
             <DonutChart
               size={170}
               segments={[
-                { value: tc.done, color: "#2f6bff", label: "Done" },
-                { value: tc.active, color: "#e5aa26", label: "In Progress" },
-                { value: tc.overdue, color: "#f43f5e", label: "Overdue" },
+                { value: tc.done, color: "#2f6bff", label: t("Done") },
+                { value: tc.active, color: "#e5aa26", label: t("In Progress") },
+                { value: tc.overdue, color: "#f43f5e", label: t("Overdue") },
               ]}
               center={
                 <div className="text-center">
                   <div className="text-2xl font-bold">{tc.completionPct}%</div>
-                  <div className="text-[10px] text-[var(--muted)]">completed</div>
+                  <div className="text-[10px] text-[var(--muted)]">{t("completed")}</div>
                 </div>
               }
             />
             <div className="mt-3 grid w-full grid-cols-3 gap-2 text-center text-[10px]">
-              <div><span className="mx-auto mb-1 block h-2 w-2 rounded-full bg-royal-500" />Done {pct(tc.done)}%</div>
-              <div><span className="mx-auto mb-1 block h-2 w-2 rounded-full bg-gold-400" />Active {pct(tc.active)}%</div>
-              <div><span className="mx-auto mb-1 block h-2 w-2 rounded-full bg-rose-500" />Overdue {pct(tc.overdue)}%</div>
+              <div><span className="mx-auto mb-1 block h-2 w-2 rounded-full bg-royal-500" />{t("Done")} {pct(tc.done)}%</div>
+              <div><span className="mx-auto mb-1 block h-2 w-2 rounded-full bg-gold-400" />{t("Active")} {pct(tc.active)}%</div>
+              <div><span className="mx-auto mb-1 block h-2 w-2 rounded-full bg-rose-500" />{t("Overdue")} {pct(tc.overdue)}%</div>
             </div>
           </div>
         </Card>
@@ -136,11 +138,11 @@ export default function AnalyticsPage() {
         <div className="flex items-center gap-3">
           <Icon.spark className="h-5 w-5 text-gold-400" />
           <div>
-            <div className="text-sm font-semibold">Generate Executive Report</div>
-            <div className="text-[11px] text-[var(--muted)]">AI compiles a full narrative across all modules — export in any format.</div>
+            <div className="text-sm font-semibold">{t("Generate Executive Report")}</div>
+            <div className="text-[11px] text-[var(--muted)]">{t("AI compiles a full narrative across all modules — export in any format.")}</div>
           </div>
         </div>
-        <Btn variant="gold"><Icon.spark className="h-4 w-4" /> Generate with AI</Btn>
+        <Btn variant="gold"><Icon.spark className="h-4 w-4" /> {t("Generate with AI")}</Btn>
       </Card>
     </>
   );

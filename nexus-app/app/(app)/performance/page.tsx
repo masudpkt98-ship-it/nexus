@@ -7,6 +7,7 @@ import { performanceKpis as mockPerformanceKpis, kpiTrend, topPerformers } from 
 import { useApiData } from "@/lib/useApi";
 import { apiSend, apiDownload, getToken } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
+import { useI18n } from "@/lib/i18n";
 
 const levelTone: Record<string, "purple" | "blue" | "green"> = {
   Corporate: "purple",
@@ -17,6 +18,7 @@ const levelTone: Record<string, "purple" | "blue" | "green"> = {
 type Kpi = { id: string; name: string; level: string; weight: number; target: number; actual: number; unit: string };
 
 export default function PerformancePage() {
+  const { t } = useI18n();
   const { data: apiKpis, live } = useApiData("/performance-kpis", mockPerformanceKpis);
 
   const [rows, setRows] = useState<Kpi[]>([]);
@@ -104,15 +106,15 @@ export default function PerformancePage() {
             {getToken() && (
               <>
                 <Btn onClick={() => apiDownload("/exports/kpis", undefined, "nexus-kpis.xlsx", "GET")}>
-                  <Icon.document className="h-4 w-4" /> Excel
+                  <Icon.document className="h-4 w-4" /> {t("Excel")}
                 </Btn>
                 <Btn onClick={() => apiDownload("/exports/report", undefined, "nexus-executive-overview.pptx", "GET")}>
-                  <Icon.document className="h-4 w-4" /> Deck
+                  <Icon.document className="h-4 w-4" /> {t("Deck")}
                 </Btn>
               </>
             )}
             <Btn variant="primary" onClick={openCreate}>
-              <Icon.plus className="h-4 w-4" /> New KPI
+              <Icon.plus className="h-4 w-4" /> {t("New KPI")}
             </Btn>
           </>
         }
@@ -124,10 +126,10 @@ export default function PerformancePage() {
           <SectionTitle title="Weighted Performance Score" />
           <Gauge value={score} size={180} />
           <Badge tone={score >= 90 ? "green" : score >= 75 ? "amber" : "red"} className="mt-2">
-            {score >= 90 ? "Exceeds" : score >= 75 ? "Meets" : "Below"} Target
+            {score >= 90 ? t("Exceeds") : score >= 75 ? t("Meets") : t("Below")} {t("Target")}
           </Badge>
           <p className="mt-2 text-center text-[11px] text-[var(--muted)]">
-            Auto-calculated from {rows.length} weighted KPI
+            {t("Auto-calculated from")} {rows.length} {t("weighted KPI")}
           </p>
         </Card>
 
@@ -149,15 +151,15 @@ export default function PerformancePage() {
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-[10px] text-[var(--muted)]">Weight</div>
+                    <div className="text-[10px] text-[var(--muted)]">{t("Weight")}</div>
                     <div className="text-sm font-semibold">{k.weight}%</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-[10px] text-[var(--muted)]">Target</div>
+                    <div className="text-[10px] text-[var(--muted)]">{t("Target")}</div>
                     <div className="text-sm font-semibold">{k.target}{k.unit}</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-[10px] text-[var(--muted)]">Actual</div>
+                    <div className="text-[10px] text-[var(--muted)]">{t("Actual")}</div>
                     <div className={`text-sm font-bold ${pct >= 100 ? "text-emerald-500" : pct >= 90 ? "text-gold-500" : "text-rose-500"}`}>
                       {k.actual}{k.unit}
                     </div>
@@ -169,7 +171,7 @@ export default function PerformancePage() {
                       aria-label={`Edit ${k.name}`}
                       title="Edit"
                     >
-                      Edit
+                      {t("Edit")}
                     </button>
                     <button
                       onClick={() => removeRow(k)}
@@ -209,7 +211,7 @@ export default function PerformancePage() {
             ))}
           </div>
           <button className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-medium text-royal-400 hover:bg-royal-500/5">
-            <Icon.spark className="h-3.5 w-3.5" /> Generate Coaching Plan
+            <Icon.spark className="h-3.5 w-3.5" /> {t("Generate Coaching Plan")}
           </button>
         </Card>
       </div>
@@ -220,7 +222,7 @@ export default function PerformancePage() {
           <div className="relative z-10 w-full max-w-md glass card shadow-glass animate-fade-up">
             <div className="flex items-center gap-2 border-b p-4">
               <Icon.performance className="h-4 w-4 shrink-0 text-royal-400" />
-              <div className="text-sm font-semibold">{form.id == null ? "New KPI" : "Edit KPI"}</div>
+              <div className="text-sm font-semibold">{form.id == null ? t("New KPI") : t("Edit KPI")}</div>
               <button
                 onClick={() => setForm(empty)}
                 className="ml-auto rounded-lg px-2 py-1 text-[var(--muted)] transition hover:text-rose-400"
@@ -231,29 +233,29 @@ export default function PerformancePage() {
             </div>
             <div className="space-y-3 p-5">
               <label className="block text-[11px] font-medium text-[var(--muted)]">
-                Name
+                {t("Name")}
                 <input
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Revenue Growth"
+                  placeholder={t("e.g. Revenue Growth")}
                   className="mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500"
                 />
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block text-[11px] font-medium text-[var(--muted)]">
-                  Level
+                  {t("Level")}
                   <select
                     value={form.level}
                     onChange={(e) => setForm((f) => ({ ...f, level: e.target.value }))}
                     className="mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500"
                   >
-                    <option>Corporate</option>
-                    <option>Department</option>
-                    <option>Individual</option>
+                    <option value="Corporate">{t("Corporate")}</option>
+                    <option value="Department">{t("Department")}</option>
+                    <option value="Individual">{t("Individual")}</option>
                   </select>
                 </label>
                 <label className="block text-[11px] font-medium text-[var(--muted)]">
-                  Weight (%)
+                  {t("Weight (%)")}
                   <input
                     type="number"
                     min={0}
@@ -266,7 +268,7 @@ export default function PerformancePage() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <label className="block text-[11px] font-medium text-[var(--muted)]">
-                  Target
+                  {t("Target")}
                   <input
                     type="number"
                     min={0}
@@ -276,7 +278,7 @@ export default function PerformancePage() {
                   />
                 </label>
                 <label className="block text-[11px] font-medium text-[var(--muted)]">
-                  Actual
+                  {t("Actual")}
                   <input
                     type="number"
                     min={0}
@@ -286,11 +288,11 @@ export default function PerformancePage() {
                   />
                 </label>
                 <label className="block text-[11px] font-medium text-[var(--muted)]">
-                  Unit
+                  {t("Unit")}
                   <input
                     value={form.unit}
                     onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
-                    placeholder="% or /5"
+                    placeholder={t("% or /5")}
                     className="mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500"
                   />
                 </label>
@@ -298,10 +300,10 @@ export default function PerformancePage() {
             </div>
             <div className="flex justify-end gap-2 border-t p-3">
               <Btn variant="ghost" onClick={() => setForm(empty)}>
-                Cancel
+                {t("Cancel")}
               </Btn>
               <Btn variant="primary" onClick={saveForm}>
-                {form.id == null ? "Create" : "Save"}
+                {form.id == null ? t("Create") : t("Save")}
               </Btn>
             </div>
           </div>
