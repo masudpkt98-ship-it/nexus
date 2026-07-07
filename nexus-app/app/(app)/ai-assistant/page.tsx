@@ -332,6 +332,20 @@ export default function AiAssistantPage() {
     setGen((g) => ({ ...g, open: false, streaming: false }));
   };
 
+  const downloadArtifact = () => {
+    if (!gen.markdown) return;
+    const date = new Date().toISOString().slice(0, 10);
+    const blob = new Blob([gen.markdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `nexus-${gen.kind ?? "artifact"}-${date}.md`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const send = async (text: string) => {
     if (!text.trim() || busy) return;
 
@@ -845,11 +859,16 @@ export default function AiAssistantPage() {
             </div>
             <div className="flex justify-end gap-2 border-t p-3">
               {gen.markdown && !gen.streaming && (
-                <Btn variant="ghost" onClick={() => navigator.clipboard?.writeText(gen.markdown)}>
-                  Copy Markdown
-                </Btn>
+                <>
+                  <Btn variant="ghost" onClick={() => navigator.clipboard?.writeText(gen.markdown)}>
+                    Copy Markdown
+                  </Btn>
+                  <Btn variant="ghost" onClick={downloadArtifact}>
+                    <Icon.document className="h-4 w-4" /> Download .md
+                  </Btn>
+                </>
               )}
-              <Btn variant="ghost" onClick={() => setGen((g) => ({ ...g, open: false }))}>
+              <Btn variant="ghost" onClick={closeGenerator}>
                 Close
               </Btn>
             </div>

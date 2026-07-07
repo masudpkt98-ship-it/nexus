@@ -57,6 +57,18 @@ test("Report generator: scope parameter appears in the report title", async ({ p
   ).toBeVisible({ timeout: 25_000 });
 });
 
+test("Report generator: download .md exports the artifact", async ({ page }) => {
+  await page.getByRole("button", { name: /Generate Executive Report/i }).click();
+  await page.getByRole("button", { name: /^Generate$/ }).click();
+  await expect(page.getByRole("heading", { name: /Executive Report/i })).toBeVisible({ timeout: 25_000 });
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: /Download \.md/i }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^nexus-report-\d{4}-\d{2}-\d{2}\.md$/);
+});
+
 test("Report generator: streaming can be stopped", async ({ page }) => {
   await page.getByRole("button", { name: /Generate Executive Report/i }).click();
   await page.getByRole("button", { name: /^Generate$/ }).click();
