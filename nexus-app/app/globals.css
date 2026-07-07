@@ -129,3 +129,19 @@ body {
   display: inline-block;
   animation: typing-bounce 1.2s infinite ease-in-out;
 }
+
+/* RTL bidi isolation: English (LTR) data shown inside Arabic/Urdu pages keeps
+   its own direction so trailing punctuation renders correctly (e.g. a period
+   stays at the end, not flipped to the left). Arabic/Urdu text is unaffected —
+   plaintext derives each element's direction from its own first strong char. */
+[dir="rtl"] p,
+[dir="rtl"] h1,
+[dir="rtl"] h2,
+[dir="rtl"] h3,
+[dir="rtl"] h4,
+[dir="rtl"] li,
+[dir="rtl"] td,
+[dir="rtl"] th,
+[dir="rtl"] label {
+  unicode-bidi: plaintext;
+}

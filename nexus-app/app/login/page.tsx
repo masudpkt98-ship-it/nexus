@@ -5,6 +5,7 @@ import { useState } from "react";
 import { LogoMark } from "@/components/Logo";
 import { Icon } from "@/components/Icons";
 import { cn } from "@/components/ui";
+import { useI18n } from "@/lib/i18n";
 import { apiLogin, ApiError } from "@/lib/api";
 
 const roles = [
@@ -14,6 +15,7 @@ const roles = [
 ];
 
 export default function LoginPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [selected, setSelected] = useState("VP");
   const [email, setEmail] = useState("arif.wibowo@nexus.co");
@@ -74,15 +76,15 @@ export default function LoginPage() {
             <div className="text-xl font-bold tracking-[0.2em] brand-gradient">NEXUS</div>
           </div>
 
-          <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{t("Welcome back")}</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Sign in to your workspace to continue.
+            {t("Sign in to your workspace to continue.")}
           </p>
 
           <form className="mt-8 space-y-4" onSubmit={submit}>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
-                Work email
+                {t("Work email")}
               </label>
               <input
                 type="email"
@@ -93,7 +95,7 @@ export default function LoginPage() {
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
-                Password
+                {t("Password")}
               </label>
               <input
                 type="password"
@@ -105,7 +107,7 @@ export default function LoginPage() {
 
             <div>
               <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
-                Sign in as (RBAC demo)
+                {t("Sign in as (RBAC demo)")}
               </label>
               <div className="grid gap-2">
                 {roles.map((r) => (
@@ -122,7 +124,7 @@ export default function LoginPage() {
                   >
                     <span>
                       <span className="font-medium">{r.role}</span>
-                      <span className="ml-2 text-xs text-[var(--muted)]">{r.label}</span>
+                      <span className="ml-2 text-xs text-[var(--muted)]">{t(r.label)}</span>
                     </span>
                     {selected === r.role && (
                       <Icon.check className="h-4 w-4 text-royal-400" />
@@ -134,12 +136,12 @@ export default function LoginPage() {
 
             {error && (
               <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-500">
-                {error}
+                {t(error)}
               </div>
             )}
             {note && (
               <div className="rounded-lg border border-gold-500/30 bg-gold-400/10 px-3 py-2 text-xs text-gold-500">
-                {note}
+                {t(note)}
               </div>
             )}
 
@@ -148,13 +150,13 @@ export default function LoginPage() {
               disabled={loading}
               className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-royal-500 to-royal-700 px-4 py-3 text-sm font-semibold text-white shadow-glow transition hover:brightness-110 disabled:opacity-60"
             >
-              {loading ? "Signing in…" : "Enter NEXUS"}
+              {loading ? t("Signing in…") : t("Enter NEXUS")}
               {!loading && <Icon.chevron className="h-4 w-4" />}
             </button>
 
             <div className="flex items-center gap-3 py-1">
               <div className="h-px flex-1 bg-[rgba(var(--border),1)]" />
-              <span className="text-[11px] text-[var(--muted)]">or</span>
+              <span className="text-[11px] text-[var(--muted)]">{t("or")}</span>
               <div className="h-px flex-1 bg-[rgba(var(--border),1)]" />
             </div>
 
@@ -163,12 +165,12 @@ export default function LoginPage() {
               className="flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition hover:bg-black/5 dark:hover:bg-white/5"
             >
               <Icon.users className="h-4 w-4" />
-              Single Sign-On (Active Directory)
+              {t("Single Sign-On (Active Directory)")}
             </button>
           </form>
 
           <p className="mt-8 text-center text-[11px] text-[var(--muted)]">
-            One Platform. One Team. One Performance.
+            {t("One Platform. One Team. One Performance.")}
           </p>
         </div>
       </div>

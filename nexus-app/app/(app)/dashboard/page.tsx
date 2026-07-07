@@ -87,7 +87,7 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader
-        title={`Good morning, ${String(storedName).split(" ")[0]} 👋`}
+        title={`${t("Good morning")}, ${String(storedName).split(" ")[0]} 👋`}
         subtitle="Executive Dashboard · Everything connected — People → Competency → Execution → Performance → Value"
         actions={
           <>
