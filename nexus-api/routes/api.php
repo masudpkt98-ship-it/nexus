@@ -47,6 +47,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Competency
     Route::get('/competency', [CompetencyController::class, 'index'])->middleware('permission:competency.view');
+    Route::post('/competency', [CompetencyController::class, 'store'])->middleware('permission:competency.manage');
+    Route::put('/competency/{competency}', [CompetencyController::class, 'update'])->middleware('permission:competency.manage');
+    Route::delete('/competency/{competency}', [CompetencyController::class, 'destroy'])->middleware('permission:competency.manage');
 
     // Performance
     Route::get('/performance-kpis', [PerformanceKpiController::class, 'index'])->middleware('permission:performance.view');

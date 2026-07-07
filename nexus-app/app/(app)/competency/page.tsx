@@ -1,30 +1,93 @@
 "use client";
+import { useEffect, useState } from "react";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, SectionTitle, Badge, ProgressBar, Avatar } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { competencies as mockCompetencies, developmentPlans as mockDevelopmentPlans } from "@/lib/data";
 import { useApiData } from "@/lib/useApi";
+import { apiSend, getToken } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
+
+type Comp = { id: number; name: string; category: string; current: number; required: number };
 
 export default function CompetencyPage() {
   const { data, live } = useApiData("/competency", {
     competencies: mockCompetencies,
     developmentPlans: mockDevelopmentPlans,
   });
-  const competencies = data.competencies;
   const developmentPlans = data.developmentPlans;
 
-  const avgReq = competencies.reduce((s, c) => s + c.required, 0);
-  const avgCur = competencies.reduce((s, c) => s + c.current, 0);
-  const index = Math.round((avgCur / avgReq) * 100);
-  const gaps = competencies.filter((c) => c.current < c.required);
+  const [rows, setRows] = useState<Comp[]>([]);
+  useEffect(() => {
+    setRows(
+      (data.competencies ?? []).map(
+        (c: { id?: number; name: string; category: string; current: number; required: number }, i: number) => ({
+          id: c.id ?? i + 1,
+          name: c.name,
+          category: c.category,
+          current: c.current,
+          required: c.required,
+        })
+      )
+    );
+  }, [data.competencies]);
+
+  const empty = { open: false, id: null as number | null, name: "", category: "", current: 3, required: 4 };
+  const [form, setForm] = useState(empty);
+  const openCreate = () => setForm({ ...empty, open: true });
+  const openEdit = (c: Comp) =>
+    setForm({ open: true, id: c.id, name: c.name, category: c.category, current: c.current, required: c.required });
+
+  const saveForm = async () => {
+    const body = {
+      name: form.name.trim(),
+      category: form.category.trim(),
+      current: form.current,
+      required: form.required,
+    };
+    if (!body.name || !body.category) return;
+    if (getToken()) {
+      try {
+        if (form.id == null) {
+          const created = await apiSend<Comp>("POST", "/competency", body);
+          setRows((r) => [...r, created]);
+        } else {
+          const updated = await apiSend<Comp>("PUT", `/competency/${form.id}`, body);
+          setRows((r) => r.map((x) => (x.id === form.id ? updated : x)));
+        }
+      } catch {
+        return; // API rejected (e.g. no permission) — keep the form open
+      }
+    } else if (form.id == null) {
+      setRows((r) => [...r, { id: Math.max(0, ...r.map((x) => x.id)) + 1, ...body }]);
+    } else {
+      setRows((r) => r.map((x) => (x.id === form.id ? { ...x, ...body } : x)));
+    }
+    setForm(empty);
+  };
+
+  const removeRow = async (c: Comp) => {
+    setRows((r) => r.filter((x) => x.id !== c.id));
+    if (getToken()) {
+      try {
+        await apiSend("DELETE", `/competency/${c.id}`);
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  const avgReq = rows.reduce((s, c) => s + c.required, 0);
+  const avgCur = rows.reduce((s, c) => s + c.current, 0);
+  const index = avgReq ? Math.round((avgCur / avgReq) * 100) : 0;
+  const gaps = rows.filter((c) => c.current < c.required);
 
   return (
     <>
       <PageHeader
         title="Competency Management"
         subtitle="Dictionary · Matrix · Mapping · Assessment · Gap Analysis · IDP · Career Readiness"
-        actions={<><LiveBadge live={live} /><Btn variant="primary"><Icon.plus className="h-4 w-4" /> New Assessment</Btn></>}
+        actions={<><LiveBadge live={live} /><Btn variant="primary" onClick={openCreate}><Icon.plus className="h-4 w-4" /> New Competency</Btn></>}
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -36,7 +99,7 @@ export default function CompetencyPage() {
         <Card>
           <div className="text-xs text-[var(--muted)]">Critical Gaps</div>
           <div className="mt-1 text-2xl font-bold text-rose-500">{gaps.length}</div>
-          <div className="mt-1 text-[11px] text-[var(--muted)]">across {competencies.length} competencies</div>
+          <div className="mt-1 text-[11px] text-[var(--muted)]">across {rows.length} competencies</div>
         </Card>
         <Card>
           <div className="text-xs text-[var(--muted)]">Assessed Staff</div>
@@ -55,18 +118,36 @@ export default function CompetencyPage() {
         <Card className="lg:col-span-2">
           <SectionTitle title="Competency Gap Analysis" subtitle="Required vs current proficiency (level 1–5)" />
           <div className="space-y-4">
-            {competencies.map((c) => {
+            {rows.map((c) => {
               const gap = c.required - c.current;
               return (
-                <div key={c.name}>
+                <div key={c.id} className="group">
                   <div className="mb-1.5 flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2">
                       <span className="font-medium">{c.name}</span>
                       <Badge tone="gray">{c.category}</Badge>
                     </span>
-                    <span className="text-xs text-[var(--muted)]">
-                      {c.current} / {c.required}
-                      {gap > 0 && <span className="ml-2 text-rose-500">−{gap}</span>}
+                    <span className="flex items-center gap-2 text-xs text-[var(--muted)]">
+                      <span>
+                        {c.current} / {c.required}
+                        {gap > 0 && <span className="ml-2 text-rose-500">−{gap}</span>}
+                      </span>
+                      <button
+                        onClick={() => openEdit(c)}
+                        className="font-medium opacity-0 transition hover:text-royal-400 group-hover:opacity-100"
+                        aria-label={`Edit ${c.name}`}
+                        title="Edit"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => removeRow(c)}
+                        className="opacity-0 transition hover:text-rose-400 group-hover:opacity-100"
+                        aria-label={`Delete ${c.name}`}
+                        title="Delete"
+                      >
+                        ✕
+                      </button>
                     </span>
                   </div>
                   <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
@@ -98,7 +179,7 @@ export default function CompetencyPage() {
           <SectionTitle title="AI Learning Recommendations" action={<Icon.spark className="h-4 w-4 text-gold-400" />} />
           <div className="space-y-3">
             {gaps.slice(0, 4).map((c) => (
-              <div key={c.name} className="rounded-xl border p-3">
+              <div key={c.id} className="rounded-xl border p-3">
                 <div className="text-[13px] font-medium">{c.name}</div>
                 <div className="mt-1 text-[11px] text-[var(--muted)]">
                   Recommended: {c.category} advanced track · est. 6 weeks
@@ -141,6 +222,89 @@ export default function CompetencyPage() {
           ))}
         </div>
       </div>
+
+      {form.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setForm(empty)} />
+          <div className="relative z-10 w-full max-w-md glass card shadow-glass animate-fade-up">
+            <div className="flex items-center gap-2 border-b p-4">
+              <Icon.competency className="h-4 w-4 shrink-0 text-royal-400" />
+              <div className="text-sm font-semibold">{form.id == null ? "New Competency" : "Edit Competency"}</div>
+              <button
+                onClick={() => setForm(empty)}
+                className="ml-auto rounded-lg px-2 py-1 text-[var(--muted)] transition hover:text-rose-400"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-3 p-5">
+              <label className="block text-[11px] font-medium text-[var(--muted)]">
+                Name
+                <input
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="e.g. Cloud Architecture"
+                  className="mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500"
+                />
+              </label>
+              <label className="block text-[11px] font-medium text-[var(--muted)]">
+                Category
+                <input
+                  value={form.category}
+                  onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                  placeholder="e.g. Technical"
+                  list="competency-categories"
+                  className="mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500"
+                />
+                <datalist id="competency-categories">
+                  {Array.from(new Set(rows.map((c) => c.category))).map((cat) => (
+                    <option key={cat} value={cat} />
+                  ))}
+                </datalist>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block text-[11px] font-medium text-[var(--muted)]">
+                  Current level
+                  <select
+                    value={form.current}
+                    onChange={(e) => setForm((f) => ({ ...f, current: Number(e.target.value) }))}
+                    className="mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500"
+                  >
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>
+                        Level {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-[11px] font-medium text-[var(--muted)]">
+                  Required level
+                  <select
+                    value={form.required}
+                    onChange={(e) => setForm((f) => ({ ...f, required: Number(e.target.value) }))}
+                    className="mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500"
+                  >
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>
+                        Level {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t p-3">
+              <Btn variant="ghost" onClick={() => setForm(empty)}>
+                Cancel
+              </Btn>
+              <Btn variant="primary" onClick={saveForm}>
+                {form.id == null ? "Create" : "Save"}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
