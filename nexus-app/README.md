@@ -89,7 +89,7 @@ nexus-app/
 ├─ components/              # Sidebar, Topbar, Logo, Icons, UI kit, charts
 ├─ lib/                     # data.ts (mock API), api.ts (live client), nav.ts
 ├─ e2e/                     # Playwright browser tests
-└─ public/nexus-logo.png    # brand logo
+└─ public/                  # nexus-mark.png (emblem), nexus_login.png (login poster)
 ```
 
 ## 🧭 Next steps toward production
