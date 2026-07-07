@@ -8,6 +8,7 @@ import { notifications as mockNotifications } from "@/lib/data";
 import { useApiData } from "@/lib/useApi";
 import { LiveBadge } from "@/components/LiveBadge";
 import { apiSend, getToken } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 
 const channels = ["All", "In-App", "Email", "WhatsApp", "Push"] as const;
 
@@ -27,6 +28,7 @@ const kindIcon: Record<string, (typeof Icon)[keyof typeof Icon]> = {
 };
 
 export default function NotificationsPage() {
+  const { t } = useI18n();
   const [channel, setChannel] = useState<(typeof channels)[number]>("All");
   const [read, setRead] = useState<Record<string, boolean>>({});
   const { data: notifications, live } = useApiData("/notifications", mockNotifications);
@@ -63,7 +65,7 @@ export default function NotificationsPage() {
           <>
             <LiveBadge live={live} />
             <Btn variant="ghost" onClick={markAll}>
-              <Icon.check className="h-4 w-4" /> Mark all read
+              <Icon.check className="h-4 w-4" /> {t("Mark all read")}
             </Btn>
           </>
         }
@@ -72,7 +74,7 @@ export default function NotificationsPage() {
       <div className="grid grid-cols-3 gap-4 lg:grid-cols-6">
         {stats.map((s) => (
           <Card key={s.label}>
-            <div className="text-xs text-[var(--muted)]">{s.label}</div>
+            <div className="text-xs text-[var(--muted)]">{t(s.label)}</div>
             <div
               className={`mt-1 text-2xl font-bold ${
                 s.tone === "green" ? "text-emerald-500" : s.tone === "blue" ? "text-royal-400" : ""
@@ -95,14 +97,14 @@ export default function NotificationsPage() {
                 : "glass hover:bg-black/5 dark:hover:bg-white/5"
             }`}
           >
-            {c}
+            {t(c)}
           </button>
         ))}
         <button
           onClick={markAll}
           className="ml-auto rounded-xl px-3.5 py-2 text-[13px] font-medium text-[var(--muted)] transition hover:text-royal-400"
         >
-          Mark all read
+          {t("Mark all read")}
         </button>
       </div>
 
@@ -129,7 +131,7 @@ export default function NotificationsPage() {
                 <div className="flex shrink-0 flex-col items-end gap-2">
                   <span className="inline-flex items-center gap-1 text-[11px] text-[var(--muted)]">
                     <Icon.clock className="h-3.5 w-3.5" />
-                    {n.time}
+                    {t(n.time)}
                   </span>
                   {unread && <span className="h-2.5 w-2.5 rounded-full bg-royal-500 shadow-glow" />}
                 </div>
@@ -138,7 +140,7 @@ export default function NotificationsPage() {
           );
         })}
         {filtered.length === 0 && (
-          <Card className="text-center text-sm text-[var(--muted)]">No notifications on this channel.</Card>
+          <Card className="text-center text-sm text-[var(--muted)]">{t("No notifications on this channel.")}</Card>
         )}
       </div>
     </>

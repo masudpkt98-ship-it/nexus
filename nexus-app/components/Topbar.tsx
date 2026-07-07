@@ -151,7 +151,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
                 </div>
                 <div className="max-h-80 space-y-1 overflow-y-auto">
                   {items.length === 0 && (
-                    <p className="px-2 py-6 text-center text-[11px] text-[var(--muted)]">No notifications.</p>
+                    <p className="px-2 py-6 text-center text-[11px] text-[var(--muted)]">{t("No notifications.")}</p>
                   )}
                   {items.map((n) => (
                     <div
@@ -165,7 +165,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
                         <span className="rounded bg-royal-500/15 px-1.5 py-0.5 text-[9px] font-medium text-royal-400">
                           {n.channel}
                         </span>
-                        <span className="ml-auto text-[10px] text-[var(--muted)]">{n.time}</span>
+                        <span className="ml-auto text-[10px] text-[var(--muted)]">{t(n.time)}</span>
                       </div>
                       <p className="mt-1 leading-snug">{n.title}</p>
                     </div>
