@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+npm-debug.log
+Dockerfile
+.dockerignore
+README.md
+.env.local
+e2e
+playwright.config.ts
+playwright-report
+test-results

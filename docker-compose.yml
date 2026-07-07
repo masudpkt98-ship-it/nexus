@@ -1,0 +1,84 @@
+name: nexus
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: nexus-db
+    environment:
+      POSTGRES_DB: nexus
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_secret
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    container_name: nexus-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  api:
+    build: ./nexus-api
+    container_name: nexus-api
+    environment:
+      APP_NAME: NEXUS
+      APP_ENV: local
+      APP_KEY: "base64:IwmLg3PIY/w2cRndwXNg6OgxkY7rdDYOeP03WKbtQ2k="
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_DATABASE: nexus
+      DB_USERNAME: nexus
+      DB_PASSWORD: nexus_secret
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      FRONTEND_URL: http://localhost:3000
+      # Set ANTHROPIC_API_KEY in your shell (or a .env next to this file) to enable
+      # the real Claude-powered AI Assistant. Without it, /ai/chat uses the
+      # deterministic rule-based fallback.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./nexus-app
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000/api
+    container_name: nexus-web
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  db-data:
+  redis-data:

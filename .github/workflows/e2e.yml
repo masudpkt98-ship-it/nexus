@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-checks:
+    name: Web lint & build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: nexus-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: nexus-app
+        run: npm ci
+
+      - name: Lint
+        working-directory: nexus-app
+        run: npm run lint
+
+      - name: Build
+        working-directory: nexus-app
+        run: npm run build
+
+  api-checks:
+    name: API PHP lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+
+      - name: PHP syntax check (php -l)
+        working-directory: nexus-api
+        run: |
+          find app database routes config bootstrap -name '*.php' -print0 \
+            | xargs -0 -n1 -P4 php -l
+
+  e2e:
+    name: End-to-end (Docker + Playwright)
+    needs: [web-checks, api-checks]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and start the stack
+        run: docker compose up -d --build
+
+      - name: Wait for the API and web to be ready
+        run: |
+          echo "Waiting for API (http://localhost:8000/api/health)…"
+          for i in $(seq 1 90); do
+            if curl -fsS http://localhost:8000/api/health >/dev/null 2>&1; then
+              echo "API is up."
+              break
+            fi
+            if [ "$i" = "90" ]; then echo "API did not become ready"; docker compose logs api; exit 1; fi
+            sleep 3
+          done
+
+          echo "Waiting for web (http://localhost:3000/login)…"
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/login || true)
+            if [ "$code" = "200" ]; then echo "Web is up."; break; fi
+            if [ "$i" = "60" ]; then echo "Web did not become ready"; docker compose logs web; exit 1; fi
+            sleep 3
+          done
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: nexus-app/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: nexus-app
+        run: npm ci
+
+      - name: Install Playwright browser
+        working-directory: nexus-app
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        working-directory: nexus-app
+        env:
+          E2E_BASE_URL: http://localhost:3000
+        run: npm run e2e
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail=200
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: nexus-app/playwright-report
+          retention-days: 7
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
