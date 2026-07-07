@@ -12,6 +12,7 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./e2e",
+  globalSetup: "./e2e/global-setup.ts",
   timeout: 90_000,
   expect: { timeout: 20_000 },
   // The dev API (`php artisan serve`) is single-threaded and streams chat
