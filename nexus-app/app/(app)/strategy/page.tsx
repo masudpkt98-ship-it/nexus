@@ -153,7 +153,7 @@ function VisionMission() {
               value={form.vision}
               onChange={(e) => setForm((f) => ({ ...f, vision: e.target.value }))}
               rows={3}
-              placeholder="Where the organization aspires to be…"
+              placeholder={t("Where the organization aspires to be…")}
               className={inputCls}
             />
           </label>
@@ -163,7 +163,7 @@ function VisionMission() {
               value={form.mission}
               onChange={(e) => setForm((f) => ({ ...f, mission: e.target.value }))}
               rows={4}
-              placeholder="How the organization will get there…"
+              placeholder={t("How the organization will get there…")}
               className={inputCls}
             />
           </label>
@@ -236,7 +236,7 @@ function CoreValues() {
             <input
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              placeholder="e.g. Integrity"
+              placeholder={t("e.g. Integrity")}
               className={inputCls}
             />
           </label>
@@ -246,7 +246,7 @@ function CoreValues() {
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               rows={3}
-              placeholder="What this value means in practice…"
+              placeholder={t("What this value means in practice…")}
               className={inputCls}
             />
           </label>
@@ -327,7 +327,7 @@ function StrategicGoals() {
             <input
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              placeholder="e.g. Build a competency-driven culture"
+              placeholder={t("e.g. Build a competency-driven culture")}
               className={inputCls}
             />
           </label>
@@ -337,7 +337,7 @@ function StrategicGoals() {
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               rows={3}
-              placeholder="What this goal aims to achieve…"
+              placeholder={t("What this goal aims to achieve…")}
               className={inputCls}
             />
           </label>
@@ -359,7 +359,7 @@ function StrategicGoals() {
               <input
                 value={form.owner}
                 onChange={(e) => setForm((f) => ({ ...f, owner: e.target.value }))}
-                placeholder="e.g. Arif Wibowo"
+                placeholder={t("e.g. Arif Wibowo")}
                 className={inputCls}
               />
             </label>
@@ -463,7 +463,7 @@ function Swot() {
               value={form.text}
               onChange={(e) => setForm((f) => ({ ...f, text: e.target.value }))}
               rows={3}
-              placeholder="Describe the factor…"
+              placeholder={t("Describe the factor…")}
               className={inputCls}
             />
           </label>
@@ -585,7 +585,7 @@ function Okr() {
             <input
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              placeholder="e.g. Launch Talent Marketplace"
+              placeholder={t("e.g. Launch Talent Marketplace")}
               className={inputCls}
             />
           </label>
