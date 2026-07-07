@@ -67,6 +67,7 @@ test("threads: search filters the sidebar", async ({ page }) => {
 
   // Create + rename a uniquely-named conversation
   await aside.getByRole("button", { name: "New" }).click();
+  await expect(aside.getByText("New chat").first()).toBeVisible(); // wait for the new thread to render
   await aside.locator("div.group").first().click();
   const renameInput = aside.locator("input:not([placeholder])");
   await renameInput.fill(name);
