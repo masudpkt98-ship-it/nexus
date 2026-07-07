@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+// Self-hosted Inter (variable weight, latin) — no build-time network fetch.
+const inter = localFont({
+  src: "./fonts/InterVariable.woff2",
+  variable: "--font-sans",
+  weight: "100 900",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "NEXUS — Competency & Performance Nexus",
