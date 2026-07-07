@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AiGeneratorController;
+use App\Http\Controllers\Api\ArtifactController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatThreadController;
 use App\Http\Controllers\Api\CompetencyController;
@@ -76,6 +77,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/ai/generate/{kind}/stream', [AiGeneratorController::class, 'stream'])
         ->whereIn('kind', ['kpi', 'idp', 'report'])
         ->middleware('permission:ai.view');
+
+    // Saved generator artifacts (per-user history)
+    Route::get('/ai/artifacts', [ArtifactController::class, 'index'])->middleware('permission:ai.view');
+    Route::post('/ai/artifacts', [ArtifactController::class, 'store'])->middleware('permission:ai.view');
+    Route::get('/ai/artifacts/{id}', [ArtifactController::class, 'show'])->middleware('permission:ai.view');
+    Route::delete('/ai/artifacts/{id}', [ArtifactController::class, 'destroy'])->middleware('permission:ai.view');
 
     // Workspace
     Route::get('/meetings', [WorkspaceController::class, 'meetings'])->middleware('permission:meetings.view');

@@ -115,6 +115,7 @@ export default function AiAssistantPage() {
           setThreads(list);
           setActiveThreadId(list[0].id);
           await loadThread(list[0].id);
+          refreshArtifacts();
         } catch {
           /* keep greeting */
         }
@@ -132,6 +133,8 @@ export default function AiAssistantPage() {
     return () => {
       active = false;
     };
+    // Run once on mount; helpers are stable for this screen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Persist to localStorage only in demo mode (server stores turns when signed in).
@@ -255,8 +258,78 @@ export default function AiAssistantPage() {
 
   const [employees, setEmployees] = useState<{ employee: string; readiness: number }[]>([]);
 
+  type Artifact = { id: number; kind: string; title: string; source?: string | null; createdAt?: string | null };
+  const [artifacts, setArtifacts] = useState<Artifact[]>([]);
+  const [genSaved, setGenSaved] = useState<number | null>(null);
+
+  const refreshArtifacts = async () => {
+    try {
+      const list = await apiGet<Artifact[]>("/ai/artifacts");
+      setArtifacts(Array.isArray(list) ? list : []);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const saveArtifact = async () => {
+    if (!gen.kind || !gen.markdown || gen.streaming) return;
+    const h1 = gen.markdown.split("\n").find((l) => l.startsWith("# "));
+    const title = (h1 ? h1.replace(/^#\s+/, "") : gen.title).slice(0, 160);
+    const paramsByKind: Record<GenKind, Record<string, string>> = {
+      kpi: { level: gen.params.level, focus: gen.params.focus },
+      idp: { employee: gen.params.employee },
+      report: { scope: gen.params.scope },
+    };
+    try {
+      const res = await apiSend<{ id: number }>("POST", "/ai/artifacts", {
+        kind: gen.kind,
+        title,
+        markdown: gen.markdown,
+        source: gen.source,
+        params: paramsByKind[gen.kind],
+      });
+      setGenSaved(res.id);
+      refreshArtifacts();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const openArtifact = async (id: number) => {
+    try {
+      const a = await apiGet<{ id: number; kind: GenKind; title: string; markdown: string; source?: string }>(
+        `/ai/artifacts/${id}`
+      );
+      genAbort.current?.abort();
+      setGen((g) => ({
+        ...g,
+        open: true,
+        kind: a.kind,
+        title: a.title,
+        loading: false,
+        streaming: false,
+        markdown: a.markdown,
+        source: a.source,
+      }));
+      setGenSaved(a.id);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const deleteArtifact = async (id: number) => {
+    try {
+      await apiSend("DELETE", `/ai/artifacts/${id}`);
+      setArtifacts((list) => list.filter((a) => a.id !== id));
+      setGenSaved((s) => (s === id ? null : s));
+    } catch {
+      /* ignore */
+    }
+  };
+
   const openGenerator = (kind: GenKind, title: string) => {
     genAbort.current?.abort();
+    setGenSaved(null);
     setGen({
       open: true,
       kind,
@@ -296,6 +369,7 @@ export default function AiAssistantPage() {
 
     const controller = new AbortController();
     genAbort.current = controller;
+    setGenSaved(null);
     setGen((g) => ({ ...g, loading: true, streaming: true, markdown: "", source: undefined }));
     try {
       await apiStream(
@@ -736,6 +810,38 @@ export default function AiAssistantPage() {
                 );
               })}
             </div>
+
+            {artifacts.length > 0 && (
+              <div className="mt-4 border-t pt-3">
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                  History
+                </div>
+                <div className="space-y-1">
+                  {artifacts.slice(0, 8).map((a) => (
+                    <div
+                      key={a.id}
+                      className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition hover:bg-royal-500/5"
+                    >
+                      <button onClick={() => openArtifact(a.id)} className="min-w-0 flex-1 text-left">
+                        <div className="truncate text-[12px] font-medium">{a.title}</div>
+                        <div className="text-[10px] text-[var(--muted)]">
+                          {a.kind.toUpperCase()}
+                          {a.createdAt ? ` · ${timeAgo(a.createdAt)}` : ""}
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => deleteArtifact(a.id)}
+                        className="shrink-0 rounded px-1 text-[var(--muted)] opacity-0 transition hover:text-rose-400 group-hover:opacity-100"
+                        aria-label="Delete artifact"
+                        title="Delete"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </Card>
         </div>
       </div>
@@ -857,7 +963,18 @@ export default function AiAssistantPage() {
                 </div>
               )}
             </div>
-            <div className="flex justify-end gap-2 border-t p-3">
+            <div className="flex items-center justify-end gap-2 border-t p-3">
+              {gen.markdown && !gen.streaming && getToken() && (
+                genSaved ? (
+                  <span className="mr-auto flex items-center gap-1 px-1 text-[12px] font-medium text-emerald-500">
+                    ✓ Saved to history
+                  </span>
+                ) : (
+                  <Btn variant="primary" onClick={saveArtifact}>
+                    Save to history
+                  </Btn>
+                )
+              )}
               {gen.markdown && !gen.streaming && (
                 <>
                   <Btn variant="ghost" onClick={() => navigator.clipboard?.writeText(gen.markdown)}>

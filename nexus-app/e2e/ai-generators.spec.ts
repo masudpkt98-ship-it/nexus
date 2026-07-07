@@ -69,6 +69,23 @@ test("Report generator: download .md exports the artifact", async ({ page }) => 
   expect(download.suggestedFilename()).toMatch(/^nexus-report-\d{4}-\d{2}-\d{2}\.md$/);
 });
 
+test("Report generator: save to history and reopen", async ({ page }) => {
+  const tag = "E2E-Hist-" + Date.now();
+  await page.getByRole("button", { name: /Generate Executive Report/i }).click();
+  await page.getByPlaceholder(/Q3 Board Review/i).fill(tag);
+  await page.getByRole("button", { name: /^Generate$/ }).click();
+  await expect(page.getByRole("heading", { name: new RegExp(tag) })).toBeVisible({ timeout: 25_000 });
+
+  // Save, confirm, close (scope Close to the generator modal)
+  await page.getByRole("button", { name: /Save to history/i }).click();
+  await expect(page.getByText(/Saved to history/i)).toBeVisible();
+  await page.locator("div.max-w-2xl").getByRole("button", { name: /^Close$/ }).last().click();
+
+  // Reopen from the History list in the generators card
+  await page.getByRole("button", { name: new RegExp("Executive Report.*" + tag) }).click();
+  await expect(page.getByRole("heading", { name: new RegExp(tag) })).toBeVisible({ timeout: 10_000 });
+});
+
 test("Report generator: streaming can be stopped", async ({ page }) => {
   await page.getByRole("button", { name: /Generate Executive Report/i }).click();
   await page.getByRole("button", { name: /^Generate$/ }).click();
