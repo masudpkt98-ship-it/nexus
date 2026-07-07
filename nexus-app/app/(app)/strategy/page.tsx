@@ -13,6 +13,7 @@ import {
 } from "@/lib/data";
 import { useApiData } from "@/lib/useApi";
 import { useLocalState } from "@/lib/useLocalState";
+import { useI18n } from "@/lib/i18n";
 import { apiSend, getToken } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
 
@@ -49,6 +50,7 @@ function Modal({
   saveLabel: string;
   children: React.ReactNode;
 }) {
+  const { t } = useI18n();
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -67,7 +69,7 @@ function Modal({
         <div className="space-y-3 p-5">{children}</div>
         <div className="flex justify-end gap-2 border-t p-3">
           <Btn variant="ghost" onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </Btn>
           <Btn variant="primary" onClick={onSave}>
             {saveLabel}
@@ -80,15 +82,16 @@ function Modal({
 
 // Hover-reveal edit / delete controls shared by every CRUD row.
 function RowActions({ onEdit, onDelete, label }: { onEdit: () => void; onDelete: () => void; label: string }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-2">
       <button
         onClick={onEdit}
         aria-label={`Edit ${label}`}
-        title="Edit"
+        title={t("Edit")}
         className="text-[11px] font-medium text-[var(--muted)] opacity-0 transition hover:text-royal-400 group-hover:opacity-100"
       >
-        Edit
+        {t("Edit")}
       </button>
       <button
         onClick={onDelete}
@@ -106,6 +109,7 @@ function RowActions({ onEdit, onDelete, label }: { onEdit: () => void; onDelete:
 // Vision & Mission — editable statement.
 // ---------------------------------------------------------------------------
 function VisionMission() {
+  const { t } = useI18n();
   const [statement, setStatement] = useLocalState("strategy-statement", mockStatement);
   const [form, setForm] = useState<{ open: boolean; vision: string; mission: string }>({
     open: false,
@@ -126,25 +130,25 @@ function VisionMission() {
         <Icon.strategy className="h-40 w-40" />
       </div>
       <div className="flex items-start justify-between">
-        <Badge tone="amber">Vision</Badge>
+        <Badge tone="amber">{t("Vision")}</Badge>
         <button
           onClick={open}
           className="text-[11px] font-medium text-[var(--muted)] opacity-0 transition hover:text-royal-400 group-hover:opacity-100"
           aria-label="Edit vision and mission"
         >
-          Edit
+          {t("Edit")}
         </button>
       </div>
       <p className="mt-3 text-xl font-semibold leading-snug">{statement.vision}</p>
       <div className="mt-5">
-        <Badge tone="blue">Mission</Badge>
+        <Badge tone="blue">{t("Mission")}</Badge>
         <p className="mt-2 text-sm text-[var(--muted)]">{statement.mission}</p>
       </div>
 
       {form.open && (
-        <Modal title="Edit Vision & Mission" onClose={close} onSave={save} saveLabel="Save">
+        <Modal title={t("Edit Vision & Mission")} onClose={close} onSave={save} saveLabel={t("Save")}>
           <label className={labelCls}>
-            Vision
+            {t("Vision")}
             <textarea
               value={form.vision}
               onChange={(e) => setForm((f) => ({ ...f, vision: e.target.value }))}
@@ -154,7 +158,7 @@ function VisionMission() {
             />
           </label>
           <label className={labelCls}>
-            Mission
+            {t("Mission")}
             <textarea
               value={form.mission}
               onChange={(e) => setForm((f) => ({ ...f, mission: e.target.value }))}
@@ -176,6 +180,7 @@ type Value = { id: string; title: string; description: string };
 const emptyValue = { open: false, id: null as string | null, title: "", description: "" };
 
 function CoreValues() {
+  const { t } = useI18n();
   const [rows, setRows] = useLocalState<Value[]>("strategy-values", mockValues);
   const [form, setForm] = useState(emptyValue);
 
@@ -221,13 +226,13 @@ function CoreValues() {
             </div>
           </div>
         ))}
-        {rows.length === 0 && <p className="py-4 text-center text-[12px] text-[var(--muted)]">No core values yet. Add one.</p>}
+        {rows.length === 0 && <p className="py-4 text-center text-[12px] text-[var(--muted)]">{t("No core values yet. Add one.")}</p>}
       </div>
 
       {form.open && (
-        <Modal title={form.id == null ? "New Core Value" : "Edit Core Value"} onClose={close} onSave={save} saveLabel={form.id == null ? "Create" : "Save"}>
+        <Modal title={form.id == null ? t("New Core Value") : t("Edit Core Value")} onClose={close} onSave={save} saveLabel={form.id == null ? t("Create") : t("Save")}>
           <label className={labelCls}>
-            Value
+            {t("Value")}
             <input
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
@@ -236,7 +241,7 @@ function CoreValues() {
             />
           </label>
           <label className={labelCls}>
-            Description
+            {t("Description")}
             <textarea
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -258,6 +263,7 @@ type Goal = { id: string; title: string; description: string; target: string; ow
 const emptyGoal = { open: false, id: null as string | null, title: "", description: "", target: "FY26", owner: "" };
 
 function StrategicGoals() {
+  const { t } = useI18n();
   const [rows, setRows] = useLocalState<Goal[]>("strategy-goals", mockGoals);
   const [form, setForm] = useState(emptyGoal);
 
@@ -290,7 +296,7 @@ function StrategicGoals() {
         subtitle="Department-level goals that cascade into OKR"
         action={
           <Btn variant="ghost" onClick={openCreate}>
-            <Icon.plus className="h-4 w-4" /> New Goal
+            <Icon.plus className="h-4 w-4" /> {t("New Goal")}
           </Btn>
         }
       />
@@ -305,19 +311,19 @@ function StrategicGoals() {
             {g.description && <p className="mt-1 text-[12px] text-[var(--muted)]">{g.description}</p>}
             <div className="mt-3 flex items-center gap-2 text-xs text-[var(--muted)]">
               <Avatar initials={g.owner.split(" ").map((s) => s[0]).join("").slice(0, 2) || "?"} />
-              {g.owner}
+              {t(g.owner)}
             </div>
           </Card>
         ))}
         {rows.length === 0 && (
-          <Card className="text-center text-[12px] text-[var(--muted)]">No strategic goals yet. Add one.</Card>
+          <Card className="text-center text-[12px] text-[var(--muted)]">{t("No strategic goals yet. Add one.")}</Card>
         )}
       </div>
 
       {form.open && (
-        <Modal title={form.id == null ? "New Strategic Goal" : "Edit Strategic Goal"} onClose={close} onSave={save} saveLabel={form.id == null ? "Create" : "Save"}>
+        <Modal title={form.id == null ? t("New Strategic Goal") : t("Edit Strategic Goal")} onClose={close} onSave={save} saveLabel={form.id == null ? t("Create") : t("Save")}>
           <label className={labelCls}>
-            Goal
+            {t("Goal")}
             <input
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
@@ -326,7 +332,7 @@ function StrategicGoals() {
             />
           </label>
           <label className={labelCls}>
-            Description
+            {t("Description")}
             <textarea
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -337,7 +343,7 @@ function StrategicGoals() {
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className={labelCls}>
-              Target
+              {t("Target")}
               <select
                 value={form.target}
                 onChange={(e) => setForm((f) => ({ ...f, target: e.target.value }))}
@@ -349,7 +355,7 @@ function StrategicGoals() {
               </select>
             </label>
             <label className={labelCls}>
-              Owner
+              {t("Owner")}
               <input
                 value={form.owner}
                 onChange={(e) => setForm((f) => ({ ...f, owner: e.target.value }))}
@@ -378,6 +384,7 @@ const swotOrder: SwotType[] = ["Strength", "Weakness", "Opportunity", "Threat"];
 const emptySwot = { open: false, id: null as string | null, type: "Strength" as SwotType, text: "" };
 
 function Swot() {
+  const { t } = useI18n();
   const [rows, setRows] = useLocalState<Swot[]>("strategy-swot", mockSwot);
   const [form, setForm] = useState(emptySwot);
 
@@ -407,8 +414,8 @@ function Swot() {
             <Card key={type}>
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Badge tone={meta.tone}>{meta.plural}</Badge>
-                  <span className="text-[11px] text-[var(--muted)]">{meta.hint}</span>
+                  <Badge tone={meta.tone}>{t(meta.plural)}</Badge>
+                  <span className="text-[11px] text-[var(--muted)]">{t(meta.hint)}</span>
                 </div>
                 <button
                   onClick={() => openCreate(type)}
@@ -428,7 +435,7 @@ function Swot() {
                   </div>
                 ))}
                 {items.length === 0 && (
-                  <p className="py-2 text-center text-[12px] text-[var(--muted)]">No items yet.</p>
+                  <p className="py-2 text-center text-[12px] text-[var(--muted)]">{t("No items yet.")}</p>
                 )}
               </div>
             </Card>
@@ -437,21 +444,21 @@ function Swot() {
       </div>
 
       {form.open && (
-        <Modal title={form.id == null ? "New SWOT Item" : "Edit SWOT Item"} onClose={close} onSave={save} saveLabel={form.id == null ? "Create" : "Save"}>
+        <Modal title={form.id == null ? t("New SWOT Item") : t("Edit SWOT Item")} onClose={close} onSave={save} saveLabel={form.id == null ? t("Create") : t("Save")}>
           <label className={labelCls}>
-            Category
+            {t("Category")}
             <select
               value={form.type}
               onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as SwotType }))}
               className={`${inputCls} text-[var(--text)]`}
             >
-              {swotOrder.map((t) => (
-                <option key={t}>{t}</option>
+              {swotOrder.map((tp) => (
+                <option key={tp} value={tp}>{t(tp)}</option>
               ))}
             </select>
           </label>
           <label className={labelCls}>
-            Item
+            {t("Item")}
             <textarea
               value={form.text}
               onChange={(e) => setForm((f) => ({ ...f, text: e.target.value }))}
@@ -474,6 +481,7 @@ type Obj = { id: string; title: string; owner: string; progress: number; quarter
 const emptyObj = { open: false, id: null as string | null, title: "", quarter: "Q1", progress: 0 };
 
 function Okr() {
+  const { t } = useI18n();
   const { data: apiObjectives } = useApiData("/objectives", mockObjectives);
 
   const [rows, setRows] = useState<Obj[]>([]);
@@ -535,7 +543,7 @@ function Okr() {
         subtitle="FY26 — Department strategic objectives"
         action={
           <Btn variant="ghost" onClick={openCreate}>
-            <Icon.plus className="h-4 w-4" /> New Objective
+            <Icon.plus className="h-4 w-4" /> {t("New Objective")}
           </Btn>
         }
       />
@@ -552,7 +560,7 @@ function Okr() {
             <h3 className="mt-2 text-[15px] font-semibold leading-snug">{o.title}</h3>
             <div className="mt-2 flex items-center gap-2 text-xs text-[var(--muted)]">
               <Avatar initials={o.owner.split(" ").map((s) => s[0]).join("")} />
-              {o.owner}
+              {t(o.owner)}
             </div>
             <ProgressBar value={o.progress} tone="gold" className="mt-3" />
             <div className="mt-4 space-y-3 border-t pt-3">
@@ -571,9 +579,9 @@ function Okr() {
       </div>
 
       {form.open && (
-        <Modal title={form.id == null ? "New Objective" : "Edit Objective"} onClose={() => setForm(emptyObj)} onSave={saveForm} saveLabel={form.id == null ? "Create" : "Save"}>
+        <Modal title={form.id == null ? t("New Objective") : t("Edit Objective")} onClose={() => setForm(emptyObj)} onSave={saveForm} saveLabel={form.id == null ? t("Create") : t("Save")}>
           <label className={labelCls}>
-            Objective
+            {t("Objective")}
             <input
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
@@ -583,7 +591,7 @@ function Okr() {
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className={labelCls}>
-              Quarter
+              {t("Quarter")}
               <select
                 value={form.quarter}
                 onChange={(e) => setForm((f) => ({ ...f, quarter: e.target.value }))}
@@ -596,7 +604,7 @@ function Okr() {
               </select>
             </label>
             <label className={labelCls}>
-              Progress (%)
+              {t("Progress (%)")}
               <input
                 type="number"
                 min={0}
@@ -607,7 +615,7 @@ function Okr() {
               />
             </label>
           </div>
-          {form.id == null && <p className="text-[11px] text-[var(--muted)]">Owner is set to you when created.</p>}
+          {form.id == null && <p className="text-[11px] text-[var(--muted)]">{t("Owner is set to you when created.")}</p>}
         </Modal>
       )}
     </div>
@@ -618,6 +626,7 @@ function Okr() {
 // Page
 // ---------------------------------------------------------------------------
 export default function StrategyPage() {
+  const { t } = useI18n();
   const { live } = useApiData("/objectives", mockObjectives);
 
   return (
@@ -639,7 +648,7 @@ export default function StrategyPage() {
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-royal-500/15 text-[11px] font-bold text-royal-400">
                   {i + 1}
                 </div>
-                <span className="text-[13px]">{f}</span>
+                <span className="text-[13px]">{t(f)}</span>
                 {i < flow.length - 1 && <Icon.chevron className="ml-auto h-4 w-4 rotate-90 text-[var(--muted)]" />}
               </div>
             ))}
