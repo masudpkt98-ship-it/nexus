@@ -1,9 +1,11 @@
 "use client";
+import { useEffect, useState } from "react";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, SectionTitle, Badge, ProgressBar, Avatar, LineChart, Gauge } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { performanceKpis as mockPerformanceKpis, kpiTrend, topPerformers } from "@/lib/data";
 import { useApiData } from "@/lib/useApi";
+import { apiSend, getToken } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
 
 const levelTone: Record<string, "purple" | "blue" | "green"> = {
@@ -12,12 +14,83 @@ const levelTone: Record<string, "purple" | "blue" | "green"> = {
   Individual: "green",
 };
 
+type Kpi = { id: string; name: string; level: string; weight: number; target: number; actual: number; unit: string };
+
 export default function PerformancePage() {
-  const { data: performanceKpis, live } = useApiData("/performance-kpis", mockPerformanceKpis);
-  const weighted = performanceKpis.reduce((s, k) => {
-    const ratio = k.unit === "/5" ? k.actual / k.target : k.actual / k.target;
-    return s + Math.min(1.1, ratio) * k.weight;
-  }, 0);
+  const { data: apiKpis, live } = useApiData("/performance-kpis", mockPerformanceKpis);
+
+  const [rows, setRows] = useState<Kpi[]>([]);
+  useEffect(() => {
+    setRows(
+      (apiKpis ?? []).map((k: Partial<Kpi>) => ({
+        id: String(k.id),
+        name: k.name ?? "",
+        level: k.level ?? "Department",
+        weight: Number(k.weight ?? 0),
+        target: Number(k.target ?? 0),
+        actual: Number(k.actual ?? 0),
+        unit: k.unit ?? "",
+      }))
+    );
+  }, [apiKpis]);
+
+  const empty = {
+    open: false,
+    id: null as string | null,
+    name: "",
+    level: "Department",
+    weight: 10,
+    target: 100,
+    actual: 0,
+    unit: "%",
+  };
+  const [form, setForm] = useState(empty);
+  const openCreate = () => setForm({ ...empty, open: true });
+  const openEdit = (k: Kpi) =>
+    setForm({ open: true, id: k.id, name: k.name, level: k.level, weight: k.weight, target: k.target, actual: k.actual, unit: k.unit });
+
+  const saveForm = async () => {
+    const body = {
+      name: form.name.trim(),
+      level: form.level,
+      weight: form.weight,
+      target: form.target,
+      actual: form.actual,
+      unit: form.unit.trim(),
+    };
+    if (!body.name) return;
+    if (getToken()) {
+      try {
+        if (form.id == null) {
+          const created = await apiSend<Kpi>("POST", "/performance-kpis", body);
+          setRows((r) => [...r, created]);
+        } else {
+          const updated = await apiSend<Kpi>("PUT", `/performance-kpis/${form.id}`, body);
+          setRows((r) => r.map((x) => (x.id === form.id ? updated : x)));
+        }
+      } catch {
+        return;
+      }
+    } else if (form.id == null) {
+      setRows((r) => [...r, { id: "NEW-" + r.length, ...body }]);
+    } else {
+      setRows((r) => r.map((x) => (x.id === form.id ? { ...x, ...body } : x)));
+    }
+    setForm(empty);
+  };
+
+  const removeRow = async (k: Kpi) => {
+    setRows((r) => r.filter((x) => x.id !== k.id));
+    if (getToken()) {
+      try {
+        await apiSend("DELETE", `/performance-kpis/${k.id}`);
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  const weighted = rows.reduce((s, k) => s + Math.min(1.1, k.target ? k.actual / k.target : 0) * k.weight, 0);
   const score = Math.round(weighted);
 
   return (
@@ -25,7 +98,7 @@ export default function PerformancePage() {
       <PageHeader
         title="Performance Management"
         subtitle="Corporate · Department · Individual KPI · SMART · Weight · Auto Score · Appraisal · STAR"
-        actions={<><LiveBadge live={live} /><Btn variant="primary"><Icon.plus className="h-4 w-4" /> New KPI</Btn></>}
+        actions={<><LiveBadge live={live} /><Btn variant="primary" onClick={openCreate}><Icon.plus className="h-4 w-4" /> New KPI</Btn></>}
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -37,7 +110,7 @@ export default function PerformancePage() {
             {score >= 90 ? "Exceeds" : score >= 75 ? "Meets" : "Below"} Target
           </Badge>
           <p className="mt-2 text-center text-[11px] text-[var(--muted)]">
-            Auto-calculated from {performanceKpis.length} weighted KPI
+            Auto-calculated from {rows.length} weighted KPI
           </p>
         </Card>
 
@@ -45,10 +118,10 @@ export default function PerformancePage() {
         <Card className="lg:col-span-2">
           <SectionTitle title="KPI Scorecard" subtitle="SMART KPI with weight, target & achievement" />
           <div className="space-y-3">
-            {performanceKpis.map((k) => {
-              const pct = k.unit === "/5" ? (k.actual / k.target) * 100 : (k.actual / k.target) * 100;
+            {rows.map((k) => {
+              const pct = k.target ? (k.actual / k.target) * 100 : 0;
               return (
-                <div key={k.id} className="flex items-center gap-4 rounded-xl border p-3">
+                <div key={k.id} className="group flex items-center gap-4 rounded-xl border p-3">
                   <div className="min-w-[180px] flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-[13px] font-medium">{k.name}</span>
@@ -71,6 +144,24 @@ export default function PerformancePage() {
                     <div className={`text-sm font-bold ${pct >= 100 ? "text-emerald-500" : pct >= 90 ? "text-gold-500" : "text-rose-500"}`}>
                       {k.actual}{k.unit}
                     </div>
+                  </div>
+                  <div className="flex flex-col gap-1 text-[11px]">
+                    <button
+                      onClick={() => openEdit(k)}
+                      className="font-medium text-[var(--muted)] opacity-0 transition hover:text-royal-400 group-hover:opacity-100"
+                      aria-label={`Edit ${k.name}`}
+                      title="Edit"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => removeRow(k)}
+                      className="text-[var(--muted)] opacity-0 transition hover:text-rose-400 group-hover:opacity-100"
+                      aria-label={`Delete ${k.name}`}
+                      title="Delete"
+                    >
+                      ✕
+                    </button>
                   </div>
                 </div>
               );
@@ -105,6 +196,100 @@ export default function PerformancePage() {
           </button>
         </Card>
       </div>
+
+      {form.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setForm(empty)} />
+          <div className="relative z-10 w-full max-w-md glass card shadow-glass animate-fade-up">
+            <div className="flex items-center gap-2 border-b p-4">
+              <Icon.performance className="h-4 w-4 shrink-0 text-royal-400" />
+              <div className="text-sm font-semibold">{form.id == null ? "New KPI" : "Edit KPI"}</div>
+              <button
+                onClick={() => setForm(empty)}
+                className="ml-auto rounded-lg px-2 py-1 text-[var(--muted)] transition hover:text-rose-400"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-3 p-5">
+              <label className="block text-[11px] font-medium text-[var(--muted)]">
+                Name
+                <input
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="e.g. Revenue Growth"
+                  className="mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500"
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block text-[11px] font-medium text-[var(--muted)]">
+                  Level
+                  <select
+                    value={form.level}
+                    onChange={(e) => setForm((f) => ({ ...f, level: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500"
+                  >
+                    <option>Corporate</option>
+                    <option>Department</option>
+                    <option>Individual</option>
+                  </select>
+                </label>
+                <label className="block text-[11px] font-medium text-[var(--muted)]">
+                  Weight (%)
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={form.weight}
+                    onChange={(e) => setForm((f) => ({ ...f, weight: Number(e.target.value) }))}
+                    className="mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500"
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <label className="block text-[11px] font-medium text-[var(--muted)]">
+                  Target
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.target}
+                    onChange={(e) => setForm((f) => ({ ...f, target: Number(e.target.value) }))}
+                    className="mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500"
+                  />
+                </label>
+                <label className="block text-[11px] font-medium text-[var(--muted)]">
+                  Actual
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.actual}
+                    onChange={(e) => setForm((f) => ({ ...f, actual: Number(e.target.value) }))}
+                    className="mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500"
+                  />
+                </label>
+                <label className="block text-[11px] font-medium text-[var(--muted)]">
+                  Unit
+                  <input
+                    value={form.unit}
+                    onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
+                    placeholder="% or /5"
+                    className="mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500"
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t p-3">
+              <Btn variant="ghost" onClick={() => setForm(empty)}>
+                Cancel
+              </Btn>
+              <Btn variant="primary" onClick={saveForm}>
+                {form.id == null ? "Create" : "Save"}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

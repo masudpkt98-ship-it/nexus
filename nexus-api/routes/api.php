@@ -53,6 +53,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Performance
     Route::get('/performance-kpis', [PerformanceKpiController::class, 'index'])->middleware('permission:performance.view');
+    Route::post('/performance-kpis', [PerformanceKpiController::class, 'store'])->middleware('permission:performance.manage');
+    Route::put('/performance-kpis/{code}', [PerformanceKpiController::class, 'update'])->middleware('permission:performance.manage');
+    Route::delete('/performance-kpis/{code}', [PerformanceKpiController::class, 'destroy'])->middleware('permission:performance.manage');
 
     // Customer requests
     Route::get('/service-requests', [ServiceRequestController::class, 'index'])->middleware('permission:requests.view');
