@@ -213,7 +213,7 @@ function CoreValues() {
       />
       <div className="space-y-2.5">
         {rows.map((v) => (
-          <div key={v.id} className="group flex items-start gap-3 rounded-lg border p-2.5">
+          <div key={v.id} dir="auto" className="group flex items-start gap-3 rounded-lg border p-2.5">
             <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gold-400/15 text-gold-500">
               <Icon.check className="h-3.5 w-3.5" />
             </div>
