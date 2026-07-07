@@ -1,0 +1,47 @@
+version: 2
+
+updates:
+  # GitHub Actions used by the CI workflow
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: ["dependencies", "github-actions"]
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # Frontend (Next.js / npm)
+  - package-ecosystem: npm
+    directory: "/nexus-app"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels: ["dependencies", "npm"]
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # Backend (Laravel / Composer)
+  - package-ecosystem: composer
+    directory: "/nexus-api"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels: ["dependencies", "composer"]
+    groups:
+      composer-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # Container base images (Dockerfiles + docker-compose)
+  - package-ecosystem: docker
+    directories:
+      - "/nexus-api"
+      - "/nexus-app"
+      - "/"
+    schedule:
+      interval: weekly
+    labels: ["dependencies", "docker"]
+    groups:
+      docker:
+        patterns: ["*"]
