@@ -39,9 +39,9 @@ jobs:
         run: npm run build
 
   api-checks:
-    name: API PHP lint
+    name: API lint & tests
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -49,13 +49,23 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.3"
+          php-version: "8.4"
+          extensions: pdo_sqlite, sqlite3, mbstring, bcmath, gd, zip, dom, xml, fileinfo
+          coverage: none
 
       - name: PHP syntax check (php -l)
         working-directory: nexus-api
         run: |
           find app database routes config bootstrap -name '*.php' -print0 \
             | xargs -0 -n1 -P4 php -l
+
+      - name: Install dependencies
+        working-directory: nexus-api
+        run: composer install --no-interaction --prefer-dist --no-scripts
+
+      - name: Run tests (PHPUnit, SQLite in-memory)
+        working-directory: nexus-api
+        run: php artisan test
 
   e2e:
     name: End-to-end (Docker + Playwright)
