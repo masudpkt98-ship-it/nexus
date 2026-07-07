@@ -76,11 +76,30 @@ docker compose down -v && docker compose up -d
 
 ## 🌱 Environment overrides
 
-All API configuration is supplied via the `api` service `environment:` block in
-`docker-compose.yml`. Change credentials, switch `APP_DEBUG`, point at a managed
-database, etc. there. For production, replace `APP_KEY`, set `APP_ENV=production`,
-`APP_DEBUG=false`, and put the API behind nginx + a process manager
-(php-fpm / Octane) instead of `php artisan serve`.
+All API configuration is supplied via the `api` service `environment:` block (or
+a `.env` next to the compose file — see `.env.example`). Change credentials,
+switch `APP_DEBUG`, point at a managed database, etc. there.
+
+## 🏭 Production profile
+
+`docker-compose.prod.yml` hardens the stack for production:
+
+- API served by **nginx + PHP-FPM** with **OPcache** (not `php artisan serve`).
+- `APP_ENV=production`, `APP_DEBUG=false`; **config & views cached** on boot.
+- **Database and Redis are not exposed** to the host (internal network only).
+- `restart: unless-stopped` on every service.
+
+```bash
+# set a stable APP_KEY (and ANTHROPIC_API_KEY) in .env first
+echo "APP_KEY=base64:$(openssl rand -base64 32)" >> .env
+
+docker compose -f docker-compose.prod.yml up -d --build
+# Web: http://localhost:3000   API: http://localhost:8000/api/health
+```
+
+SSE streaming (AI chat / generators) works through nginx because the streaming
+responses send `X-Accel-Buffering: no`, which disables response buffering.
+Override host ports with `API_PORT` / `WEB_PORT` if 8000/3000 are taken.
 
 ## 🩺 Troubleshooting
 

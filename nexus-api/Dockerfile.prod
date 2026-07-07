@@ -1,0 +1,31 @@
+# ---- NEXUS API (production: nginx + PHP-FPM + OPcache) ----
+FROM php:8.4-fpm
+
+# Robust PHP extension installer
+COPY --from=mlocati/php-extension-installer:latest /usr/bin/install-php-extensions /usr/local/bin/
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends nginx supervisor unzip git \
+    && install-php-extensions pdo_pgsql redis mbstring bcmath zip opcache \
+    && rm -rf /var/lib/apt/lists/*
+
+# Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+# Install PHP dependencies first (better layer caching)
+COPY composer.json composer.lock ./
+RUN composer install --no-interaction --no-scripts --prefer-dist --optimize-autoloader --no-dev
+
+# App source
+COPY . .
+RUN composer dump-autoload --optimize --no-dev \
+    && cp docker/php-prod.ini /usr/local/etc/php/conf.d/zz-nexus-prod.ini \
+    && cp docker/nginx.conf /etc/nginx/sites-available/default \
+    && chmod +x docker/entrypoint.prod.sh \
+    && chown -R www-data:www-data storage bootstrap/cache
+
+EXPOSE 80
+
+ENTRYPOINT ["docker/entrypoint.prod.sh"]
