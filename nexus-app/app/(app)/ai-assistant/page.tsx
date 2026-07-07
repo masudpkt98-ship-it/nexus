@@ -562,7 +562,7 @@ export default function AiAssistantPage() {
                 <button
                   onClick={newChat}
                   disabled={busy}
-                  title="New conversation"
+                  title={t("New conversation")}
                   className="flex items-center gap-1 rounded-lg bg-royal-500/15 px-2 py-1 text-[11px] font-medium text-royal-400 transition hover:bg-royal-500/25 disabled:opacity-50"
                 >
                   <Icon.plus className="h-3.5 w-3.5" /> {t("New")}
@@ -581,7 +581,7 @@ export default function AiAssistantPage() {
                     <button
                       onClick={() => setThreadQuery("")}
                       className="shrink-0 text-[var(--muted)] hover:text-rose-400"
-                      title="Clear search"
+                      title={t("Clear search")}
                     >
                       ✕
                     </button>
@@ -594,18 +594,18 @@ export default function AiAssistantPage() {
                     {threadQuery ? t("No conversations match.") : t("No conversations yet.")}
                   </div>
                 )}
-                {filteredThreads.map((t) => (
+                {filteredThreads.map((conv) => (
                   <div
-                    key={t.id}
-                    onClick={() => (t.id === activeThreadId ? startRename(t) : switchThread(t.id))}
-                    onDoubleClick={() => startRename(t)}
+                    key={conv.id}
+                    onClick={() => (conv.id === activeThreadId ? startRename(conv) : switchThread(conv.id))}
+                    onDoubleClick={() => startRename(conv)}
                     className={cn(
                       "group cursor-pointer rounded-lg px-2.5 py-2 transition hover:bg-black/5 dark:hover:bg-white/5",
-                      t.id === activeThreadId && "bg-royal-500/10"
+                      conv.id === activeThreadId && "bg-royal-500/10"
                     )}
                   >
                     <div className="flex items-center gap-1">
-                      {editingId === t.id ? (
+                      {editingId === conv.id ? (
                         <input
                           autoFocus
                           value={editValue}
@@ -619,17 +619,17 @@ export default function AiAssistantPage() {
                           className="flex-1 rounded border bg-[rgb(var(--surface))] px-1.5 py-0.5 text-[12px] outline-none focus:border-royal-500"
                         />
                       ) : (
-                        <span className="flex-1 truncate text-[12px] font-medium">{t.title}</span>
+                        <span className="flex-1 truncate text-[12px] font-medium">{conv.title}</span>
                       )}
-                      {editingId !== t.id && (
+                      {editingId !== conv.id && (
                         <>
-                          <span className="shrink-0 text-[10px] text-[var(--muted)]">{timeAgo(t.updatedAt)}</span>
+                          <span className="shrink-0 text-[10px] text-[var(--muted)]">{timeAgo(conv.updatedAt)}</span>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              deleteThread(t.id);
+                              deleteThread(conv.id);
                             }}
-                            title="Delete conversation"
+                            title={t("Delete conversation")}
                             className="shrink-0 rounded px-0.5 text-[var(--muted)] opacity-0 transition hover:text-rose-400 group-hover:opacity-100"
                           >
                             ✕
@@ -637,8 +637,8 @@ export default function AiAssistantPage() {
                         </>
                       )}
                     </div>
-                    {t.preview && editingId !== t.id && (
-                      <div className="mt-0.5 truncate text-[11px] text-[var(--muted)]">{t.preview}</div>
+                    {conv.preview && editingId !== conv.id && (
+                      <div className="mt-0.5 truncate text-[11px] text-[var(--muted)]">{conv.preview}</div>
                     )}
                   </div>
                 ))}
@@ -662,7 +662,7 @@ export default function AiAssistantPage() {
                 <button
                   onClick={newChat}
                   disabled={busy}
-                  title="New conversation"
+                  title={t("New conversation")}
                   className="flex items-center gap-1 rounded-lg bg-royal-500/15 px-2 py-1 text-[11px] font-medium text-royal-400 transition hover:bg-royal-500/25 disabled:opacity-50 sm:hidden"
                 >
                   <Icon.plus className="h-3.5 w-3.5" /> {t("New")}
@@ -849,7 +849,7 @@ export default function AiAssistantPage() {
                         onClick={() => deleteArtifact(a.id)}
                         className="shrink-0 rounded px-1 text-[var(--muted)] opacity-0 transition hover:text-rose-400 group-hover:opacity-100"
                         aria-label="Delete artifact"
-                        title="Delete"
+                        title={t("Delete")}
                       >
                         ✕
                       </button>

@@ -169,7 +169,7 @@ export default function PerformancePage() {
                       onClick={() => openEdit(k)}
                       className="font-medium text-[var(--muted)] opacity-0 transition hover:text-royal-400 group-hover:opacity-100"
                       aria-label={`Edit ${k.name}`}
-                      title="Edit"
+                      title={t("Edit")}
                     >
                       {t("Edit")}
                     </button>
@@ -177,7 +177,7 @@ export default function PerformancePage() {
                       onClick={() => removeRow(k)}
                       className="text-[var(--muted)] opacity-0 transition hover:text-rose-400 group-hover:opacity-100"
                       aria-label={`Delete ${k.name}`}
-                      title="Delete"
+                      title={t("Delete")}
                     >
                       ✕
                     </button>

@@ -96,7 +96,7 @@ function RowActions({ onEdit, onDelete, label }: { onEdit: () => void; onDelete:
       <button
         onClick={onDelete}
         aria-label={`Delete ${label}`}
-        title="Delete"
+        title={t("Delete")}
         className="text-[11px] text-[var(--muted)] opacity-0 transition hover:text-rose-400 group-hover:opacity-100"
       >
         ✕
@@ -206,7 +206,7 @@ function CoreValues() {
         title="Core Values"
         subtitle="What we stand for"
         action={
-          <button onClick={openCreate} className="text-royal-400 transition hover:text-royal-300" aria-label="Add core value" title="Add">
+          <button onClick={openCreate} className="text-royal-400 transition hover:text-royal-300" aria-label="Add core value" title={t("Add")}>
             <Icon.plus className="h-4 w-4" />
           </button>
         }
@@ -421,7 +421,7 @@ function Swot() {
                   onClick={() => openCreate(type)}
                   className="text-royal-400 transition hover:text-royal-300"
                   aria-label={`Add ${type}`}
-                  title="Add"
+                  title={t("Add")}
                 >
                   <Icon.plus className="h-4 w-4" />
                 </button>

@@ -150,7 +150,7 @@ export default function CompetencyPage() {
                         onClick={() => openEdit(c)}
                         className="font-medium opacity-0 transition hover:text-royal-400 group-hover:opacity-100"
                         aria-label={`Edit ${c.name}`}
-                        title="Edit"
+                        title={t("Edit")}
                       >
                         {t("Edit")}
                       </button>
@@ -158,7 +158,7 @@ export default function CompetencyPage() {
                         onClick={() => removeRow(c)}
                         className="opacity-0 transition hover:text-rose-400 group-hover:opacity-100"
                         aria-label={`Delete ${c.name}`}
-                        title="Delete"
+                        title={t("Delete")}
                       >
                         ✕
                       </button>
