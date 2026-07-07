@@ -44,6 +44,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Strategy / OKR
     Route::get('/objectives', [ObjectiveController::class, 'index'])->middleware('permission:objectives.view');
+    Route::post('/objectives', [ObjectiveController::class, 'store'])->middleware('permission:objectives.manage');
+    Route::put('/objectives/{id}', [ObjectiveController::class, 'update'])->middleware('permission:objectives.manage');
+    Route::delete('/objectives/{id}', [ObjectiveController::class, 'destroy'])->middleware('permission:objectives.manage');
 
     // Competency
     Route::get('/competency', [CompetencyController::class, 'index'])->middleware('permission:competency.view');
