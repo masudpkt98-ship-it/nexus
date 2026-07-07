@@ -5,7 +5,7 @@ import { Card, SectionTitle, Badge, ProgressBar, Avatar, LineChart, Gauge } from
 import { Icon } from "@/components/Icons";
 import { performanceKpis as mockPerformanceKpis, kpiTrend, topPerformers } from "@/lib/data";
 import { useApiData } from "@/lib/useApi";
-import { apiSend, getToken } from "@/lib/api";
+import { apiSend, apiDownload, getToken } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
 
 const levelTone: Record<string, "purple" | "blue" | "green"> = {
@@ -98,7 +98,24 @@ export default function PerformancePage() {
       <PageHeader
         title="Performance Management"
         subtitle="Corporate · Department · Individual KPI · SMART · Weight · Auto Score · Appraisal · STAR"
-        actions={<><LiveBadge live={live} /><Btn variant="primary" onClick={openCreate}><Icon.plus className="h-4 w-4" /> New KPI</Btn></>}
+        actions={
+          <>
+            <LiveBadge live={live} />
+            {getToken() && (
+              <>
+                <Btn onClick={() => apiDownload("/exports/kpis", undefined, "nexus-kpis.xlsx", "GET")}>
+                  <Icon.document className="h-4 w-4" /> Excel
+                </Btn>
+                <Btn onClick={() => apiDownload("/exports/report", undefined, "nexus-executive-overview.pptx", "GET")}>
+                  <Icon.document className="h-4 w-4" /> Deck
+                </Btn>
+              </>
+            )}
+            <Btn variant="primary" onClick={openCreate}>
+              <Icon.plus className="h-4 w-4" /> New KPI
+            </Btn>
+          </>
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

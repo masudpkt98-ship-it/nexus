@@ -6,7 +6,7 @@ COPY --from=mlocati/php-extension-installer:latest /usr/bin/install-php-extensio
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends nginx supervisor unzip git \
-    && install-php-extensions pdo_pgsql redis mbstring bcmath zip opcache \
+    && install-php-extensions pdo_pgsql redis mbstring bcmath zip opcache gd \
     && rm -rf /var/lib/apt/lists/*
 
 # Composer

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AiGeneratorController;
 use App\Http\Controllers\Api\ArtifactController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatThreadController;
+use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\CompetencyController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\SatisfactionController;
@@ -43,6 +44,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->middleware('permission:tasks.manage');
 
     // Strategy / OKR
+    // Data exports (Excel / PowerPoint)
+    Route::get('/exports/kpis', [ExportController::class, 'kpis'])->middleware('permission:performance.view');
+    Route::get('/exports/competencies', [ExportController::class, 'competencies'])->middleware('permission:competency.view');
+    Route::get('/exports/report', [ExportController::class, 'report'])->middleware('permission:analytics.view');
+
     Route::get('/objectives', [ObjectiveController::class, 'index'])->middleware('permission:objectives.view');
     Route::post('/objectives', [ObjectiveController::class, 'store'])->middleware('permission:objectives.manage');
     Route::put('/objectives/{id}', [ObjectiveController::class, 'update'])->middleware('permission:objectives.manage');

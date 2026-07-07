@@ -95,12 +95,18 @@ export async function apiSend<T = any>(
   return (json && typeof json === "object" && "data" in json ? json.data : json) as T;
 }
 
-/** POST a body and download the binary response (e.g. a generated PDF). */
-export async function apiDownload(path: string, body: unknown, fallbackName = "download"): Promise<void> {
+/** Download a binary response to a file (PDF/Excel/PPTX). Defaults to POST; pass
+ *  method "GET" (with no body) for plain download endpoints. */
+export async function apiDownload(
+  path: string,
+  body?: unknown,
+  fallbackName = "download",
+  method: "GET" | "POST" = "POST"
+): Promise<void> {
   const res = await fetch(`${BASE}${path}`, {
-    method: "POST",
+    method,
     headers: headers(),
-    body: JSON.stringify(body),
+    body: body != null ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) throw new ApiError(`download ${path} failed`, res.status);
   const blob = await res.blob();

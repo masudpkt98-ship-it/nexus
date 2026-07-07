@@ -5,7 +5,7 @@ import { Card, SectionTitle, Badge, ProgressBar, Avatar } from "@/components/ui"
 import { Icon } from "@/components/Icons";
 import { competencies as mockCompetencies, developmentPlans as mockDevelopmentPlans } from "@/lib/data";
 import { useApiData } from "@/lib/useApi";
-import { apiSend, getToken } from "@/lib/api";
+import { apiSend, apiDownload, getToken } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
 
 type Comp = { id: number; name: string; category: string; current: number; required: number };
@@ -87,7 +87,19 @@ export default function CompetencyPage() {
       <PageHeader
         title="Competency Management"
         subtitle="Dictionary · Matrix · Mapping · Assessment · Gap Analysis · IDP · Career Readiness"
-        actions={<><LiveBadge live={live} /><Btn variant="primary" onClick={openCreate}><Icon.plus className="h-4 w-4" /> New Competency</Btn></>}
+        actions={
+          <>
+            <LiveBadge live={live} />
+            {getToken() && (
+              <Btn onClick={() => apiDownload("/exports/competencies", undefined, "nexus-competencies.xlsx", "GET")}>
+                <Icon.document className="h-4 w-4" /> Excel
+              </Btn>
+            )}
+            <Btn variant="primary" onClick={openCreate}>
+              <Icon.plus className="h-4 w-4" /> New Competency
+            </Btn>
+          </>
+        }
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
