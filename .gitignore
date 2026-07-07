@@ -5,6 +5,9 @@ Thumbs.db
 # Logs
 *.log
 
+# Local Docker Compose overrides (use .env.example as a template)
+.env
+
 # Local tooling / agent state
 .claude/
 .idea/

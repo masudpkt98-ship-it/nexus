@@ -5,15 +5,15 @@ services:
     image: postgres:16-alpine
     container_name: nexus-db
     environment:
-      POSTGRES_DB: nexus
-      POSTGRES_USER: nexus
-      POSTGRES_PASSWORD: nexus_secret
+      POSTGRES_DB: ${DB_DATABASE:-nexus}
+      POSTGRES_USER: ${DB_USERNAME:-nexus}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-nexus}
     volumes:
       - db-data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+      - "${DB_PORT_HOST:-5433}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-nexus} -d ${DB_DATABASE:-nexus}"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -37,31 +37,32 @@ services:
     container_name: nexus-api
     environment:
       APP_NAME: NEXUS
-      APP_ENV: local
-      APP_KEY: "base64:IwmLg3PIY/w2cRndwXNg6OgxkY7rdDYOeP03WKbtQ2k="
-      APP_DEBUG: "true"
-      APP_URL: http://localhost:8000
+      APP_ENV: ${APP_ENV:-local}
+      # Leave empty to auto-generate an ephemeral key on boot; set for a stable key.
+      APP_KEY: ${APP_KEY:-}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_URL: ${APP_URL:-http://localhost:8000}
       LOG_CHANNEL: stderr
       DB_CONNECTION: pgsql
       DB_HOST: db
       DB_PORT: "5432"
-      DB_DATABASE: nexus
-      DB_USERNAME: nexus
-      DB_PASSWORD: nexus_secret
+      DB_DATABASE: ${DB_DATABASE:-nexus}
+      DB_USERNAME: ${DB_USERNAME:-nexus}
+      DB_PASSWORD: ${DB_PASSWORD:-nexus}
       CACHE_STORE: redis
       SESSION_DRIVER: redis
       QUEUE_CONNECTION: redis
       REDIS_CLIENT: phpredis
       REDIS_HOST: redis
       REDIS_PORT: "6379"
-      FRONTEND_URL: http://localhost:3000
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       # Set ANTHROPIC_API_KEY in your shell (or a .env next to this file) to enable
       # the real Claude-powered AI Assistant. Without it, /ai/chat uses the
       # deterministic rule-based fallback.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -72,10 +73,10 @@ services:
     build:
       context: ./nexus-app
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8000/api
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
     container_name: nexus-web
     ports:
-      - "3000:3000"
+      - "${WEB_PORT:-3000}:3000"
     depends_on:
       - api
 

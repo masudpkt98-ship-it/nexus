@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -e
 
+# Generate an ephemeral APP_KEY when none is supplied, so no key literal needs to
+# live in the repo. Set APP_KEY in your environment/.env for a stable key that
+# survives restarts (required if you rely on persistent encrypted data/sessions).
+if [ -z "${APP_KEY:-}" ]; then
+  export APP_KEY="$(php artisan key:generate --show)"
+  echo "🔑 No APP_KEY provided — generated an ephemeral one for this run."
+fi
+
 echo "⏳ Waiting for PostgreSQL at ${DB_HOST}:${DB_PORT}..."
 until php -r "try { new PDO('pgsql:host=${DB_HOST};port=${DB_PORT};dbname=${DB_DATABASE}', '${DB_USERNAME}', '${DB_PASSWORD}'); exit(0); } catch (Throwable \$e) { exit(1); }"; do
   sleep 2
