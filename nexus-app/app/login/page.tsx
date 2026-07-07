@@ -13,13 +13,6 @@ const roles = [
   { role: "Staff", email: "rani@nexus.co", label: "Execute tasks & development" },
 ];
 
-const pillars = [
-  { k: "Connect", d: "People, process & data as one." },
-  { k: "Develop", d: "Grow competency & capability." },
-  { k: "Execute", d: "Deliver with discipline." },
-  { k: "Excel", d: "Achieve organizational excellence." },
-];
-
 export default function LoginPage() {
   const router = useRouter();
   const [selected, setSelected] = useState("VP");
@@ -57,51 +50,20 @@ export default function LoginPage() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      {/* Brand panel */}
-      <div className="relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between p-12 bg-navy-950">
-        <div className="pointer-events-none absolute inset-0 bg-nexus-radial" />
-        <div
-          className="pointer-events-none absolute inset-0 grid-fade opacity-[0.15]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,.4) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.4) 1px,transparent 1px)",
-            backgroundSize: "40px 40px",
-          }}
+      {/* Brand panel — the full NEXUS artwork, shown complete (no crop).
+          Background matches the poster's own dark navy so the letterbox
+          bands from object-contain blend in seamlessly. */}
+      <div
+        className="relative hidden overflow-hidden lg:block"
+        style={{ backgroundColor: "#010414" }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/nexus_login.png"
+          alt="NEXUS — Competency & Performance Nexus. Connecting Excellence. Driving Performance."
+          className="h-full w-full select-none object-contain"
+          draggable={false}
         />
-        <div className="relative flex items-center gap-3">
-          <LogoMark size={44} />
-          <div>
-            <div className="text-lg font-bold tracking-[0.2em] brand-gradient">NEXUS</div>
-            <div className="text-[10px] tracking-[0.15em] text-slate-400">
-              COMPETENCY &amp; PERFORMANCE NEXUS
-            </div>
-          </div>
-        </div>
-
-        <div className="relative floaty">
-          <LogoMark size={150} />
-        </div>
-
-        <div className="relative">
-          <h1 className="max-w-md text-3xl font-bold leading-tight text-white">
-            The digital operating system for{" "}
-            <span className="gold-gradient">organizational excellence</span>.
-          </h1>
-          <p className="mt-3 max-w-md text-sm text-slate-400">
-            Connecting Excellence. Driving Performance.
-          </p>
-          <div className="mt-8 grid grid-cols-2 gap-3">
-            {pillars.map((p) => (
-              <div key={p.k} className="glass card px-4 py-3">
-                <div className="text-sm font-semibold text-white">{p.k}</div>
-                <div className="text-[11px] text-slate-400">{p.d}</div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-6 text-[11px] tracking-widest text-slate-500">
-            PEOPLE • COMPETENCY • EXECUTION • PERFORMANCE • EXCELLENCE
-          </div>
-        </div>
       </div>
 
       {/* Form panel */}
