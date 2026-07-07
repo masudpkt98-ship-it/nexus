@@ -1,4 +1,6 @@
+"use client";
 import React from "react";
+import { useI18n } from "@/lib/i18n";
 
 export function PageHeader({
   title,
@@ -9,11 +11,12 @@ export function PageHeader({
   subtitle?: string;
   actions?: React.ReactNode;
 }) {
+  const { t } = useI18n();
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-[var(--muted)]">{subtitle}</p>}
+        <h1 className="text-2xl font-bold tracking-tight">{t(title)}</h1>
+        {subtitle && <p className="mt-1 text-sm text-[var(--muted)]">{t(subtitle)}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>
