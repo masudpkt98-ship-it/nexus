@@ -6,9 +6,11 @@ import { LogoMark } from "@/components/Logo";
 import { Icon } from "@/components/Icons";
 import { navItems, navSections } from "@/lib/nav";
 import { cn } from "@/components/ui";
+import { useI18n } from "@/lib/i18n";
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { t } = useI18n();
 
   return (
     <aside className="flex h-full w-[264px] flex-col glass border-r">
@@ -26,7 +28,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         {navSections.map((section) => (
           <div key={section}>
             <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-              {section}
+              {t(section)}
             </div>
             <div className="space-y-0.5">
               {navItems
@@ -52,7 +54,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                           active ? "text-royal-400" : "text-[var(--muted)] group-hover:text-royal-400"
                         )}
                       />
-                      <span className="flex-1">{item.label}</span>
+                      <span className="flex-1">{t(item.label)}</span>
                       {item.badge && (
                         <span className="rounded-full bg-royal-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-royal-400">
                           {item.badge}
@@ -70,8 +72,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <div className="glass card flex items-center gap-2 px-3 py-2.5">
           <Icon.spark className="h-4 w-4 text-gold-400" />
           <div className="flex-1">
-            <div className="text-[11px] font-semibold">AI Assistant</div>
-            <div className="text-[10px] text-[var(--muted)]">4 new insights</div>
+            <div className="text-[11px] font-semibold">{t("AI Assistant")}</div>
+            <div className="text-[10px] text-[var(--muted)]">{t("4 new insights")}</div>
           </div>
           <Link href="/ai-assistant" className="text-royal-400 hover:text-royal-500">
             <Icon.chevron className="h-4 w-4" />
