@@ -238,6 +238,7 @@ export default function AiAssistantPage() {
     kind: GenKind | null;
     title: string;
     loading: boolean;
+    streaming: boolean;
     markdown: string;
     source?: string;
     params: { level: string; focus: string; employee: string; scope: string };
@@ -246,18 +247,22 @@ export default function AiAssistantPage() {
     kind: null,
     title: "",
     loading: false,
+    streaming: false,
     markdown: "",
     params: { level: "Department", focus: "", employee: "", scope: "" },
   });
+  const genAbort = useRef<AbortController | null>(null);
 
   const [employees, setEmployees] = useState<{ employee: string; readiness: number }[]>([]);
 
   const openGenerator = (kind: GenKind, title: string) => {
+    genAbort.current?.abort();
     setGen({
       open: true,
       kind,
       title,
       loading: false,
+      streaming: false,
       markdown: "",
       source: undefined,
       params: { level: "Department", focus: "", employee: "", scope: "" },
@@ -289,17 +294,42 @@ export default function AiAssistantPage() {
       body.scope = p.scope.trim();
     }
 
-    setGen((g) => ({ ...g, loading: true, markdown: "", source: undefined }));
+    const controller = new AbortController();
+    genAbort.current = controller;
+    setGen((g) => ({ ...g, loading: true, streaming: true, markdown: "", source: undefined }));
     try {
-      const res = await apiSend<{ title: string; markdown: string; source: string }>(
-        "POST",
-        `/ai/generate/${gen.kind}`,
-        body
+      await apiStream(
+        `/ai/generate/${gen.kind}/stream`,
+        body,
+        (evt) => {
+          if (evt.type === "delta") {
+            setGen((g) => ({ ...g, loading: false, markdown: g.markdown + (evt.text ?? "") }));
+          } else if (evt.type === "done") {
+            setGen((g) => ({ ...g, loading: false, streaming: false, source: evt.source }));
+          }
+        },
+        controller.signal
       );
-      setGen((g) => ({ ...g, loading: false, title: res.title, markdown: res.markdown, source: res.source }));
     } catch {
-      setGen((g) => ({ ...g, loading: false, markdown: "_Generation failed. Please try again._" }));
+      if (controller.signal.aborted) {
+        setGen((g) => ({ ...g, loading: false, streaming: false, source: "stopped" }));
+      } else {
+        setGen((g) => ({
+          ...g,
+          loading: false,
+          streaming: false,
+          markdown: g.markdown || "_Generation failed. Please try again._",
+        }));
+      }
+    } finally {
+      if (genAbort.current === controller) genAbort.current = null;
     }
+  };
+
+  const stopGenerator = () => genAbort.current?.abort();
+  const closeGenerator = () => {
+    genAbort.current?.abort();
+    setGen((g) => ({ ...g, open: false, streaming: false }));
   };
 
   const send = async (text: string) => {
@@ -700,7 +730,7 @@ export default function AiAssistantPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setGen((g) => ({ ...g, open: false }))}
+            onClick={closeGenerator}
           />
           <div className="relative z-10 flex max-h-[85vh] w-full max-w-2xl flex-col glass card shadow-glass animate-fade-up">
             <div className="flex items-center gap-2 border-b p-4">
@@ -708,11 +738,15 @@ export default function AiAssistantPage() {
               <div className="text-sm font-semibold">{gen.title}</div>
               {gen.source && (
                 <Badge tone={gen.source === "claude" ? "amber" : "gray"}>
-                  {gen.source === "claude" ? "Claude Opus 4.8" : "NEXUS engine"}
+                  {gen.source === "claude"
+                    ? "Claude Opus 4.8"
+                    : gen.source === "stopped"
+                      ? "Stopped"
+                      : "NEXUS engine"}
                 </Badge>
               )}
               <button
-                onClick={() => setGen((g) => ({ ...g, open: false }))}
+                onClick={closeGenerator}
                 className="ml-auto rounded-lg px-2 py-1 text-[var(--muted)] transition hover:text-rose-400"
                 aria-label="Close"
               >
@@ -779,9 +813,15 @@ export default function AiAssistantPage() {
                     </label>
                   )}
                   <div className="mt-3">
-                    <Btn variant="primary" onClick={runGenerator}>
-                      <Icon.spark className="h-4 w-4" /> {gen.loading ? "Generating…" : gen.markdown ? "Regenerate" : "Generate"}
-                    </Btn>
+                    {gen.streaming ? (
+                      <Btn variant="ghost" onClick={stopGenerator}>
+                        <span className="h-2 w-2 rounded-[2px] bg-rose-500" /> Stop
+                      </Btn>
+                    ) : (
+                      <Btn variant="primary" onClick={runGenerator}>
+                        <Icon.spark className="h-4 w-4" /> {gen.markdown ? "Regenerate" : "Generate"}
+                      </Btn>
+                    )}
                   </div>
                 </div>
               )}
@@ -804,7 +844,7 @@ export default function AiAssistantPage() {
               )}
             </div>
             <div className="flex justify-end gap-2 border-t p-3">
-              {gen.markdown && !gen.loading && (
+              {gen.markdown && !gen.streaming && (
                 <Btn variant="ghost" onClick={() => navigator.clipboard?.writeText(gen.markdown)}>
                   Copy Markdown
                 </Btn>

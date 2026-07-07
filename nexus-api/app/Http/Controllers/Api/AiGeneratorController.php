@@ -3,23 +3,133 @@
 namespace App\Http\Controllers\Api;
 
 use Anthropic\Client;
+use Anthropic\Messages\RawContentBlockDeltaEvent;
+use Anthropic\Messages\TextDelta;
 use App\Http\Controllers\Controller;
 use App\Models\DevelopmentPlan;
 use App\Services\NexusData;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 /**
  * AI generators — produce Markdown artifacts (SMART KPIs, an Individual
  * Development Plan, an Executive Report), grounded in live NEXUS data. Uses
  * Claude Opus 4.8 when ANTHROPIC_API_KEY is set; otherwise a deterministic,
- * data-driven fallback so the feature always works.
+ * data-driven fallback so the feature always works. Each generator has a
+ * one-shot JSON endpoint and a token-by-token SSE streaming endpoint.
  */
 class AiGeneratorController extends Controller
 {
     public function kpi(Request $request): JsonResponse
+    {
+        [$title, $prompt, $fallback] = $this->plan('kpi', $request);
+
+        return $this->respond($title, $prompt, $fallback);
+    }
+
+    public function idp(Request $request): JsonResponse
+    {
+        [$title, $prompt, $fallback] = $this->plan('idp', $request);
+
+        return $this->respond($title, $prompt, $fallback);
+    }
+
+    public function report(Request $request): JsonResponse
+    {
+        [$title, $prompt, $fallback] = $this->plan('report', $request);
+
+        return $this->respond($title, $prompt, $fallback);
+    }
+
+    /** Token-by-token SSE stream for any generator kind. */
+    public function stream(Request $request, string $kind): StreamedResponse
+    {
+        [, $prompt, $fallback] = $this->plan($kind, $request);
+        $ctx = NexusData::context();
+        $key = config('services.anthropic.key');
+
+        return response()->stream(function () use ($key, $ctx, $prompt, $fallback) {
+            $emit = function (array $payload) {
+                echo 'data: '.json_encode($payload)."\n\n";
+                if (ob_get_level() > 0) {
+                    @ob_flush();
+                }
+                flush();
+            };
+
+            // 1) Stream from Claude.
+            if ($key) {
+                try {
+                    $client = new Client(apiKey: $key);
+                    $stream = $client->messages->createStream(
+                        model: config('services.anthropic.model', 'claude-opus-4-8'),
+                        maxTokens: 1800,
+                        system: $this->systemPrompt($ctx),
+                        messages: [['role' => 'user', 'content' => $prompt]],
+                    );
+
+                    $full = '';
+                    foreach ($stream as $event) {
+                        if (connection_aborted()) {
+                            return;
+                        }
+                        if ($event instanceof RawContentBlockDeltaEvent && $event->delta instanceof TextDelta) {
+                            $full .= $event->delta->text;
+                            $emit(['type' => 'delta', 'text' => $event->delta->text]);
+                        }
+                    }
+                    if ($full !== '') {
+                        $emit(['type' => 'done', 'source' => 'claude']);
+
+                        return;
+                    }
+                } catch (Throwable $e) {
+                    // Fall through to the deterministic stream.
+                }
+            }
+
+            // 2) Fallback: stream the deterministic Markdown word-by-word.
+            $md = $fallback();
+            $chunks = preg_split('/(\s+)/', $md, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$md];
+            foreach ($chunks as $chunk) {
+                if (connection_aborted()) {
+                    return;
+                }
+                if ($chunk === '') {
+                    continue;
+                }
+                $emit(['type' => 'delta', 'text' => $chunk]);
+                usleep(12000); // ~12ms cadence
+            }
+            $emit(['type' => 'done', 'source' => 'rules']);
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'Connection' => 'keep-alive',
+            'X-Accel-Buffering' => 'no',
+        ]);
+    }
+
+    // ---------------------------------------------------------------------
+    // Prompt + fallback builders (shared by the JSON and streaming paths)
+    // ---------------------------------------------------------------------
+
+    /**
+     * @return array{0: string, 1: string, 2: callable} [title, userPrompt, fallback]
+     */
+    private function plan(string $kind, Request $request): array
+    {
+        return match ($kind) {
+            'kpi' => $this->planKpi($request),
+            'idp' => $this->planIdp($request),
+            'report' => $this->planReport($request),
+            default => abort(404),
+        };
+    }
+
+    private function planKpi(Request $request): array
     {
         $data = $request->validate([
             'level' => ['nullable', 'in:Corporate,Department,Individual'],
@@ -29,14 +139,14 @@ class AiGeneratorController extends Controller
         $level = $data['level'] ?? 'Department';
         $focus = $data['focus'] ?? 'department performance';
 
-        $user = "Propose 6 SMART KPIs at the {$level} level focused on {$focus}. "
+        $prompt = "Propose 6 SMART KPIs at the {$level} level focused on {$focus}. "
             .'Return a Markdown H1 title, a short intro, then a Markdown table with columns '
             .'KPI | Level | Weight | Target | Rationale, and end with a one-line next step.';
 
-        return $this->respond('SMART KPI Set', $user, fn () => $this->kpiFallback($ctx, $level));
+        return ['SMART KPI Set', $prompt, fn () => $this->kpiFallback($ctx, $level)];
     }
 
-    public function idp(Request $request): JsonResponse
+    private function planIdp(Request $request): array
     {
         $data = $request->validate(['employee' => ['nullable', 'string', 'max:120']]);
 
@@ -52,26 +162,26 @@ class AiGeneratorController extends Controller
             ? "{$plan->employee}, {$plan->role}, career readiness {$plan->readiness}%, {$plan->gaps} open gap(s), next step: {$plan->next_step}"
             : 'a department staff member';
 
-        $user = "Draft an Individual Development Plan for {$person}. "
+        $prompt = "Draft an Individual Development Plan for {$person}. "
             ."Department competency gaps to consider: {$gapText}. "
             .'Return Markdown: an H1 title, a profile line, a "Focus areas" bullet list, '
             .'a "Milestones" section (0–3 / 3–6 / 6–12 months), a "Recommended certifications" list, '
             .'and a closing next step.';
 
-        return $this->respond('Individual Development Plan', $user, fn () => $this->idpFallback($plan, $gaps));
+        return ['Individual Development Plan', $prompt, fn () => $this->idpFallback($plan, $gaps)];
     }
 
-    public function report(Request $request): JsonResponse
+    private function planReport(Request $request): array
     {
         $data = $request->validate(['scope' => ['nullable', 'string', 'max:120']]);
         $ctx = NexusData::context();
         $scope = $data['scope'] ?? 'Department Performance';
 
-        $user = "Write a concise executive report titled for scope: {$scope}. "
+        $prompt = "Write a concise executive report titled for scope: {$scope}. "
             .'Use Markdown with sections: Overview, Highlights, Risks, Recommendations. '
             .'Ground every statement in the data and keep it under ~250 words.';
 
-        return $this->respond('Executive Report', $user, fn () => $this->reportFallback($ctx, $scope));
+        return ['Executive Report', $prompt, fn () => $this->reportFallback($ctx, $scope)];
     }
 
     /**
@@ -99,24 +209,10 @@ class AiGeneratorController extends Controller
     {
         $client = new Client(apiKey: $key);
 
-        $system = <<<SYS
-        You are the NEXUS AI Assistant for the Competency & Performance Management department.
-        Produce a clean, professional **Markdown** artifact. Ground every statement in the live data below.
-        Use headings, tables and bullet lists where helpful. Be concise and specific with numbers.
-
-        LIVE DATA:
-        - Open tasks: {$ctx['open']} (overdue: {$ctx['overdue']}, in review: {$ctx['review']})
-        - Programs: {$ctx['onTrack']} on track, {$ctx['atRisk']} at risk/delayed
-        - Customer requests: {$ctx['openRequests']} open ({$ctx['breached']} SLA breached)
-        - Weighted overall KPI: {$ctx['overallKpi']}% (target 90%)
-        - Competency gaps: {$ctx['competencyGaps']}
-        - Programs: {$ctx['programList']}
-        SYS;
-
         $response = $client->messages->create(
             model: config('services.anthropic.model', 'claude-opus-4-8'),
             maxTokens: 1800,
-            system: $system,
+            system: $this->systemPrompt($ctx),
             messages: [['role' => 'user', 'content' => $userPrompt]],
         );
 
@@ -132,6 +228,23 @@ class AiGeneratorController extends Controller
         }
 
         return $text;
+    }
+
+    private function systemPrompt(array $ctx): string
+    {
+        return <<<SYS
+        You are the NEXUS AI Assistant for the Competency & Performance Management department.
+        Produce a clean, professional **Markdown** artifact. Ground every statement in the live data below.
+        Use headings, tables and bullet lists where helpful. Be concise and specific with numbers.
+
+        LIVE DATA:
+        - Open tasks: {$ctx['open']} (overdue: {$ctx['overdue']}, in review: {$ctx['review']})
+        - Programs: {$ctx['onTrack']} on track, {$ctx['atRisk']} at risk/delayed
+        - Customer requests: {$ctx['openRequests']} open ({$ctx['breached']} SLA breached)
+        - Weighted overall KPI: {$ctx['overallKpi']}% (target 90%)
+        - Competency gaps: {$ctx['competencyGaps']}
+        - Programs: {$ctx['programList']}
+        SYS;
     }
 
     // ---------------------------------------------------------------------

@@ -56,3 +56,15 @@ test("Report generator: scope parameter appears in the report title", async ({ p
     page.getByRole("heading", { name: /Executive Report.*Q4 Strategy Review/i })
   ).toBeVisible({ timeout: 25_000 });
 });
+
+test("Report generator: streaming can be stopped", async ({ page }) => {
+  await page.getByRole("button", { name: /Generate Executive Report/i }).click();
+  await page.getByRole("button", { name: /^Generate$/ }).click();
+
+  // Stop appears while the artifact streams — click it to abort.
+  await page.getByRole("button", { name: "Stop" }).click({ timeout: 5_000 });
+
+  // Stopping ends the stream, so the Stop button goes away and the action returns.
+  await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Regenerate|^Generate$/ })).toBeVisible();
+});

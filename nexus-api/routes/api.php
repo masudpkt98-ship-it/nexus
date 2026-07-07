@@ -73,6 +73,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/ai/generate/kpi', [AiGeneratorController::class, 'kpi'])->middleware('permission:ai.view');
     Route::post('/ai/generate/idp', [AiGeneratorController::class, 'idp'])->middleware('permission:ai.view');
     Route::post('/ai/generate/report', [AiGeneratorController::class, 'report'])->middleware('permission:ai.view');
+    Route::post('/ai/generate/{kind}/stream', [AiGeneratorController::class, 'stream'])
+        ->whereIn('kind', ['kpi', 'idp', 'report'])
+        ->middleware('permission:ai.view');
 
     // Workspace
     Route::get('/meetings', [WorkspaceController::class, 'meetings'])->middleware('permission:meetings.view');
