@@ -1,4 +1,6 @@
+"use client";
 import React from "react";
+import { useI18n } from "@/lib/i18n";
 
 export function cn(...c: (string | false | undefined | null)[]) {
   return c.filter(Boolean).join(" ");
@@ -35,12 +37,13 @@ export function SectionTitle({
   subtitle?: string;
   action?: React.ReactNode;
 }) {
+  const { t } = useI18n();
   return (
     <div className="mb-4 flex items-end justify-between gap-4">
       <div>
-        <h3 className="text-[15px] font-semibold tracking-tight">{title}</h3>
+        <h3 className="text-[15px] font-semibold tracking-tight">{t(title)}</h3>
         {subtitle && (
-          <p className="mt-0.5 text-xs text-[var(--muted)]">{subtitle}</p>
+          <p className="mt-0.5 text-xs text-[var(--muted)]">{t(subtitle)}</p>
         )}
       </div>
       {action}

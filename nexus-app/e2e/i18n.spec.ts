@@ -25,6 +25,7 @@ test("language switcher translates the navigation and applies RTL", async ({ pag
   await page.goto("/performance");
   await expect(page.getByRole("heading", { name: "Manajemen Kinerja", level: 1 })).toBeVisible();
   await expect(page.getByText(/Korporat · Departemen · KPI Individu/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Kartu Skor KPI" })).toBeVisible(); // SectionTitle
   await page.goto("/dashboard");
 
   await pick(page, /中文/);
