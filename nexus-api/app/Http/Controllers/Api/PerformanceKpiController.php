@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PerformanceKpiResource;
+use App\Models\NotificationItem;
 use App\Models\PerformanceKpi;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,7 @@ class PerformanceKpiController extends Controller
         // Create first, then derive a stable, unique code from the new id.
         $kpi = PerformanceKpi::create($this->attributes($request) + ['code' => 'TEMP-'.uniqid()]);
         $kpi->update(['code' => 'KPI-'.str_pad((string) $kpi->id, 3, '0', STR_PAD_LEFT)]);
+        NotificationItem::raise("New KPI defined: {$kpi->name}", 'In-App', 'performance');
 
         return response()->json(['data' => new PerformanceKpiResource($kpi)], 201);
     }

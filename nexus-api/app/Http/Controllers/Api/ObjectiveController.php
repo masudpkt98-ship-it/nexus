@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ObjectiveResource;
+use App\Models\NotificationItem;
 use App\Models\Objective;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ class ObjectiveController extends Controller
 
         $objective = Objective::create($data);
         $objective->load(['owner', 'keyResults']);
+        NotificationItem::raise("New objective set: {$objective->title}", 'In-App', 'strategy');
 
         return response()->json(['data' => new ObjectiveResource($objective)], 201);
     }

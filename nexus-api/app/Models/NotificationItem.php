@@ -17,4 +17,20 @@ class NotificationItem extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /** Create a department-wide notification. Never throws (best-effort). */
+    public static function raise(string $title, string $channel = 'In-App', string $kind = 'system'): void
+    {
+        try {
+            static::create([
+                'channel' => $channel,
+                'kind' => $kind,
+                'title' => $title,
+                'time_label' => 'just now',
+                'read' => false,
+            ]);
+        } catch (\Throwable $e) {
+            // A notification failure must never break the primary action.
+        }
+    }
 }

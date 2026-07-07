@@ -7,6 +7,7 @@ use App\Http\Resources\CompetencyResource;
 use App\Http\Resources\DevelopmentPlanResource;
 use App\Models\Competency;
 use App\Models\DevelopmentPlan;
+use App\Models\NotificationItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -23,6 +24,7 @@ class CompetencyController extends Controller
     public function store(Request $request): JsonResponse
     {
         $competency = Competency::create($this->attributes($request));
+        NotificationItem::raise("New competency added: {$competency->name}", 'In-App', 'competency');
 
         return response()->json(['data' => new CompetencyResource($competency)], 201);
     }

@@ -1,17 +1,55 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icons";
 import { useTheme } from "@/components/ThemeProvider";
 import { Avatar, cn } from "@/components/ui";
-import { currentUser, notifications } from "@/lib/data";
-import { apiLogout } from "@/lib/api";
+import { currentUser, notifications as mockNotifications } from "@/lib/data";
+import { apiGet, apiLogout, apiSend, getToken } from "@/lib/api";
+
+type Notif = { id: string; channel: string; kind?: string; title: string; time: string; read: boolean };
 
 export function Topbar({ onMenu }: { onMenu?: () => void }) {
   const { theme, toggle } = useTheme();
   const [openNotif, setOpenNotif] = useState(false);
-  const unread = notifications.filter((n) => !n.read).length;
+
+  const [items, setItems] = useState<Notif[]>(
+    getToken() ? [] : (mockNotifications as unknown as Notif[])
+  );
+
+  // Live notifications: poll every few seconds so new items appear on their own.
+  useEffect(() => {
+    if (!getToken()) return;
+    let active = true;
+    const load = async () => {
+      try {
+        const list = await apiGet<Notif[]>("/notifications");
+        if (active && Array.isArray(list)) setItems(list);
+      } catch {
+        /* keep the last snapshot */
+      }
+    };
+    load();
+    const timer = setInterval(load, 4000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, []);
+
+  const unread = items.filter((n) => !n.read).length;
+
+  const markAllRead = async () => {
+    setItems((list) => list.map((n) => ({ ...n, read: true })));
+    if (getToken()) {
+      try {
+        await apiSend("POST", "/notifications/read-all");
+      } catch {
+        /* ignore */
+      }
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 glass border-b px-4 sm:px-6">
@@ -65,12 +103,22 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
               <div className="absolute right-0 top-11 z-20 w-80 glass card p-2 shadow-glass animate-fade-up">
                 <div className="flex items-center justify-between px-2 py-1.5">
                   <span className="text-sm font-semibold">Notifications</span>
-                  <Link href="/notifications" className="text-[11px] text-royal-400" onClick={() => setOpenNotif(false)}>
-                    View all
-                  </Link>
+                  <div className="flex items-center gap-3">
+                    {unread > 0 && (
+                      <button onClick={markAllRead} className="text-[11px] text-[var(--muted)] hover:text-royal-400">
+                        Mark all read
+                      </button>
+                    )}
+                    <Link href="/notifications" className="text-[11px] text-royal-400" onClick={() => setOpenNotif(false)}>
+                      View all
+                    </Link>
+                  </div>
                 </div>
                 <div className="max-h-80 space-y-1 overflow-y-auto">
-                  {notifications.map((n) => (
+                  {items.length === 0 && (
+                    <p className="px-2 py-6 text-center text-[11px] text-[var(--muted)]">No notifications.</p>
+                  )}
+                  {items.map((n) => (
                     <div
                       key={n.id}
                       className={cn(
