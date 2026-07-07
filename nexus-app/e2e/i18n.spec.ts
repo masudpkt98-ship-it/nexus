@@ -21,9 +21,10 @@ test("language switcher translates the navigation and applies RTL", async ({ pag
   await pick(page, /Bahasa Indonesia/);
   await expect(page.getByRole("link", { name: "Dasbor" }).first()).toBeVisible();
 
-  // Page headers translate too
+  // Page headers (title + subtitle) translate too
   await page.goto("/performance");
   await expect(page.getByRole("heading", { name: "Manajemen Kinerja", level: 1 })).toBeVisible();
+  await expect(page.getByText(/Korporat · Departemen · KPI Individu/)).toBeVisible();
   await page.goto("/dashboard");
 
   await pick(page, /中文/);
