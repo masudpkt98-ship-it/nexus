@@ -172,16 +172,21 @@ export const objectives: Objective[] = [
 
 // --- Strategic Planning: Vision, Mission, Core Values, Goals, SWOT ---------
 
-export interface StrategyStatement {
-  vision: string;
-  mission: string;
+export const strategyVision =
+  "To become the intelligent digital ecosystem for organizational excellence.";
+
+export interface MissionItem {
+  id: string;
+  text: string;
 }
 
-export const strategyStatement: StrategyStatement = {
-  vision: "To become the intelligent digital ecosystem for organizational excellence.",
-  mission:
-    "To empower organizations through integrated competency and performance management — connecting people, competency, execution, and value into one operating system.",
-};
+export const missionItems: MissionItem[] = [
+  { id: "ms-1", text: "Empower organizations through integrated competency and performance management." },
+  { id: "ms-2", text: "Connect people, competency, execution, and value into one operating system." },
+  { id: "ms-3", text: "Drive data-driven decisions with real-time insight across every department." },
+  { id: "ms-4", text: "Cultivate a culture of continuous learning and measurable growth." },
+  { id: "ms-5", text: "Deliver best-in-class internal service and lasting stakeholder value." },
+];
 
 export interface CoreValue {
   id: string;

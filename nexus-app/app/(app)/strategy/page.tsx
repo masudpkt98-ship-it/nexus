@@ -5,7 +5,8 @@ import { Card, SectionTitle, Badge, ProgressBar, Avatar } from "@/components/ui"
 import { Icon } from "@/components/Icons";
 import {
   objectives as mockObjectives,
-  strategyStatement as mockStatement,
+  strategyVision as mockVision,
+  missionItems as mockMission,
   coreValues as mockValues,
   strategicGoals as mockGoals,
   swotItems as mockSwot,
@@ -106,21 +107,17 @@ function RowActions({ onEdit, onDelete, label }: { onEdit: () => void; onDelete:
 }
 
 // ---------------------------------------------------------------------------
-// Vision & Mission — editable statement.
+// Vision — editable single statement.
 // ---------------------------------------------------------------------------
-function VisionMission() {
+function Vision() {
   const { t } = useI18n();
-  const [statement, setStatement] = useLocalState("strategy-statement", mockStatement);
-  const [form, setForm] = useState<{ open: boolean; vision: string; mission: string }>({
-    open: false,
-    vision: "",
-    mission: "",
-  });
+  const [vision, setVision] = useLocalState("strategy-vision", mockVision);
+  const [form, setForm] = useState<{ open: boolean; vision: string }>({ open: false, vision: "" });
 
-  const open = () => setForm({ open: true, vision: statement.vision, mission: statement.mission });
+  const open = () => setForm({ open: true, vision });
   const close = () => setForm((f) => ({ ...f, open: false }));
   const save = () => {
-    setStatement({ vision: form.vision.trim(), mission: form.mission.trim() });
+    setVision(form.vision.trim());
     close();
   };
 
@@ -134,16 +131,12 @@ function VisionMission() {
         <button
           onClick={open}
           className="text-[11px] font-medium text-[var(--muted)] opacity-0 transition hover:text-royal-400 group-hover:opacity-100"
-          aria-label="Edit vision and mission"
+          aria-label="Edit vision"
         >
           {t("Edit")}
         </button>
       </div>
-      <p className="mt-3 text-xl font-semibold leading-snug">{statement.vision}</p>
-      <div className="mt-5">
-        <Badge tone="blue">{t("Mission")}</Badge>
-        <p className="mt-2 text-sm text-[var(--muted)]">{statement.mission}</p>
-      </div>
+      <p dir="auto" className="mt-3 text-xl font-semibold leading-snug">{vision}</p>
 
       {form.open && (
         <Modal title={t("Edit Vision & Mission")} onClose={close} onSave={save} saveLabel={t("Save")}>
@@ -157,13 +150,75 @@ function VisionMission() {
               className={inputCls}
             />
           </label>
+        </Modal>
+      )}
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Mission — numbered CRUD list (default items, add/edit/delete).
+// ---------------------------------------------------------------------------
+type Mission = { id: string; text: string };
+const emptyMission = { open: false, id: null as string | null, text: "" };
+
+function MissionList() {
+  const { t } = useI18n();
+  const [rows, setRows] = useLocalState<Mission[]>("strategy-mission", mockMission);
+  const [form, setForm] = useState(emptyMission);
+
+  const openCreate = () => setForm({ ...emptyMission, open: true });
+  const openEdit = (m: Mission) => setForm({ open: true, id: m.id, text: m.text });
+  const close = () => setForm(emptyMission);
+  const save = () => {
+    const text = form.text.trim();
+    if (!text) return;
+    if (form.id == null) {
+      setRows((r) => [...r, { id: nextId("ms"), text }]);
+    } else {
+      setRows((r) => r.map((x) => (x.id === form.id ? { ...x, text } : x)));
+    }
+    close();
+  };
+  const remove = (m: Mission) => setRows((r) => r.filter((x) => x.id !== m.id));
+
+  return (
+    <Card>
+      <SectionTitle
+        title="Mission"
+        subtitle="What we do"
+        action={
+          <button onClick={openCreate} className="text-royal-400 transition hover:text-royal-300" aria-label="Add mission statement" title={t("Add")}>
+            <Icon.plus className="h-4 w-4" />
+          </button>
+        }
+      />
+      <div className="space-y-2.5">
+        {rows.map((m, i) => (
+          <div key={m.id} dir="auto" className="group flex items-start gap-3 rounded-lg border p-2.5">
+            <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-royal-500/15 text-[11px] font-bold text-royal-400">
+              {i + 1}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-[13px]">{m.text}</span>
+                <RowActions onEdit={() => openEdit(m)} onDelete={() => remove(m)} label={m.text} />
+              </div>
+            </div>
+          </div>
+        ))}
+        {rows.length === 0 && <p className="py-4 text-center text-[12px] text-[var(--muted)]">{t("No mission statements yet. Add one.")}</p>}
+      </div>
+
+      {form.open && (
+        <Modal title={form.id == null ? t("New Mission Statement") : t("Edit Mission Statement")} onClose={close} onSave={save} saveLabel={form.id == null ? t("Create") : t("Save")}>
           <label className={labelCls}>
             {t("Mission")}
             <textarea
-              value={form.mission}
-              onChange={(e) => setForm((f) => ({ ...f, mission: e.target.value }))}
-              rows={4}
-              placeholder={t("How the organization will get there…")}
+              value={form.text}
+              onChange={(e) => setForm((f) => ({ ...f, text: e.target.value }))}
+              rows={3}
+              placeholder={t("e.g. Empower teams to deliver measurable value…")}
               className={inputCls}
             />
           </label>
@@ -637,9 +692,9 @@ export default function StrategyPage() {
         actions={<LiveBadge live={live} />}
       />
 
-      {/* Vision / Mission + Strategy cascade */}
+      {/* Vision + Strategy cascade */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <VisionMission />
+        <Vision />
         <Card>
           <SectionTitle title="Strategy Cascade" subtitle="Everything connected" />
           <div className="space-y-1.5">
@@ -654,6 +709,11 @@ export default function StrategyPage() {
             ))}
           </div>
         </Card>
+      </div>
+
+      {/* Mission */}
+      <div className="mt-4">
+        <MissionList />
       </div>
 
       {/* Core Values */}
