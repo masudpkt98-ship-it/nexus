@@ -346,34 +346,39 @@ function StrategicGoals() {
 
   return (
     <div className="mt-4">
-      <SectionTitle
-        title="Strategic Goals"
-        subtitle="Department-level goals that cascade into OKR"
-        action={
-          <Btn variant="ghost" onClick={openCreate}>
-            <Icon.plus className="h-4 w-4" /> {t("New Goal")}
-          </Btn>
-        }
-      />
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {rows.map((g) => (
-          <Card key={g.id} dir="auto" className="group">
-            <div className="flex items-center justify-between">
-              <Badge tone="blue">{g.target}</Badge>
-              <RowActions onEdit={() => openEdit(g)} onDelete={() => remove(g)} label={g.title} />
+      <Card>
+        <SectionTitle
+          title="Strategic Goals"
+          subtitle="Department-level goals that cascade into OKR"
+          action={
+            <button onClick={openCreate} className="text-royal-400 transition hover:text-royal-300" aria-label="Add strategic goal" title={t("Add")}>
+              <Icon.plus className="h-4 w-4" />
+            </button>
+          }
+        />
+        <div className="space-y-2.5">
+          {rows.map((g, i) => (
+            <div key={g.id} dir="auto" className="group flex items-start gap-3 rounded-lg border p-2.5">
+              <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-royal-500/15 text-[11px] font-bold text-royal-400">
+                {i + 1}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-[13px] font-semibold">{g.title}</span>
+                  <RowActions onEdit={() => openEdit(g)} onDelete={() => remove(g)} label={g.title} />
+                </div>
+                {g.description && <p className="mt-0.5 text-[12px] text-[var(--muted)]">{g.description}</p>}
+                <div className="mt-1.5 flex items-center gap-2 text-xs text-[var(--muted)]">
+                  <Badge tone="blue">{g.target}</Badge>
+                  <Avatar initials={g.owner.split(" ").map((s) => s[0]).join("").slice(0, 2) || "?"} />
+                  {t(g.owner)}
+                </div>
+              </div>
             </div>
-            <h3 className="mt-2 text-[15px] font-semibold leading-snug">{g.title}</h3>
-            {g.description && <p className="mt-1 text-[12px] text-[var(--muted)]">{g.description}</p>}
-            <div className="mt-3 flex items-center gap-2 text-xs text-[var(--muted)]">
-              <Avatar initials={g.owner.split(" ").map((s) => s[0]).join("").slice(0, 2) || "?"} />
-              {t(g.owner)}
-            </div>
-          </Card>
-        ))}
-        {rows.length === 0 && (
-          <Card className="text-center text-[12px] text-[var(--muted)]">{t("No strategic goals yet. Add one.")}</Card>
-        )}
-      </div>
+          ))}
+          {rows.length === 0 && <p className="py-4 text-center text-[12px] text-[var(--muted)]">{t("No strategic goals yet. Add one.")}</p>}
+        </div>
+      </Card>
 
       {form.open && (
         <Modal title={form.id == null ? t("New Strategic Goal") : t("Edit Strategic Goal")} onClose={close} onSave={save} saveLabel={form.id == null ? t("Create") : t("Save")}>
