@@ -231,8 +231,8 @@ function MissionList() {
 // ---------------------------------------------------------------------------
 // Core Values — CRUD list.
 // ---------------------------------------------------------------------------
-type Value = { id: string; title: string; description: string };
-const emptyValue = { open: false, id: null as string | null, title: "", description: "" };
+type Value = { id: string; letter: string; title: string; description: string };
+const emptyValue = { open: false, id: null as string | null, letter: "", title: "", description: "" };
 
 function CoreValues() {
   const { t } = useI18n();
@@ -240,16 +240,18 @@ function CoreValues() {
   const [form, setForm] = useState(emptyValue);
 
   const openCreate = () => setForm({ ...emptyValue, open: true });
-  const openEdit = (v: Value) => setForm({ open: true, id: v.id, title: v.title, description: v.description });
+  const openEdit = (v: Value) => setForm({ open: true, id: v.id, letter: v.letter ?? "", title: v.title, description: v.description });
   const close = () => setForm(emptyValue);
   const save = () => {
     const title = form.title.trim();
     if (!title) return;
     const description = form.description.trim();
+    // Letter defaults to the value's initial when left blank.
+    const letter = (form.letter.trim() || title.charAt(0)).slice(0, 2).toUpperCase();
     if (form.id == null) {
-      setRows((r) => [...r, { id: nextId("cv"), title, description }]);
+      setRows((r) => [...r, { id: nextId("cv"), letter, title, description }]);
     } else {
-      setRows((r) => r.map((x) => (x.id === form.id ? { ...x, title, description } : x)));
+      setRows((r) => r.map((x) => (x.id === form.id ? { ...x, letter, title, description } : x)));
     }
     close();
   };
@@ -269,8 +271,8 @@ function CoreValues() {
       <div className="space-y-2.5">
         {rows.map((v) => (
           <div key={v.id} dir="auto" className="group flex items-start gap-3 rounded-lg border p-2.5">
-            <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gold-400/15 text-gold-500">
-              <Icon.check className="h-3.5 w-3.5" />
+            <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gold-400/15 text-[11px] font-bold uppercase text-gold-500">
+              {v.letter || v.title.charAt(0)}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
@@ -286,15 +288,27 @@ function CoreValues() {
 
       {form.open && (
         <Modal title={form.id == null ? t("New Core Value") : t("Edit Core Value")} onClose={close} onSave={save} saveLabel={form.id == null ? t("Create") : t("Save")}>
-          <label className={labelCls}>
-            {t("Value")}
-            <input
-              value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              placeholder={t("e.g. Integrity")}
-              className={inputCls}
-            />
-          </label>
+          <div className="grid grid-cols-[64px_1fr] gap-3">
+            <label className={labelCls}>
+              {t("Letter")}
+              <input
+                value={form.letter}
+                onChange={(e) => setForm((f) => ({ ...f, letter: e.target.value }))}
+                maxLength={2}
+                placeholder="I"
+                className={`${inputCls} text-center uppercase`}
+              />
+            </label>
+            <label className={labelCls}>
+              {t("Value")}
+              <input
+                value={form.title}
+                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                placeholder={t("e.g. Integrity")}
+                className={inputCls}
+              />
+            </label>
+          </div>
           <label className={labelCls}>
             {t("Description")}
             <textarea

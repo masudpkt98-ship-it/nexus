@@ -190,15 +190,16 @@ export const missionItems: MissionItem[] = [
 
 export interface CoreValue {
   id: string;
+  letter: string;
   title: string;
   description: string;
 }
 
 export const coreValues: CoreValue[] = [
-  { id: "cv-1", title: "Integrity", description: "We act with honesty and hold ourselves accountable for every outcome." },
-  { id: "cv-2", title: "Excellence", description: "We pursue the highest standards in everything we deliver." },
-  { id: "cv-3", title: "Collaboration", description: "We connect people and teams to achieve shared goals." },
-  { id: "cv-4", title: "Innovation", description: "We continuously improve through creativity and technology." },
+  { id: "cv-1", letter: "I", title: "Integrity", description: "We act with honesty and hold ourselves accountable for every outcome." },
+  { id: "cv-2", letter: "E", title: "Excellence", description: "We pursue the highest standards in everything we deliver." },
+  { id: "cv-3", letter: "C", title: "Collaboration", description: "We connect people and teams to achieve shared goals." },
+  { id: "cv-4", letter: "N", title: "Innovation", description: "We continuously improve through creativity and technology." },
 ];
 
 export interface StrategicGoal {
