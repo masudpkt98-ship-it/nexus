@@ -598,45 +598,55 @@ function Okr() {
 
   return (
     <div className="mt-4">
-      <SectionTitle
-        title="Objectives & Key Results (OKR)"
-        subtitle="FY26 — Department strategic objectives"
-        action={
-          <Btn variant="ghost" onClick={openCreate}>
-            <Icon.plus className="h-4 w-4" /> {t("New Objective")}
-          </Btn>
-        }
-      />
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {rows.map((o) => (
-          <Card key={o.id} dir="auto" className="group">
-            <div className="flex items-center justify-between">
-              <Badge tone="blue">{o.quarter}</Badge>
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-bold gold-gradient">{o.progress}%</span>
-                <RowActions onEdit={() => openEdit(o)} onDelete={() => removeRow(o)} label={o.title} />
+      <Card>
+        <SectionTitle
+          title="Objectives & Key Results (OKR)"
+          subtitle="FY26 — Department strategic objectives"
+          action={
+            <button onClick={openCreate} className="text-royal-400 transition hover:text-royal-300" aria-label="Add objective" title={t("Add")}>
+              <Icon.plus className="h-4 w-4" />
+            </button>
+          }
+        />
+        <div className="space-y-2.5">
+          {rows.map((o, i) => (
+            <div key={o.id} dir="auto" className="group flex items-start gap-3 rounded-lg border p-3">
+              <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-royal-500/15 text-[11px] font-bold text-royal-400">
+                {i + 1}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Badge tone="blue">{o.quarter}</Badge>
+                    <span className="text-lg font-bold gold-gradient">{o.progress}%</span>
+                  </div>
+                  <RowActions onEdit={() => openEdit(o)} onDelete={() => removeRow(o)} label={o.title} />
+                </div>
+                <h3 className="mt-1.5 text-[14px] font-semibold leading-snug">{o.title}</h3>
+                <div className="mt-1.5 flex items-center gap-2 text-xs text-[var(--muted)]">
+                  <Avatar initials={o.owner.split(" ").map((s) => s[0]).join("")} />
+                  {t(o.owner)}
+                </div>
+                <ProgressBar value={o.progress} tone="gold" className="mt-2.5" />
+                {o.keyResults.length > 0 && (
+                  <div className="mt-3 space-y-2.5 border-t pt-3">
+                    {o.keyResults.map((kr) => (
+                      <div key={kr.title}>
+                        <div className="flex justify-between text-[12px]">
+                          <span className="text-[var(--muted)]">{kr.title}</span>
+                          <span className="font-medium">{kr.progress}%</span>
+                        </div>
+                        <ProgressBar value={kr.progress} className="mt-1" />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-            <h3 className="mt-2 text-[15px] font-semibold leading-snug">{o.title}</h3>
-            <div className="mt-2 flex items-center gap-2 text-xs text-[var(--muted)]">
-              <Avatar initials={o.owner.split(" ").map((s) => s[0]).join("")} />
-              {t(o.owner)}
-            </div>
-            <ProgressBar value={o.progress} tone="gold" className="mt-3" />
-            <div className="mt-4 space-y-3 border-t pt-3">
-              {o.keyResults.map((kr) => (
-                <div key={kr.title}>
-                  <div className="flex justify-between text-[12px]">
-                    <span className="text-[var(--muted)]">{kr.title}</span>
-                    <span className="font-medium">{kr.progress}%</span>
-                  </div>
-                  <ProgressBar value={kr.progress} className="mt-1" />
-                </div>
-              ))}
-            </div>
-          </Card>
-        ))}
-      </div>
+          ))}
+          {rows.length === 0 && <p className="py-4 text-center text-[12px] text-[var(--muted)]">{t("No objectives yet. Add one.")}</p>}
+        </div>
+      </Card>
 
       {form.open && (
         <Modal title={form.id == null ? t("New Objective") : t("Edit Objective")} onClose={() => setForm(emptyObj)} onSave={saveForm} saveLabel={form.id == null ? t("Create") : t("Save")}>
