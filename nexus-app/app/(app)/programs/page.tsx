@@ -19,6 +19,7 @@ import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import { apiGet, apiSend, getToken } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
+import { milestoneProgress, milestoneStatus, programProgress, programStatus, programMilestonesDone } from "@/lib/rollup";
 
 type Status = Program["status"];
 type Risk = Program["risk"];
@@ -127,10 +128,11 @@ export default function ProgramsPage() {
 
   const totalBudget = rows.reduce((s, p) => s + p.budget, 0);
   const totalSpent = rows.reduce((s, p) => s + p.spent, 0);
+  const effStatus = (p: Program) => programStatus(p, miles, taskList);
   const summary = [
-    { label: "Active Programs", value: rows.filter((p) => p.status !== "Completed").length, tone: "blue" },
-    { label: "On Track", value: rows.filter((p) => p.status === "On Track").length, tone: "green" },
-    { label: "At Risk / Delayed", value: rows.filter((p) => p.status === "At Risk" || p.status === "Delayed").length, tone: "red" },
+    { label: "Active Programs", value: rows.filter((p) => effStatus(p) !== "Completed").length, tone: "blue" },
+    { label: "On Track", value: rows.filter((p) => effStatus(p) === "On Track").length, tone: "green" },
+    { label: "At Risk / Delayed", value: rows.filter((p) => effStatus(p) === "At Risk" || effStatus(p) === "Delayed").length, tone: "red" },
     { label: "Budget Utilization", value: `${totalBudget ? Math.round((totalSpent / totalBudget) * 100) : 0}%`, tone: "gold" },
   ] as const;
 
@@ -205,7 +207,9 @@ export default function ProgramsPage() {
       <div className="mt-4 space-y-3">
         {rows.map((p) => {
           const pm = milesOf(p.id);
-          const mDone = pm.filter((m) => m.status === "Done").length;
+          const mDone = programMilestonesDone(p, miles, taskList);
+          const pProgress = programProgress(p, miles, taskList);
+          const pStatus = programStatus(p, miles, taskList);
           const isOpen = expanded[p.id] ?? true;
           return (
             <Card key={p.id} dir="auto" className="group">
@@ -216,7 +220,7 @@ export default function ProgramsPage() {
                 <div className="min-w-[220px] flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{p.name}</span>
-                    <Badge tone={statusTone[p.status]}>{t(p.status)}</Badge>
+                    <Badge tone={statusTone[pStatus]}>{t(pStatus)}</Badge>
                     {(p.goalIds ?? []).map((g) => (
                       <span key={g} title={goalTitle(g)}>
                         <Badge tone="purple">
@@ -239,9 +243,9 @@ export default function ProgramsPage() {
                 <div className="w-40">
                   <div className="mb-1 flex justify-between text-[11px]">
                     <span className="text-[var(--muted)]">{t("Progress")}</span>
-                    <span className="font-semibold">{p.progress}%</span>
+                    <span className="font-semibold">{pProgress}%</span>
                   </div>
-                  <ProgressBar value={p.progress} tone={riskTone[p.risk] === "red" ? "red" : riskTone[p.risk] === "amber" ? "gold" : "blue"} />
+                  <ProgressBar value={pProgress} tone={pProgress === 100 ? "green" : riskTone[p.risk] === "red" ? "red" : riskTone[p.risk] === "amber" ? "gold" : "blue"} />
                 </div>
 
                 <button onClick={() => setExpanded((e) => ({ ...e, [p.id]: true }))} className="text-center transition hover:text-royal-400">
@@ -280,16 +284,22 @@ export default function ProgramsPage() {
                     </button>
                   </div>
                   <div className="space-y-2">
-                    {pm.map((m) => (
+                    {pm.map((m) => {
+                      const ms = milestoneStatus(m, taskList);
+                      const mp = milestoneProgress(m, taskList);
+                      const mt = taskCount(m.id);
+                      const mtDone = taskList.filter((tk) => tk.milestoneId === m.id && tk.status === "Done").length;
+                      return (
                       <div key={m.id} className="group/m flex flex-wrap items-center gap-3 rounded-lg border p-2.5">
-                        <Badge tone={mstTone[m.status]}>{t(m.status)}</Badge>
+                        <Badge tone={mstTone[ms]}>{t(ms)}</Badge>
                         <span className="min-w-[160px] flex-1 text-[13px] font-medium">{m.name}</span>
                         <div className="w-28">
-                          <ProgressBar value={m.progress} tone={m.status === "Done" ? "green" : m.status === "At Risk" ? "red" : "gold"} />
+                          <ProgressBar value={mp} tone={ms === "Done" ? "green" : ms === "At Risk" ? "red" : "gold"} />
                         </div>
+                        <span className="w-9 text-right text-[11px] font-semibold">{mp}%</span>
                         <span className="text-[11px] text-[var(--muted)]">{fmtDay(m.due)}</span>
                         <span className="inline-flex items-center gap-1 text-[11px] text-[var(--muted)]">
-                          <Icon.task className="h-3.5 w-3.5" /> {taskCount(m.id)} {t("tasks")}
+                          <Icon.task className="h-3.5 w-3.5" /> {mtDone}/{mt} {t("tasks")}
                         </span>
                         <div className="flex items-center gap-2">
                           <button onClick={() => openMEdit(m)} title={t("Edit")} className="text-[11px] font-medium text-[var(--muted)] opacity-0 transition hover:text-royal-400 group-hover/m:opacity-100">
@@ -300,7 +310,8 @@ export default function ProgramsPage() {
                           </button>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                     {pm.length === 0 && <p className="py-2 text-center text-[12px] text-[var(--muted)]">{t("No milestones yet. Add one.")}</p>}
                   </div>
                 </div>

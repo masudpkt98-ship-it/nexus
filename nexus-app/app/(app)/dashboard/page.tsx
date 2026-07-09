@@ -25,9 +25,15 @@ import {
   topPerformers as mockPerformers,
   meetings as mockMeetings,
   programs as mockPrograms,
+  milestones as mockMilestones,
+  tasks as mockTasks,
   currentUser,
+  type Milestone,
+  type Task,
 } from "@/lib/data";
 import { apiGet, getStoredUser, getToken } from "@/lib/api";
+import { useLocalState } from "@/lib/useLocalState";
+import { programProgress, programStatus, programMilestonesDone } from "@/lib/rollup";
 import { useI18n } from "@/lib/i18n";
 
 const defaultWidgets = [
@@ -57,6 +63,9 @@ export default function DashboardPage() {
   const [activity, setActivity] = useState(mockActivity as any[]);
   const [meets, setMeets] = useState(mockMeetings as any[]);
   const [progs, setProgs] = useState(mockPrograms as any[]);
+  // shared stores so program cards roll up task → milestone → program progress
+  const [milestones] = useLocalState<Milestone[]>("milestones", mockMilestones);
+  const [taskList] = useLocalState<Task[]>("tasks", mockTasks);
   const [live, setLive] = useState(false);
 
   const storedName = getStoredUser<any>()?.name ?? currentUser.name;
@@ -282,33 +291,39 @@ export default function DashboardPage() {
             action={<Link href="/programs" className="text-[11px] text-royal-400">{t("View all")}</Link>}
           />
           <div className="space-y-3">
-            {progs.slice(0, 4).map((p) => (
+            {progs.slice(0, 4).map((p) => {
+              const pmTotal = milestones.filter((m) => m.programId === p.id).length;
+              const prog = programProgress(p, milestones, taskList);
+              const stat = programStatus(p, milestones, taskList);
+              const mDone = pmTotal > 0 ? programMilestonesDone(p, milestones, taskList) : p.milestonesDone;
+              return (
               <div key={p.id} className="flex items-center gap-4 rounded-xl border p-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{p.name}</span>
                     <Badge
                       tone={
-                        p.status === "On Track" || p.status === "Completed"
+                        stat === "On Track" || stat === "Completed"
                           ? "green"
-                          : p.status === "At Risk"
+                          : stat === "At Risk"
                           ? "amber"
                           : "red"
                       }
                     >
-                      {p.status}
+                      {stat}
                     </Badge>
                   </div>
                   <div className="mt-1 text-[11px] text-[var(--muted)]">
-                    {p.id} · {p.owner} · {p.milestonesDone}/{p.milestones} milestones
+                    {p.id} · {p.owner} · {mDone}/{pmTotal || p.milestones} milestones
                   </div>
                   <div className="mt-2">
-                    <ProgressBar value={p.progress} tone={p.risk === "High" ? "red" : p.risk === "Medium" ? "gold" : "blue"} />
+                    <ProgressBar value={prog} tone={prog === 100 ? "green" : p.risk === "High" ? "red" : p.risk === "Medium" ? "gold" : "blue"} />
                   </div>
                 </div>
-                <div className="w-10 text-right text-sm font-semibold">{p.progress}%</div>
+                <div className="w-10 text-right text-sm font-semibold">{prog}%</div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
 

@@ -17,6 +17,7 @@ import {
 } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
+import { milestoneProgress, milestoneStatus, programMilestonesDone } from "@/lib/rollup";
 
 const mstTone: Record<MilestoneStatus, "gray" | "amber" | "red" | "green"> = { Planned: "gray", "In Progress": "amber", "At Risk": "red", Done: "green" };
 const progStatusTone: Record<Program["status"], "green" | "amber" | "red" | "blue"> = { "On Track": "green", Completed: "blue", "At Risk": "amber", Delayed: "red" };
@@ -74,16 +75,20 @@ export default function CascadePage() {
   const renderMilestone = (m: Milestone, parent: string) => {
     const path = `${parent}/${m.id}`;
     const mtasks = tasksOfMilestone(m.id);
+    const ms = milestoneStatus(m, tasks);
+    const mp = milestoneProgress(m, tasks);
+    const mtDone = mtasks.filter((tk) => tk.status === "Done").length;
     const isOpen = open[path] ?? true;
     return (
       <div key={path} className="pl-5">
         <button onClick={() => toggle(path)} className="flex w-full items-center gap-2 py-1.5 text-left text-[12px]">
           {mtasks.length > 0 ? <Chevron open={isOpen} /> : <span className="w-3.5 shrink-0" />}
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: m.status === "Done" ? "#10b981" : m.status === "At Risk" ? "#f43f5e" : m.status === "In Progress" ? "#e5aa26" : "#94a3b8" }} />
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: ms === "Done" ? "#10b981" : ms === "At Risk" ? "#f43f5e" : ms === "In Progress" ? "#e5aa26" : "#94a3b8" }} />
           <span className="min-w-0 flex-1 truncate font-medium">{m.name}</span>
-          <Badge tone={mstTone[m.status]}>{t(m.status)}</Badge>
-          <span className="w-16 shrink-0"><ProgressBar value={m.progress} tone={m.status === "Done" ? "green" : m.status === "At Risk" ? "red" : "gold"} /></span>
-          <span className="shrink-0 text-[10px] text-[var(--muted)]">{mtasks.length} {t("tasks")}</span>
+          <Badge tone={mstTone[ms]}>{t(ms)}</Badge>
+          <span className="w-16 shrink-0"><ProgressBar value={mp} tone={ms === "Done" ? "green" : ms === "At Risk" ? "red" : "gold"} /></span>
+          <span className="w-8 shrink-0 text-right text-[10px] font-semibold">{mp}%</span>
+          <span className="shrink-0 text-[10px] text-[var(--muted)]">{mtDone}/{mtasks.length} {t("tasks")}</span>
         </button>
         {isOpen && mtasks.map((tk) => renderTask(tk, `${path}/${tk.id}`))}
       </div>
@@ -103,7 +108,7 @@ export default function CascadePage() {
           <span className="min-w-0 flex-1 truncate font-semibold">{p.name}</span>
           <Badge tone={progStatusTone[p.status]}>{t(p.status)}</Badge>
           <span className="shrink-0 text-[10px] text-[var(--muted)]">
-            {pm.filter((m) => m.status === "Done").length}/{pm.length} {t("Milestones")}
+            {programMilestonesDone(p, milestones, tasks)}/{pm.length} {t("Milestones")}
           </span>
         </button>
         {isOpen && (
