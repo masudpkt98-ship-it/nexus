@@ -4,7 +4,17 @@ import React, { useEffect, useState } from "react";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, Badge, ProgressBar, Avatar } from "@/components/ui";
 import { Icon } from "@/components/Icons";
-import { programs as mockPrograms, type Program } from "@/lib/data";
+import {
+  programs as mockPrograms,
+  milestones as mockMilestones,
+  tasks as mockTasks,
+  strategicGoals,
+  objectives,
+  type Program,
+  type Milestone,
+  type MilestoneStatus,
+  type Task,
+} from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import { apiGet, apiSend, getToken } from "@/lib/api";
@@ -13,42 +23,27 @@ import { LiveBadge } from "@/components/LiveBadge";
 type Status = Program["status"];
 type Risk = Program["risk"];
 
-const statusTone: Record<Status, "green" | "amber" | "red" | "blue"> = {
-  "On Track": "green",
-  Completed: "blue",
-  "At Risk": "amber",
-  Delayed: "red",
-};
+const statusTone: Record<Status, "green" | "amber" | "red" | "blue"> = { "On Track": "green", Completed: "blue", "At Risk": "amber", Delayed: "red" };
 const riskTone: Record<Risk, "green" | "amber" | "red"> = { Low: "green", Medium: "amber", High: "red" };
+const mstTone: Record<MilestoneStatus, "gray" | "amber" | "red" | "green"> = { Planned: "gray", "In Progress": "amber", "At Risk": "red", Done: "green" };
 const STATUSES: Status[] = ["On Track", "At Risk", "Delayed", "Completed"];
 const RISKS: Risk[] = ["Low", "Medium", "High"];
+const MST_STATUSES: MilestoneStatus[] = ["Planned", "In Progress", "At Risk", "Done"];
 
-const inputCls =
-  "mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500";
+const inputCls = "mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500";
 const labelCls = "block text-[11px] font-medium text-[var(--muted)]";
+const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
 let seq = 0;
-const nextId = () => {
+const newId = (p: string) => {
   try {
-    return `PRG-${crypto.randomUUID().slice(0, 4).toUpperCase()}`;
+    return `${p}-${crypto.randomUUID().slice(0, 5).toUpperCase()}`;
   } catch {
-    return `PRG-${++seq}${Date.now().toString().slice(-3)}`;
+    return `${p}-${++seq}${Date.now().toString().slice(-3)}`;
   }
 };
 
-function Modal({
-  title,
-  onClose,
-  onSave,
-  saveLabel,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  onSave: () => void;
-  saveLabel: string;
-  children: React.ReactNode;
-}) {
+function Modal({ title, onClose, onSave, saveLabel, children }: { title: string; onClose: () => void; onSave: () => void; saveLabel: string; children: React.ReactNode }) {
   const { t } = useI18n();
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -61,7 +56,7 @@ function Modal({
             ✕
           </button>
         </div>
-        <div className="space-y-3 p-5">{children}</div>
+        <div className="max-h-[70vh] space-y-3 overflow-y-auto p-5">{children}</div>
         <div className="flex justify-end gap-2 border-t p-3">
           <Btn variant="ghost" onClick={onClose}>
             {t("Cancel")}
@@ -75,56 +70,34 @@ function Modal({
   );
 }
 
-function RowActions({ onEdit, onDelete, label }: { onEdit: () => void; onDelete: () => void; label: string }) {
+function RowActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
   const { t } = useI18n();
   return (
     <div className="flex items-center gap-2">
-      <button onClick={onEdit} aria-label={`Edit ${label}`} title={t("Edit")} className="text-[11px] font-medium text-[var(--muted)] opacity-0 transition hover:text-royal-400 group-hover:opacity-100">
+      <button onClick={onEdit} title={t("Edit")} className="text-[11px] font-medium text-[var(--muted)] opacity-0 transition hover:text-royal-400 group-hover:opacity-100">
         {t("Edit")}
       </button>
-      <button onClick={onDelete} aria-label={`Delete ${label}`} title={t("Delete")} className="text-[11px] text-[var(--muted)] opacity-0 transition hover:text-rose-400 group-hover:opacity-100">
+      <button onClick={onDelete} title={t("Delete")} className="text-[11px] text-[var(--muted)] opacity-0 transition hover:text-rose-400 group-hover:opacity-100">
         ✕
       </button>
     </div>
   );
 }
 
-type Form = {
-  open: boolean;
-  id: string | null;
-  name: string;
-  owner: string;
-  status: Status;
-  risk: Risk;
-  progress: number;
-  budget: number;
-  spent: number;
-  milestones: number;
-  milestonesDone: number;
-  start: string;
-  end: string;
-};
-const emptyForm: Form = {
-  open: false,
-  id: null,
-  name: "",
-  owner: "",
-  status: "On Track",
-  risk: "Low",
-  progress: 0,
-  budget: 0,
-  spent: 0,
-  milestones: 0,
-  milestonesDone: 0,
-  start: "",
-  end: "",
-};
+type PForm = { open: boolean; id: string | null; name: string; owner: string; status: Status; risk: Risk; progress: number; budget: number; spent: number; start: string; end: string; goalIds: string[]; okrIds: string[] };
+const emptyProgram: PForm = { open: false, id: null, name: "", owner: "", status: "On Track", risk: "Low", progress: 0, budget: 0, spent: 0, start: "", end: "", goalIds: [], okrIds: [] };
+type MForm = { open: boolean; id: string | null; programId: string; name: string; due: string; status: MilestoneStatus; progress: number };
+const emptyMilestone: MForm = { open: false, id: null, programId: "", name: "", due: "", status: "Planned", progress: 0 };
 
 export default function ProgramsPage() {
   const { t } = useI18n();
   const [rows, setRows] = useLocalState<Program[]>("programs", mockPrograms);
+  const [miles, setMiles] = useLocalState<Milestone[]>("milestones", mockMilestones);
+  const [taskList] = useLocalState<Task[]>("tasks", mockTasks);
   const [live, setLive] = useState(false);
-  const [form, setForm] = useState<Form>(emptyForm);
+  const [form, setForm] = useState<PForm>(emptyProgram);
+  const [mForm, setMForm] = useState<MForm>(emptyMilestone);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!getToken()) return;
@@ -147,6 +120,11 @@ export default function ProgramsPage() {
     if (getToken()) apiSend(method, path, body).catch(() => {});
   };
 
+  const milesOf = (pid: string) => miles.filter((m) => m.programId === pid);
+  const taskCount = (mid: string) => taskList.filter((tk) => tk.milestoneId === mid).length;
+  const goalTitle = (id: string) => strategicGoals.find((g) => g.id === id)?.title ?? id;
+  const okrTitle = (id: string) => objectives.find((o) => o.id === id)?.title ?? id;
+
   const totalBudget = rows.reduce((s, p) => s + p.budget, 0);
   const totalSpent = rows.reduce((s, p) => s + p.spent, 0);
   const summary = [
@@ -156,56 +134,49 @@ export default function ProgramsPage() {
     { label: "Budget Utilization", value: `${totalBudget ? Math.round((totalSpent / totalBudget) * 100) : 0}%`, tone: "gold" },
   ] as const;
 
-  const openCreate = () => setForm({ ...emptyForm, open: true });
+  // --- program CRUD ---
+  const openCreate = () => setForm({ ...emptyProgram, open: true });
   const openEdit = (p: Program) =>
-    setForm({
-      open: true,
-      id: p.id,
-      name: p.name,
-      owner: p.owner,
-      status: p.status,
-      risk: p.risk,
-      progress: p.progress,
-      budget: p.budget,
-      spent: p.spent,
-      milestones: p.milestones,
-      milestonesDone: p.milestonesDone,
-      start: p.start,
-      end: p.end,
-    });
-  const close = () => setForm(emptyForm);
-  const save = () => {
+    setForm({ open: true, id: p.id, name: p.name, owner: p.owner, status: p.status, risk: p.risk, progress: p.progress, budget: p.budget, spent: p.spent, start: p.start, end: p.end, goalIds: p.goalIds ?? [], okrIds: p.okrIds ?? [] });
+  const closeForm = () => setForm(emptyProgram);
+  const saveForm = () => {
     const name = form.name.trim();
     if (!name) return;
-    const body = {
-      name,
-      owner: form.owner.trim() || "You",
-      status: form.status,
-      risk: form.risk,
-      progress: form.progress,
-      budget: form.budget,
-      spent: form.spent,
-      milestones: form.milestones,
-      milestonesDone: form.milestonesDone,
-      start: form.start || new Date().toISOString().slice(0, 10),
-      end: form.end || new Date().toISOString().slice(0, 10),
-    };
+    const today = new Date().toISOString().slice(0, 10);
+    const body = { name, owner: form.owner.trim() || "You", status: form.status, risk: form.risk, progress: form.progress, budget: form.budget, spent: form.spent, start: form.start || today, end: form.end || today, milestones: 0, milestonesDone: 0, goalIds: form.goalIds, okrIds: form.okrIds };
     if (form.id == null) {
-      const p: Program = { id: nextId(), ...body };
+      const p: Program = { id: newId("PRG"), ...body };
       setRows((r) => [...r, p]);
       sync("POST", "/programs", p);
     } else {
       setRows((r) => r.map((x) => (x.id === form.id ? { ...x, ...body } : x)));
       sync("PUT", `/programs/${form.id}`, body);
     }
-    close();
+    closeForm();
   };
-  const remove = (p: Program) => {
+  const removeProgram = (p: Program) => {
     setRows((r) => r.filter((x) => x.id !== p.id));
+    setMiles((m) => m.filter((x) => x.programId !== p.id)); // cascade delete milestones
     sync("DELETE", `/programs/${p.id}`);
   };
+  const toggleLink = (key: "goalIds" | "okrIds", id: string) =>
+    setForm((f) => ({ ...f, [key]: f[key].includes(id) ? f[key].filter((x) => x !== id) : [...f[key], id] }));
+
+  // --- milestone CRUD ---
+  const openMCreate = (pid: string) => setMForm({ ...emptyMilestone, open: true, programId: pid });
+  const openMEdit = (m: Milestone) => setMForm({ open: true, id: m.id, programId: m.programId, name: m.name, due: m.due, status: m.status, progress: m.progress });
+  const saveM = () => {
+    const name = mForm.name.trim();
+    if (!name) return;
+    const body = { programId: mForm.programId, name, due: mForm.due || new Date().toISOString().slice(0, 10), status: mForm.status, progress: clamp(mForm.progress, 0, 100) };
+    if (mForm.id == null) setMiles((m) => [...m, { id: newId("mst"), ...body }]);
+    else setMiles((m) => m.map((x) => (x.id === mForm.id ? { ...x, ...body } : x)));
+    setMForm(emptyMilestone);
+  };
+  const removeM = (m: Milestone) => setMiles((r) => r.filter((x) => x.id !== m.id));
 
   const fmtDate = (d: string) => (d ? new Date(d).toLocaleDateString("en", { month: "short", year: "2-digit" }) : "—");
+  const fmtDay = (d: string) => (d ? new Date(d).toLocaleDateString("en", { day: "numeric", month: "short" }) : "—");
 
   return (
     <>
@@ -226,83 +197,125 @@ export default function ProgramsPage() {
         {summary.map((s) => (
           <Card key={s.label}>
             <div className="text-xs text-[var(--muted)]">{t(s.label)}</div>
-            <div
-              className={`mt-1 text-2xl font-bold ${
-                s.tone === "green" ? "text-emerald-500" : s.tone === "red" ? "text-rose-500" : s.tone === "gold" ? "gold-gradient" : ""
-              }`}
-            >
-              {s.value}
-            </div>
+            <div className={`mt-1 text-2xl font-bold ${s.tone === "green" ? "text-emerald-500" : s.tone === "red" ? "text-rose-500" : s.tone === "gold" ? "gold-gradient" : ""}`}>{s.value}</div>
           </Card>
         ))}
       </div>
 
       <div className="mt-4 space-y-3">
-        {rows.map((p) => (
-          <Card key={p.id} dir="auto" className="group hover:border-royal-500/40 transition">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="min-w-[220px] flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{p.name}</span>
-                  <Badge tone={statusTone[p.status]}>{t(p.status)}</Badge>
+        {rows.map((p) => {
+          const pm = milesOf(p.id);
+          const mDone = pm.filter((m) => m.status === "Done").length;
+          const isOpen = !!expanded[p.id];
+          return (
+            <Card key={p.id} dir="auto" className="group">
+              <div className="flex flex-wrap items-center gap-4">
+                <button onClick={() => setExpanded((e) => ({ ...e, [p.id]: !e[p.id] }))} className="shrink-0 text-[var(--muted)] transition hover:text-royal-400" aria-label="Toggle milestones">
+                  <Icon.chevron className={`h-4 w-4 transition ${isOpen ? "rotate-90" : ""}`} />
+                </button>
+                <div className="min-w-[220px] flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold">{p.name}</span>
+                    <Badge tone={statusTone[p.status]}>{t(p.status)}</Badge>
+                    {(p.goalIds ?? []).map((g) => (
+                      <span key={g} title={goalTitle(g)}>
+                        <Badge tone="purple">
+                          <Icon.strategy className="h-3 w-3" /> {goalTitle(g).slice(0, 22)}
+                        </Badge>
+                      </span>
+                    ))}
+                    {(p.okrIds ?? []).map((o) => (
+                      <span key={o} title={okrTitle(o)}>
+                        <Badge tone="gold">OKR</Badge>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="mt-1 flex items-center gap-2 text-[11px] text-[var(--muted)]">
+                    <Avatar initials={p.owner.split(" ").map((s) => s[0]).join("").slice(0, 2)} />
+                    {p.id} · {t(p.owner)}
+                  </div>
                 </div>
-                <div className="mt-1 flex items-center gap-2 text-[11px] text-[var(--muted)]">
-                  <Avatar initials={p.owner.split(" ").map((s) => s[0]).join("").slice(0, 2)} />
-                  {p.id} · {t(p.owner)}
+
+                <div className="w-40">
+                  <div className="mb-1 flex justify-between text-[11px]">
+                    <span className="text-[var(--muted)]">{t("Progress")}</span>
+                    <span className="font-semibold">{p.progress}%</span>
+                  </div>
+                  <ProgressBar value={p.progress} tone={riskTone[p.risk] === "red" ? "red" : riskTone[p.risk] === "amber" ? "gold" : "blue"} />
                 </div>
-              </div>
 
-              <div className="w-40">
-                <div className="mb-1 flex justify-between text-[11px]">
-                  <span className="text-[var(--muted)]">{t("Progress")}</span>
-                  <span className="font-semibold">{p.progress}%</span>
+                <button onClick={() => setExpanded((e) => ({ ...e, [p.id]: true }))} className="text-center transition hover:text-royal-400">
+                  <div className="text-[10px] text-[var(--muted)]">{t("Milestones")}</div>
+                  <div className="text-sm font-semibold">
+                    {mDone}/{pm.length}
+                  </div>
+                </button>
+
+                <div className="text-center">
+                  <div className="text-[10px] text-[var(--muted)]">{t("Budget")}</div>
+                  <div className="text-sm font-semibold">
+                    ${p.spent}k / ${p.budget}k
+                  </div>
                 </div>
-                <ProgressBar value={p.progress} tone={riskTone[p.risk] === "red" ? "red" : riskTone[p.risk] === "amber" ? "gold" : "blue"} />
-              </div>
 
-              <div className="text-center">
-                <div className="text-[10px] text-[var(--muted)]">{t("Milestones")}</div>
-                <div className="text-sm font-semibold">
-                  {p.milestonesDone}/{p.milestones}
+                <div className="text-center">
+                  <div className="text-[10px] text-[var(--muted)]">{t("Risk")}</div>
+                  <Badge tone={riskTone[p.risk]}>{t(p.risk)}</Badge>
                 </div>
-              </div>
 
-              <div className="text-center">
-                <div className="text-[10px] text-[var(--muted)]">{t("Budget")}</div>
-                <div className="text-sm font-semibold">
-                  ${p.spent}k / ${p.budget}k
+                <div className="text-right text-[11px] text-[var(--muted)]">
+                  <div>{fmtDate(p.start)}</div>
+                  <div>→ {fmtDate(p.end)}</div>
                 </div>
+
+                <RowActions onEdit={() => openEdit(p)} onDelete={() => removeProgram(p)} />
               </div>
 
-              <div className="text-center">
-                <div className="text-[10px] text-[var(--muted)]">{t("Risk")}</div>
-                <Badge tone={riskTone[p.risk]}>{t(p.risk)}</Badge>
-              </div>
-
-              <div className="text-right text-[11px] text-[var(--muted)]">
-                <div>{fmtDate(p.start)}</div>
-                <div>→ {fmtDate(p.end)}</div>
-              </div>
-
-              <RowActions onEdit={() => openEdit(p)} onDelete={() => remove(p)} label={p.name} />
-            </div>
-          </Card>
-        ))}
-        {rows.length === 0 && (
-          <Card className="text-center text-[12px] text-[var(--muted)]">{t("No programs yet. Add one.")}</Card>
-        )}
+              {isOpen && (
+                <div className="mt-3 border-t pt-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{t("Milestones")}</span>
+                    <button onClick={() => openMCreate(p.id)} className="inline-flex items-center gap-1 text-[11px] font-medium text-royal-400 transition hover:text-royal-300">
+                      <Icon.plus className="h-3.5 w-3.5" /> {t("New Milestone")}
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {pm.map((m) => (
+                      <div key={m.id} className="group/m flex flex-wrap items-center gap-3 rounded-lg border p-2.5">
+                        <Badge tone={mstTone[m.status]}>{t(m.status)}</Badge>
+                        <span className="min-w-[160px] flex-1 text-[13px] font-medium">{m.name}</span>
+                        <div className="w-28">
+                          <ProgressBar value={m.progress} tone={m.status === "Done" ? "green" : m.status === "At Risk" ? "red" : "gold"} />
+                        </div>
+                        <span className="text-[11px] text-[var(--muted)]">{fmtDay(m.due)}</span>
+                        <span className="inline-flex items-center gap-1 text-[11px] text-[var(--muted)]">
+                          <Icon.task className="h-3.5 w-3.5" /> {taskCount(m.id)} {t("tasks")}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => openMEdit(m)} title={t("Edit")} className="text-[11px] font-medium text-[var(--muted)] opacity-0 transition hover:text-royal-400 group-hover/m:opacity-100">
+                            {t("Edit")}
+                          </button>
+                          <button onClick={() => removeM(m)} title={t("Delete")} className="text-[11px] text-[var(--muted)] opacity-0 transition hover:text-rose-400 group-hover/m:opacity-100">
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {pm.length === 0 && <p className="py-2 text-center text-[12px] text-[var(--muted)]">{t("No milestones yet. Add one.")}</p>}
+                  </div>
+                </div>
+              )}
+            </Card>
+          );
+        })}
+        {rows.length === 0 && <Card className="text-center text-[12px] text-[var(--muted)]">{t("No programs yet. Add one.")}</Card>}
       </div>
 
       {form.open && (
-        <Modal title={form.id == null ? t("New Program") : t("Edit Program")} onClose={close} onSave={save} saveLabel={form.id == null ? t("Create") : t("Save")}>
+        <Modal title={form.id == null ? t("New Program") : t("Edit Program")} onClose={closeForm} onSave={saveForm} saveLabel={form.id == null ? t("Create") : t("Save")}>
           <label className={labelCls}>
             {t("Name")}
-            <input
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder={t("e.g. Competency Digital Transformation")}
-              className={inputCls}
-            />
+            <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t("e.g. Competency Digital Transformation")} className={inputCls} />
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className={labelCls}>
@@ -312,11 +325,7 @@ export default function ProgramsPage() {
             <label className={labelCls}>
               {t("Status")}
               <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as Status }))} className={`${inputCls} text-[var(--text)]`}>
-                {STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {t(s)}
-                  </option>
-                ))}
+                {STATUSES.map((s) => (<option key={s} value={s}>{t(s)}</option>))}
               </select>
             </label>
           </div>
@@ -324,11 +333,7 @@ export default function ProgramsPage() {
             <label className={labelCls}>
               {t("Risk")}
               <select value={form.risk} onChange={(e) => setForm((f) => ({ ...f, risk: e.target.value as Risk }))} className={`${inputCls} text-[var(--text)]`}>
-                {RISKS.map((r) => (
-                  <option key={r} value={r}>
-                    {t(r)}
-                  </option>
-                ))}
+                {RISKS.map((r) => (<option key={r} value={r}>{t(r)}</option>))}
               </select>
             </label>
             <label className={labelCls}>
@@ -348,22 +353,59 @@ export default function ProgramsPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <label className={labelCls}>
-              {t("Milestones")}
-              <input type="number" min={0} value={form.milestones} onChange={(e) => setForm((f) => ({ ...f, milestones: Number(e.target.value) }))} className={inputCls} />
-            </label>
-            <label className={labelCls}>
-              {t("Milestones done")}
-              <input type="number" min={0} value={form.milestonesDone} onChange={(e) => setForm((f) => ({ ...f, milestonesDone: Number(e.target.value) }))} className={inputCls} />
-            </label>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <label className={labelCls}>
               {t("Start")}
               <input type="date" value={form.start} onChange={(e) => setForm((f) => ({ ...f, start: e.target.value }))} className={`${inputCls} text-[var(--text)]`} />
             </label>
             <label className={labelCls}>
               {t("End")}
               <input type="date" value={form.end} onChange={(e) => setForm((f) => ({ ...f, end: e.target.value }))} className={`${inputCls} text-[var(--text)]`} />
+            </label>
+          </div>
+          <div>
+            <div className={labelCls}>{t("Linked Goals")}</div>
+            <div className="mt-1 space-y-1">
+              {strategicGoals.map((g) => (
+                <label key={g.id} className="flex items-center gap-2 text-[12px]">
+                  <input type="checkbox" checked={form.goalIds.includes(g.id)} onChange={() => toggleLink("goalIds", g.id)} className="accent-royal-500" />
+                  {g.title}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className={labelCls}>{t("Linked OKR")}</div>
+            <div className="mt-1 space-y-1">
+              {objectives.map((o) => (
+                <label key={o.id} className="flex items-center gap-2 text-[12px]">
+                  <input type="checkbox" checked={form.okrIds.includes(o.id)} onChange={() => toggleLink("okrIds", o.id)} className="accent-royal-500" />
+                  {o.title}
+                </label>
+              ))}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {mForm.open && (
+        <Modal title={mForm.id == null ? t("New Milestone") : t("Edit Milestone")} onClose={() => setMForm(emptyMilestone)} onSave={saveM} saveLabel={mForm.id == null ? t("Create") : t("Save")}>
+          <label className={labelCls}>
+            {t("Name")}
+            <input value={mForm.name} onChange={(e) => setMForm((f) => ({ ...f, name: e.target.value }))} placeholder={t("e.g. KPI cascade automation")} className={inputCls} />
+          </label>
+          <div className="grid grid-cols-3 gap-3">
+            <label className={labelCls}>
+              {t("Status")}
+              <select value={mForm.status} onChange={(e) => setMForm((f) => ({ ...f, status: e.target.value as MilestoneStatus }))} className={`${inputCls} text-[var(--text)]`}>
+                {MST_STATUSES.map((s) => (<option key={s} value={s}>{t(s)}</option>))}
+              </select>
+            </label>
+            <label className={labelCls}>
+              {t("Progress (%)")}
+              <input type="number" min={0} max={100} value={mForm.progress} onChange={(e) => setMForm((f) => ({ ...f, progress: Number(e.target.value) }))} className={inputCls} />
+            </label>
+            <label className={labelCls}>
+              {t("Due")}
+              <input type="date" value={mForm.due} onChange={(e) => setMForm((f) => ({ ...f, due: e.target.value }))} className={`${inputCls} text-[var(--text)]`} />
             </label>
           </div>
         </Modal>

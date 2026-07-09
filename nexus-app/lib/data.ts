@@ -248,14 +248,16 @@ export interface Program {
   risk: "Low" | "Medium" | "High";
   milestones: number;
   milestonesDone: number;
+  goalIds?: string[]; // linked Strategic Goals (strategicGoals.id)
+  okrIds?: string[]; // linked OKR objectives (objectives.id)
 }
 
 export const programs: Program[] = [
-  { id: "PRG-01", name: "Competency Digital Transformation", owner: "Arif Wibowo", status: "On Track", progress: 72, budget: 850, spent: 540, start: "2026-01-10", end: "2026-11-30", risk: "Low", milestones: 8, milestonesDone: 5 },
-  { id: "PRG-02", name: "Leadership Development 2026", owner: "Dimas Prakoso", status: "At Risk", progress: 48, budget: 420, spent: 300, start: "2026-02-01", end: "2026-09-15", risk: "Medium", milestones: 6, milestonesDone: 2 },
-  { id: "PRG-03", name: "Performance Automation Suite", owner: "Sinta Larasati", status: "On Track", progress: 66, budget: 610, spent: 380, start: "2026-03-05", end: "2026-12-20", risk: "Low", milestones: 7, milestonesDone: 4 },
-  { id: "PRG-04", name: "Customer Experience Uplift", owner: "Bagus Hartono", status: "Delayed", progress: 35, budget: 300, spent: 210, start: "2026-01-20", end: "2026-08-30", risk: "High", milestones: 5, milestonesDone: 1 },
-  { id: "PRG-05", name: "Knowledge Base Modernization", owner: "Rani Kusuma", status: "Completed", progress: 100, budget: 180, spent: 172, start: "2025-09-01", end: "2026-03-31", risk: "Low", milestones: 4, milestonesDone: 4 },
+  { id: "PRG-01", name: "Competency Digital Transformation", owner: "Arif Wibowo", status: "On Track", progress: 72, budget: 850, spent: 540, start: "2026-01-10", end: "2026-11-30", risk: "Low", milestones: 8, milestonesDone: 5, goalIds: ["sg-1"], okrIds: ["okr-1"] },
+  { id: "PRG-02", name: "Leadership Development 2026", owner: "Dimas Prakoso", status: "At Risk", progress: 48, budget: 420, spent: 300, start: "2026-02-01", end: "2026-09-15", risk: "Medium", milestones: 6, milestonesDone: 2, goalIds: ["sg-1"], okrIds: [] },
+  { id: "PRG-03", name: "Performance Automation Suite", owner: "Sinta Larasati", status: "On Track", progress: 66, budget: 610, spent: 380, start: "2026-03-05", end: "2026-12-20", risk: "Low", milestones: 7, milestonesDone: 4, goalIds: ["sg-2"], okrIds: ["okr-2"] },
+  { id: "PRG-04", name: "Customer Experience Uplift", owner: "Bagus Hartono", status: "Delayed", progress: 35, budget: 300, spent: 210, start: "2026-01-20", end: "2026-08-30", risk: "High", milestones: 5, milestonesDone: 1, goalIds: ["sg-3"], okrIds: ["okr-3"] },
+  { id: "PRG-05", name: "Knowledge Base Modernization", owner: "Rani Kusuma", status: "Completed", progress: 100, budget: 180, spent: 172, start: "2025-09-01", end: "2026-03-31", risk: "Low", milestones: 4, milestonesDone: 4, goalIds: [], okrIds: [] },
 ];
 
 // ---------------------------------------------------------------------------
@@ -274,19 +276,20 @@ export interface Task {
   avatar: string;
   due: string;
   program: string;
+  milestoneId?: string; // linked Milestone (milestones.id); undefined = additional task
   checklist: { total: number; done: number };
   comments: number;
   tags: string[];
 }
 
 export const tasks: Task[] = [
-  { id: "T-101", title: "Draft Q3 KPI cascade for Performance team", status: "In Progress", priority: "High", assignee: "Sinta L.", avatar: "SL", due: "2026-07-10", program: "PRG-03", checklist: { total: 6, done: 4 }, comments: 3, tags: ["KPI", "Q3"] },
-  { id: "T-102", title: "Competency gap analysis — Analytics", status: "Review", priority: "Critical", assignee: "Rani K.", avatar: "RK", due: "2026-07-08", program: "PRG-01", checklist: { total: 8, done: 8 }, comments: 5, tags: ["Competency"] },
-  { id: "T-103", title: "Finalize Leadership curriculum module 3", status: "Backlog", priority: "Medium", assignee: "Dimas P.", avatar: "DP", due: "2026-07-18", program: "PRG-02", checklist: { total: 5, done: 1 }, comments: 1, tags: ["Training"] },
-  { id: "T-104", title: "Migrate SOP library to new KM system", status: "In Progress", priority: "Medium", assignee: "Rani K.", avatar: "RK", due: "2026-07-14", program: "PRG-05", checklist: { total: 10, done: 7 }, comments: 2, tags: ["Knowledge"] },
-  { id: "T-105", title: "Configure SLA rules for service requests", status: "Done", priority: "High", assignee: "Sinta L.", avatar: "SL", due: "2026-07-02", program: "PRG-03", checklist: { total: 4, done: 4 }, comments: 0, tags: ["SLA"] },
-  { id: "T-106", title: "Executive dashboard traffic-light logic", status: "In Progress", priority: "High", assignee: "Arif W.", avatar: "AW", due: "2026-07-11", program: "PRG-03", checklist: { total: 7, done: 3 }, comments: 4, tags: ["Dashboard"] },
-  { id: "T-107", title: "CX survey redesign & NPS mapping", status: "Backlog", priority: "Critical", assignee: "Bagus H.", avatar: "BH", due: "2026-07-20", program: "PRG-04", checklist: { total: 6, done: 0 }, comments: 2, tags: ["CX", "NPS"] },
+  { id: "T-101", title: "Draft Q3 KPI cascade for Performance team", status: "In Progress", priority: "High", assignee: "Sinta L.", avatar: "SL", due: "2026-07-10", program: "PRG-03", milestoneId: "mst-301", checklist: { total: 6, done: 4 }, comments: 3, tags: ["KPI", "Q3"] },
+  { id: "T-102", title: "Competency gap analysis — Analytics", status: "Review", priority: "Critical", assignee: "Rani K.", avatar: "RK", due: "2026-07-08", program: "PRG-01", milestoneId: "mst-102", checklist: { total: 8, done: 8 }, comments: 5, tags: ["Competency"] },
+  { id: "T-103", title: "Finalize Leadership curriculum module 3", status: "Backlog", priority: "Medium", assignee: "Dimas P.", avatar: "DP", due: "2026-07-18", program: "PRG-02", milestoneId: "mst-201", checklist: { total: 5, done: 1 }, comments: 1, tags: ["Training"] },
+  { id: "T-104", title: "Migrate SOP library to new KM system", status: "In Progress", priority: "Medium", assignee: "Rani K.", avatar: "RK", due: "2026-07-14", program: "PRG-05", milestoneId: "mst-501", checklist: { total: 10, done: 7 }, comments: 2, tags: ["Knowledge"] },
+  { id: "T-105", title: "Configure SLA rules for service requests", status: "Done", priority: "High", assignee: "Sinta L.", avatar: "SL", due: "2026-07-02", program: "PRG-03", milestoneId: "mst-302", checklist: { total: 4, done: 4 }, comments: 0, tags: ["SLA"] },
+  { id: "T-106", title: "Executive dashboard traffic-light logic", status: "In Progress", priority: "High", assignee: "Arif W.", avatar: "AW", due: "2026-07-11", program: "PRG-03", milestoneId: "mst-303", checklist: { total: 7, done: 3 }, comments: 4, tags: ["Dashboard"] },
+  { id: "T-107", title: "CX survey redesign & NPS mapping", status: "Backlog", priority: "Critical", assignee: "Bagus H.", avatar: "BH", due: "2026-07-20", program: "PRG-04", milestoneId: "mst-401", checklist: { total: 6, done: 0 }, comments: 2, tags: ["CX", "NPS"] },
   { id: "T-108", title: "Approve training budget PRG-02", status: "Review", priority: "High", assignee: "Arif W.", avatar: "AW", due: "2026-07-09", program: "PRG-02", checklist: { total: 3, done: 2 }, comments: 6, tags: ["Approval"] },
   { id: "T-109", title: "Publish IDP templates for supervisors", status: "Done", priority: "Low", assignee: "Dimas P.", avatar: "DP", due: "2026-06-30", program: "PRG-01", checklist: { total: 5, done: 5 }, comments: 1, tags: ["IDP"] },
   { id: "T-110", title: "Set up Redis cache for analytics API", status: "Backlog", priority: "Medium", assignee: "Rani K.", avatar: "RK", due: "2026-07-22", program: "PRG-03", checklist: { total: 4, done: 0 }, comments: 0, tags: ["Tech"] },
@@ -555,4 +558,31 @@ export const trainingSessions: TrainingSession[] = [
   { id: "ts-2", name: "Advanced Analytics Certification", date: "Wed · Jul 15 · 13:30", seats: "18 / 25" },
   { id: "ts-3", name: "Supervisor Coaching Clinic", date: "Fri · Jul 17 · 10:00", seats: "9 / 15" },
   { id: "ts-4", name: "Executive Presence Workshop", date: "Tue · Jul 21 · 14:00", seats: "6 / 12" },
+];
+
+// --- Milestones (owned by a Program; tasks link up to a milestone) ----------
+
+export type MilestoneStatus = "Planned" | "In Progress" | "At Risk" | "Done";
+
+export interface Milestone {
+  id: string;
+  programId: string;
+  name: string;
+  due: string; // ISO date
+  status: MilestoneStatus;
+  progress: number;
+}
+
+export const milestones: Milestone[] = [
+  { id: "mst-101", programId: "PRG-01", name: "Competency matrix rollout", due: "2026-04-30", status: "Done", progress: 100 },
+  { id: "mst-102", programId: "PRG-01", name: "Assess 100% of staff", due: "2026-08-15", status: "In Progress", progress: 62 },
+  { id: "mst-103", programId: "PRG-01", name: "Launch 3 development programs", due: "2026-11-15", status: "Planned", progress: 20 },
+  { id: "mst-201", programId: "PRG-02", name: "Curriculum design", due: "2026-04-20", status: "Done", progress: 100 },
+  { id: "mst-202", programId: "PRG-02", name: "Pilot cohort", due: "2026-07-30", status: "In Progress", progress: 45 },
+  { id: "mst-301", programId: "PRG-03", name: "KPI cascade automation", due: "2026-07-25", status: "In Progress", progress: 70 },
+  { id: "mst-302", programId: "PRG-03", name: "SLA rules engine", due: "2026-06-30", status: "Done", progress: 100 },
+  { id: "mst-303", programId: "PRG-03", name: "Executive dashboard live", due: "2026-10-10", status: "Planned", progress: 30 },
+  { id: "mst-401", programId: "PRG-04", name: "CX survey redesign", due: "2026-07-20", status: "At Risk", progress: 40 },
+  { id: "mst-402", programId: "PRG-04", name: "NPS mapping", due: "2026-08-30", status: "Planned", progress: 10 },
+  { id: "mst-501", programId: "PRG-05", name: "SOP library migration", due: "2026-03-15", status: "Done", progress: 100 },
 ];
