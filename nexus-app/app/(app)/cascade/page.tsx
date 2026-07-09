@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, Badge, ProgressBar, Avatar } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import {
@@ -31,15 +31,35 @@ export default function CascadePage() {
   const [programs] = useLocalState<Program[]>("programs", mockPrograms);
   const [milestones] = useLocalState<Milestone[]>("milestones", mockMilestones);
   const [tasks] = useLocalState<Task[]>("tasks", mockTasks);
-  // expand state by composite path key (e.g. "sg-1/PRG-01/mst-101")
-  const [open, setOpen] = useState<Record<string, boolean>>(() => Object.fromEntries(strategicGoals.map((g) => [g.id, true])));
-  const toggle = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
-
   const programsFor = (kind: "goal" | "okr", id: string) => programs.filter((p) => (kind === "goal" ? p.goalIds ?? [] : p.okrIds ?? []).includes(id));
   const additionalPrograms = programs.filter((p) => (p.goalIds ?? []).length === 0 && (p.okrIds ?? []).length === 0);
   const milestonesOf = (pid: string) => milestones.filter((m) => m.programId === pid);
   const tasksOfMilestone = (mid: string) => tasks.filter((tk) => tk.milestoneId === mid);
   const additionalTasksOf = (pid: string) => tasks.filter((tk) => tk.program === pid && !tk.milestoneId);
+
+  // Every expandable node key (root → program → milestone) so we can expand/collapse the whole tree.
+  const allKeys = (() => {
+    const roots: { id: string; progs: Program[] }[] = [
+      ...strategicGoals.map((g) => ({ id: g.id, progs: programsFor("goal", g.id) })),
+      ...objectives.map((o) => ({ id: o.id, progs: programsFor("okr", o.id) })),
+      { id: "__additional__", progs: additionalPrograms },
+    ];
+    const keys: string[] = [];
+    for (const r of roots) {
+      keys.push(r.id);
+      for (const p of r.progs) {
+        const pPath = `${r.id}/${p.id}`;
+        keys.push(pPath);
+        for (const m of milestonesOf(p.id)) keys.push(`${pPath}/${m.id}`);
+      }
+    }
+    return keys;
+  })();
+
+  // expand state by composite path key (e.g. "sg-1/PRG-01/mst-101"); default: the whole tree is open.
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const toggle = (k: string) => setOpen((o) => ({ ...o, [k]: o[k] === undefined ? false : !o[k] }));
+  const setAll = (v: boolean) => setOpen(Object.fromEntries(allKeys.map((k) => [k, v])));
 
   // --- renderers ---
   const renderTask = (tk: Task, path: string) => (
@@ -54,7 +74,7 @@ export default function CascadePage() {
   const renderMilestone = (m: Milestone, parent: string) => {
     const path = `${parent}/${m.id}`;
     const mtasks = tasksOfMilestone(m.id);
-    const isOpen = !!open[path];
+    const isOpen = open[path] ?? true;
     return (
       <div key={path} className="pl-5">
         <button onClick={() => toggle(path)} className="flex w-full items-center gap-2 py-1.5 text-left text-[12px]">
@@ -74,7 +94,7 @@ export default function CascadePage() {
     const path = `${parent}/${p.id}`;
     const pm = milestonesOf(p.id);
     const addTasks = additionalTasksOf(p.id);
-    const isOpen = !!open[path];
+    const isOpen = open[path] ?? true;
     return (
       <div key={path} className="pl-2">
         <button onClick={() => toggle(path)} className="flex w-full items-center gap-2 py-2 text-left text-[13px]">
@@ -103,7 +123,7 @@ export default function CascadePage() {
   };
 
   const renderRoot = (id: string, icon: React.ReactNode, title: string, sub: string, tone: "purple" | "gold" | "gray", progs: Program[]) => {
-    const isOpen = open[id] ?? false;
+    const isOpen = open[id] ?? true;
     return (
       <Card key={id} dir="auto">
         <button onClick={() => toggle(id)} className="flex w-full items-center gap-2 text-left">
@@ -129,7 +149,20 @@ export default function CascadePage() {
 
   return (
     <>
-      <PageHeader title="Cascade" subtitle="Strategic Goal → Program → Milestone → Task" />
+      <PageHeader
+        title="Cascade"
+        subtitle="Strategic Goal → Program → Milestone → Task"
+        actions={
+          <>
+            <Btn variant="ghost" onClick={() => setAll(true)}>
+              <Icon.chevron className="h-4 w-4 rotate-90" /> {t("Expand all")}
+            </Btn>
+            <Btn variant="ghost" onClick={() => setAll(false)}>
+              <Icon.chevron className="h-4 w-4" /> {t("Collapse all")}
+            </Btn>
+          </>
+        }
+      />
 
       <div className="space-y-3">
         {strategicGoals.map((g) => renderRoot(g.id, <Icon.strategy className="h-5 w-5 shrink-0 text-violet-400" />, g.title, t("Strategic Goals"), "purple", programsFor("goal", g.id)))}

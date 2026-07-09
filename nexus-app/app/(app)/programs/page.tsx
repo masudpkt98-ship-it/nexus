@@ -206,11 +206,11 @@ export default function ProgramsPage() {
         {rows.map((p) => {
           const pm = milesOf(p.id);
           const mDone = pm.filter((m) => m.status === "Done").length;
-          const isOpen = !!expanded[p.id];
+          const isOpen = expanded[p.id] ?? true;
           return (
             <Card key={p.id} dir="auto" className="group">
               <div className="flex flex-wrap items-center gap-4">
-                <button onClick={() => setExpanded((e) => ({ ...e, [p.id]: !e[p.id] }))} className="shrink-0 text-[var(--muted)] transition hover:text-royal-400" aria-label="Toggle milestones">
+                <button onClick={() => setExpanded((e) => ({ ...e, [p.id]: e[p.id] === undefined ? false : !e[p.id] }))} className="shrink-0 text-[var(--muted)] transition hover:text-royal-400" aria-label="Toggle milestones">
                   <Icon.chevron className={`h-4 w-4 transition ${isOpen ? "rotate-90" : ""}`} />
                 </button>
                 <div className="min-w-[220px] flex-1">
