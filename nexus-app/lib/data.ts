@@ -478,3 +478,35 @@ export const knowledgeDocs: KnowledgeDoc[] = [
   { id: "D4", title: "Leadership Program Deck", category: "Development", version: "v1.0", updated: "2026-06-28", type: "Presentation" },
   { id: "D5", title: "Service Request Handling SOP", category: "Customer", version: "v2.5", updated: "2026-06-15", type: "SOP" },
 ];
+
+// --- Document Management ----------------------------------------------------
+
+export type DocType = "SOP" | "Guideline" | "Template" | "Presentation";
+export type DocApproval = "Approved" | "Pending" | "Rejected";
+
+export interface DocItem {
+  id: string;
+  title: string;
+  type: DocType;
+  folder: string;
+  owner: string;
+  version: string;
+  approval: DocApproval;
+  updated: string; // ISO date (YYYY-MM-DD)
+  signed: boolean;
+}
+
+export const docFolders = ["Strategy", "Programs", "Competency", "Performance", "Customer", "Templates"];
+
+export const documents: DocItem[] = [
+  { id: "doc-1", title: "Competency Assessment SOP", type: "SOP", folder: "Competency", owner: "Arif Wibowo", version: "v3.2", approval: "Approved", updated: "2026-06-20", signed: true },
+  { id: "doc-2", title: "KPI Cascade Guideline", type: "Guideline", folder: "Performance", owner: "Sinta Larasati", version: "v2.0", approval: "Pending", updated: "2026-05-11", signed: false },
+  { id: "doc-3", title: "IDP Template 2026", type: "Template", folder: "Templates", owner: "Rani Kusuma", version: "v1.4", approval: "Pending", updated: "2026-06-01", signed: false },
+  { id: "doc-4", title: "Leadership Program Deck", type: "Presentation", folder: "Programs", owner: "Dimas Prakoso", version: "v1.0", approval: "Pending", updated: "2026-06-28", signed: false },
+  { id: "doc-5", title: "Service Request Handling SOP", type: "SOP", folder: "Customer", owner: "Bagus Hartono", version: "v2.5", approval: "Approved", updated: "2026-06-15", signed: true },
+  { id: "doc-6", title: "Strategic Plan FY26", type: "Guideline", folder: "Strategy", owner: "Arif Wibowo", version: "v1.2", approval: "Approved", updated: "2026-06-25", signed: true },
+  { id: "doc-7", title: "Performance Appraisal SOP", type: "SOP", folder: "Performance", owner: "Sinta Larasati", version: "v4.1", approval: "Approved", updated: "2026-05-30", signed: true },
+  { id: "doc-8", title: "Program Charter Template", type: "Template", folder: "Programs", owner: "Dimas Prakoso", version: "v2.0", approval: "Approved", updated: "2026-06-10", signed: false },
+  { id: "doc-9", title: "Competency Matrix 2026", type: "Guideline", folder: "Competency", owner: "Rani Kusuma", version: "v3.0", approval: "Pending", updated: "2026-06-18", signed: false },
+  { id: "doc-10", title: "Customer Satisfaction Report", type: "Presentation", folder: "Customer", owner: "Bagus Hartono", version: "v1.3", approval: "Approved", updated: "2026-06-22", signed: true },
+];
