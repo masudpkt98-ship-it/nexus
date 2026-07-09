@@ -540,3 +540,19 @@ export const meetingActions: ActionItem[] = [
   { id: "ac-3", assignee: "DP", text: "Circulate Leadership curriculum module 3 draft", status: "Open" },
   { id: "ac-4", assignee: "AW", text: "Approve training budget for PRG-02", status: "Open" },
 ];
+
+// --- Development: training calendar -----------------------------------------
+
+export interface TrainingSession {
+  id: string;
+  name: string;
+  date: string;
+  seats: string;
+}
+
+export const trainingSessions: TrainingSession[] = [
+  { id: "ts-1", name: "Leadership Simulation Lab", date: "Mon · Jul 13 · 09:00", seats: "12 / 20" },
+  { id: "ts-2", name: "Advanced Analytics Certification", date: "Wed · Jul 15 · 13:30", seats: "18 / 25" },
+  { id: "ts-3", name: "Supervisor Coaching Clinic", date: "Fri · Jul 17 · 10:00", seats: "9 / 15" },
+  { id: "ts-4", name: "Executive Presence Workshop", date: "Tue · Jul 21 · 14:00", seats: "6 / 12" },
+];
