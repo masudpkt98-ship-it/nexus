@@ -2,14 +2,33 @@
 // A milestone's progress is driven by its linked tasks; a program's progress is
 // driven by its milestones. Manual values are used only as a fallback when there
 // are no children to roll up from.
-import type { Task, Milestone, Program, MilestoneStatus } from "./data";
+import type { Task, Subtask, Milestone, Program, MilestoneStatus } from "./data";
 
-/** Effective milestone progress (%): derived from child tasks when any exist, else the stored value. */
+/** Subtask completion (0..1): derived from its checklist when it has items, else its manual done flag. */
+export function subtaskProgress(st: Subtask): number {
+  const cl = st.checklist ?? [];
+  if (cl.length === 0) return st.done ? 1 : 0;
+  return cl.filter((c) => c.done).length / cl.length;
+}
+
+/** Task completion (0..1): averaged from its subtasks when any exist, else 1 when status is Done. */
+export function taskProgress(t: Task): number {
+  const subs = t.subtasks ?? [];
+  if (subs.length === 0) return t.status === "Done" ? 1 : 0;
+  return subs.reduce((s, st) => s + subtaskProgress(st), 0) / subs.length;
+}
+
+/** Whether a task counts as fully complete for rollup (all subtasks/checklist done, or status Done). */
+export function taskComplete(t: Task): boolean {
+  return taskProgress(t) >= 1;
+}
+
+/** Effective milestone progress (%): averaged from child task completion when any exist, else the stored value. */
 export function milestoneProgress(m: Milestone, tasks: Task[]): number {
   const mt = tasks.filter((t) => t.milestoneId === m.id);
   if (mt.length === 0) return m.progress;
-  const done = mt.filter((t) => t.status === "Done").length;
-  return Math.round((done / mt.length) * 100);
+  const sum = mt.reduce((s, t) => s + taskProgress(t), 0);
+  return Math.round((sum / mt.length) * 100);
 }
 
 /** Effective milestone status: "Done" at 100%, otherwise reflects task activity (risk flag preserved). */

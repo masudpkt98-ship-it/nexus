@@ -19,7 +19,7 @@ import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import { apiGet, apiSend, getToken } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
-import { milestoneProgress, milestoneStatus, programProgress, programStatus, programMilestonesDone } from "@/lib/rollup";
+import { milestoneProgress, milestoneStatus, programProgress, programStatus, programMilestonesDone, taskComplete } from "@/lib/rollup";
 
 type Status = Program["status"];
 type Risk = Program["risk"];
@@ -288,7 +288,7 @@ export default function ProgramsPage() {
                       const ms = milestoneStatus(m, taskList);
                       const mp = milestoneProgress(m, taskList);
                       const mt = taskCount(m.id);
-                      const mtDone = taskList.filter((tk) => tk.milestoneId === m.id && tk.status === "Done").length;
+                      const mtDone = taskList.filter((tk) => tk.milestoneId === m.id && taskComplete(tk)).length;
                       return (
                       <div key={m.id} className="group/m flex flex-wrap items-center gap-3 rounded-lg border p-2.5">
                         <Badge tone={mstTone[ms]}>{t(ms)}</Badge>

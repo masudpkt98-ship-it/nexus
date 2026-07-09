@@ -17,7 +17,7 @@ import {
 } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
-import { milestoneProgress, milestoneStatus, programMilestonesDone } from "@/lib/rollup";
+import { milestoneProgress, milestoneStatus, programMilestonesDone, taskComplete } from "@/lib/rollup";
 
 const mstTone: Record<MilestoneStatus, "gray" | "amber" | "red" | "green"> = { Planned: "gray", "In Progress": "amber", "At Risk": "red", Done: "green" };
 const progStatusTone: Record<Program["status"], "green" | "amber" | "red" | "blue"> = { "On Track": "green", Completed: "blue", "At Risk": "amber", Delayed: "red" };
@@ -77,7 +77,7 @@ export default function CascadePage() {
     const mtasks = tasksOfMilestone(m.id);
     const ms = milestoneStatus(m, tasks);
     const mp = milestoneProgress(m, tasks);
-    const mtDone = mtasks.filter((tk) => tk.status === "Done").length;
+    const mtDone = mtasks.filter((tk) => taskComplete(tk)).length;
     const isOpen = open[path] ?? true;
     return (
       <div key={path} className="pl-5">

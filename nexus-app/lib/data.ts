@@ -267,6 +267,25 @@ export const programs: Program[] = [
 export type TaskStatus = "Backlog" | "In Progress" | "Review" | "Done";
 export type Priority = "Low" | "Medium" | "High" | "Critical";
 
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+export interface Subtask {
+  id: string;
+  title: string;
+  done: boolean; // manual state; ignored when the subtask has checklist items (derived instead)
+  checklist: ChecklistItem[];
+}
+export type EvidenceKind = "file" | "link";
+export interface Evidence {
+  id: string;
+  kind: EvidenceKind;
+  name: string;
+  url: string; // link href, or a data: URL for an attached file
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -278,12 +297,29 @@ export interface Task {
   program: string;
   milestoneId?: string; // linked Milestone (milestones.id); undefined = additional task
   checklist: { total: number; done: number };
+  subtasks?: Subtask[]; // Task → Subtask → Checklist hierarchy
+  evidence?: Evidence[]; // attached files / links, pinned to the task
   comments: number;
   tags: string[];
 }
 
 export const tasks: Task[] = [
-  { id: "T-101", title: "Draft Q3 KPI cascade for Performance team", status: "In Progress", priority: "High", assignee: "Sinta L.", avatar: "SL", due: "2026-07-10", program: "PRG-03", milestoneId: "mst-301", checklist: { total: 6, done: 4 }, comments: 3, tags: ["KPI", "Q3"] },
+  { id: "T-101", title: "Draft Q3 KPI cascade for Performance team", status: "In Progress", priority: "High", assignee: "Sinta L.", avatar: "SL", due: "2026-07-10", program: "PRG-03", milestoneId: "mst-301", checklist: { total: 6, done: 4 }, comments: 3, tags: ["KPI", "Q3"],
+    subtasks: [
+      { id: "st-1011", title: "Collect team OKRs", done: true, checklist: [
+        { id: "cl-10111", text: "Export current OKRs", done: true },
+        { id: "cl-10112", text: "Validate with team leads", done: true },
+      ] },
+      { id: "st-1012", title: "Draft cascade matrix", done: false, checklist: [
+        { id: "cl-10121", text: "Map objectives → KPIs", done: true },
+        { id: "cl-10122", text: "Assign weights", done: false },
+        { id: "cl-10123", text: "Review with Arif", done: false },
+      ] },
+    ],
+    evidence: [
+      { id: "ev-1011", kind: "link", name: "KPI cascade worksheet", url: "https://docs.google.com/spreadsheets/kpi-cascade" },
+    ],
+  },
   { id: "T-102", title: "Competency gap analysis — Analytics", status: "Review", priority: "Critical", assignee: "Rani K.", avatar: "RK", due: "2026-07-08", program: "PRG-01", milestoneId: "mst-102", checklist: { total: 8, done: 8 }, comments: 5, tags: ["Competency"] },
   { id: "T-103", title: "Finalize Leadership curriculum module 3", status: "Backlog", priority: "Medium", assignee: "Dimas P.", avatar: "DP", due: "2026-07-18", program: "PRG-02", milestoneId: "mst-201", checklist: { total: 5, done: 1 }, comments: 1, tags: ["Training"] },
   { id: "T-104", title: "Migrate SOP library to new KM system", status: "In Progress", priority: "Medium", assignee: "Rani K.", avatar: "RK", due: "2026-07-14", program: "PRG-05", milestoneId: "mst-501", checklist: { total: 10, done: 7 }, comments: 2, tags: ["Knowledge"] },
