@@ -510,3 +510,33 @@ export const documents: DocItem[] = [
   { id: "doc-9", title: "Competency Matrix 2026", type: "Guideline", folder: "Competency", owner: "Rani Kusuma", version: "v3.0", approval: "Pending", updated: "2026-06-18", signed: false },
   { id: "doc-10", title: "Customer Satisfaction Report", type: "Presentation", folder: "Customer", owner: "Bagus Hartono", version: "v1.3", approval: "Approved", updated: "2026-06-22", signed: true },
 ];
+
+// --- Meetings: agenda & action items ---------------------------------------
+
+export interface AgendaItem {
+  id: string;
+  text: string;
+}
+
+export const meetingAgenda: AgendaItem[] = [
+  { id: "ag-1", text: "Review Q3 KPI achievement vs. target" },
+  { id: "ag-2", text: "Competency gap closure progress — Analytics team" },
+  { id: "ag-3", text: "Leadership Development 2026 budget approval" },
+  { id: "ag-4", text: "Open service requests & SLA risk review" },
+];
+
+export type ActionStatus = "Open" | "Done";
+
+export interface ActionItem {
+  id: string;
+  assignee: string;
+  text: string;
+  status: ActionStatus;
+}
+
+export const meetingActions: ActionItem[] = [
+  { id: "ac-1", assignee: "SL", text: "Finalize Q3 KPI cascade for Performance team", status: "Open" },
+  { id: "ac-2", assignee: "RK", text: "Submit competency gap analysis for Analytics", status: "Done" },
+  { id: "ac-3", assignee: "DP", text: "Circulate Leadership curriculum module 3 draft", status: "Open" },
+  { id: "ac-4", assignee: "AW", text: "Approve training budget for PRG-02", status: "Open" },
+];
