@@ -146,6 +146,9 @@ function TaskDetail(p: DetailProps) {
                       placeholder={t("Add checklist item…")}
                       className="w-full border-none bg-transparent text-[12px] outline-none placeholder:text-[var(--muted)]"
                     />
+                    <button type="submit" disabled={!(clInput[s.id] ?? "").trim()} className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium text-royal-400 transition hover:text-royal-300 disabled:opacity-40">
+                      {t("Add")}
+                    </button>
                   </form>
                 </div>
               </div>
