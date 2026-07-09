@@ -12,3 +12,7 @@ Thumbs.db
 .claude/
 .idea/
 .vscode/
+
+# Real HR / employee spreadsheets — never commit PII (import at runtime instead)
+*.xlsx
+*.xls

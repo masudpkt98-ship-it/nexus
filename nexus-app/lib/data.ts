@@ -264,6 +264,30 @@ export const programs: Program[] = [
 // Tasks (Kanban)
 // ---------------------------------------------------------------------------
 
+// Employee master (Direktori Karyawan) — populated by importing an HR spreadsheet at runtime.
+// Seeded empty on purpose: real PII must never live in the repo.
+export interface Employee {
+  npk: string; // employee number (unique id)
+  name: string;
+  position: string; // Jabatan
+  unit: string; // Unit Kerja
+  directorate: string; // Direktorat
+  compartment: string; // Kompartemen
+  location: string; // Lokasi
+  stream: string; // Stream
+  pg: string; // personal grade
+  jg: string; // job grade
+  gender: string; // L / P
+  age: string; // Usia
+  supervisor: string; // Atasan
+  education: string; // Jenjang
+  major: string; // Prodi
+  university: string; // Universitas
+  sf: string; // S/F
+}
+
+export const employees: Employee[] = [];
+
 export type TaskStatus = "Backlog" | "In Progress" | "Review" | "Done";
 export type Priority = "Low" | "Medium" | "High" | "Critical";
 

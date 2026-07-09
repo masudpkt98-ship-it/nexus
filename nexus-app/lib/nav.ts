@@ -16,6 +16,7 @@ export const navItems: NavItem[] = [
   { label: "Task Management", href: "/tasks", icon: "task", section: "Plan & Execute", badge: "8" },
   { label: "Cascade", href: "/cascade", icon: "target", section: "Plan & Execute" },
 
+  { label: "Employee Directory", href: "/people", icon: "users", section: "People & Performance" },
   { label: "Competency", href: "/competency", icon: "competency", section: "People & Performance" },
   { label: "Performance", href: "/performance", icon: "performance", section: "People & Performance" },
   { label: "Development", href: "/development", icon: "development", section: "People & Performance" },
