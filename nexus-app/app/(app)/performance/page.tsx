@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, SectionTitle, Badge, ProgressBar, Avatar, LineChart, Gauge } from "@/components/ui";
 import { Icon } from "@/components/Icons";
+import { EmployeePicker } from "@/components/EmployeePicker";
 import { performanceKpis as mockPerformanceKpis, kpiTrend, topPerformers as mockTop } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { apiGet, apiSend, apiDownload, getToken } from "@/lib/api";
@@ -306,7 +307,12 @@ export default function PerformancePage() {
         <Modal icon={<Icon.performance className="h-4 w-4 shrink-0 text-royal-400" />} title={pf.id == null ? t("New Appraisal") : t("Edit Appraisal")} onClose={() => setPf(emptyPerf)} onSave={savePf} saveLabel={pf.id == null ? t("Create") : t("Save")}>
           <label className={labelCls}>
             {t("Name")}
-            <input value={pf.name} onChange={(e) => setPf((f) => ({ ...f, name: e.target.value }))} placeholder={t("e.g. Arif Wibowo")} className={inputCls} />
+            <EmployeePicker
+              value={pf.name}
+              onChange={(v) => setPf((f) => ({ ...f, name: v }))}
+              onPick={(emp) => setPf((f) => ({ ...f, role: f.role.trim() ? f.role : emp.position || f.role }))}
+              className={inputCls}
+            />
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className={labelCls}>

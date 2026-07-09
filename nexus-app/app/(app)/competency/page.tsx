@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, SectionTitle, Badge, ProgressBar, Avatar } from "@/components/ui";
 import { Icon } from "@/components/Icons";
+import { EmployeePicker } from "@/components/EmployeePicker";
 import { competencies as mockCompetencies, developmentPlans as mockDevelopmentPlans } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { apiGet, apiSend, apiDownload, getToken } from "@/lib/api";
@@ -338,7 +339,12 @@ export default function CompetencyPage() {
           <div className="grid grid-cols-2 gap-3">
             <label className={labelCls}>
               {t("Employee")}
-              <input value={dp.employee} onChange={(e) => setDp((f) => ({ ...f, employee: e.target.value }))} placeholder={t("e.g. Arif Wibowo")} className={inputCls} />
+              <EmployeePicker
+                value={dp.employee}
+                onChange={(v) => setDp((f) => ({ ...f, employee: v }))}
+                onPick={(emp) => setDp((f) => ({ ...f, role: f.role.trim() ? f.role : emp.position || f.role }))}
+                className={inputCls}
+              />
             </label>
             <label className={labelCls}>
               {t("Role")}

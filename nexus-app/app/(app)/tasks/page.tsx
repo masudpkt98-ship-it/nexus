@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Badge, Avatar, ProgressBar, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
-import { tasks as seed, taskColumns, programs as mockPrograms, milestones as mockMilestones, employees as mockEmployees, type Task, type Subtask, type TaskStatus, type Priority, type Program, type Milestone, type Employee } from "@/lib/data";
+import { EmployeePicker } from "@/components/EmployeePicker";
+import { tasks as seed, taskColumns, programs as mockPrograms, milestones as mockMilestones, type Task, type Subtask, type TaskStatus, type Priority, type Program, type Milestone } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { apiGet, apiSend, getToken } from "@/lib/api";
 import { taskProgress, subtaskProgress } from "@/lib/rollup";
@@ -208,7 +209,6 @@ export default function TasksPage() {
   const [items, setItems] = useLocalState<Task[]>("tasks", seed);
   const [programs] = useLocalState<Program[]>("programs", mockPrograms);
   const [miles] = useLocalState<Milestone[]>("milestones", mockMilestones);
-  const [emps] = useLocalState<Employee[]>("employees", mockEmployees);
   const [view, setView] = useState<(typeof views)[number]>("Kanban");
   const [dragId, setDragId] = useState<string | null>(null);
   const [live, setLive] = useState(false);
@@ -289,16 +289,6 @@ export default function TasksPage() {
   };
 
   const programMilestones = form.program ? miles.filter((m) => m.programId === form.program) : [];
-
-  // Assignee options from the imported Employee Directory (deduped by name, with a unit/position hint).
-  const employeeOptions = useMemo(() => {
-    const byName = new Map<string, string>();
-    for (const e of emps) {
-      if (!e.name) continue;
-      if (!byName.has(e.name)) byName.set(e.name, e.position || e.unit || e.directorate || "");
-    }
-    return Array.from(byName, ([name, hint]) => ({ name, hint })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [emps]);
 
   // --- expandable rows + Task → Subtask → Checklist + Evidence CRUD ---
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -574,24 +564,12 @@ export default function TasksPage() {
           <div className="grid grid-cols-2 gap-3">
             <label className={labelCls}>
               {t("Assignee")}
-              <input
+              <EmployeePicker
                 value={form.assignee}
-                onChange={(e) => setForm((f) => ({ ...f, assignee: e.target.value }))}
-                placeholder={employeeOptions.length > 0 ? t("Search or type a name…") : t("e.g. Rani K.")}
-                list={employeeOptions.length > 0 ? "assignee-employees" : undefined}
-                autoComplete="off"
+                onChange={(v) => setForm((f) => ({ ...f, assignee: v }))}
+                placeholderFallback={t("e.g. Rani K.")}
                 className={inputCls}
               />
-              {employeeOptions.length > 0 && (
-                <datalist id="assignee-employees">
-                  {employeeOptions.map((o) => (
-                    <option key={o.name} value={o.name}>{o.hint}</option>
-                  ))}
-                </datalist>
-              )}
-              {employeeOptions.length > 0 && (
-                <span className="mt-1 block text-[10px] text-[var(--muted)]">{employeeOptions.length} {t("from Employee Directory")}</span>
-              )}
             </label>
             <label className={labelCls}>
               {t("Due")}
