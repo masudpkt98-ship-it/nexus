@@ -9,7 +9,18 @@ import { LiveBadge } from "@/components/LiveBadge";
 import { useApiData } from "@/lib/useApi";
 import { useI18n } from "@/lib/i18n";
 import { apiGet, apiSend, apiStream, apiDownload, getToken } from "@/lib/api";
-import { aiInsights as mockAiInsights, aiSuggestions as mockAiSuggestions, type AiInsight } from "@/lib/data";
+import { useLocalState } from "@/lib/useLocalState";
+import {
+  aiInsights as mockAiInsights,
+  aiSuggestions as mockAiSuggestions,
+  performanceKpis as mockKpis,
+  developmentPlans as mockPlans,
+  competencies as mockComps,
+  tasks as mockTasks,
+  programs as mockPrograms,
+  satisfactionByService as mockServices,
+  type AiInsight,
+} from "@/lib/data";
 
 const typeMeta: Record<AiInsight["type"], { tone: "red" | "blue" | "gold" | "green"; label: string }> = {
   risk: { tone: "red", label: "Risk Detection" },
@@ -62,6 +73,13 @@ const GREETING: Msg = {
 
 export default function AiAssistantPage() {
   const { t } = useI18n();
+  // Live stores (read-only) shared with the rest of the app — power offline generation.
+  const [kpiStore] = useLocalState<any[]>("performance-kpis", mockKpis as any[]);
+  const [planStore] = useLocalState<any[]>("development-plans", mockPlans.map((d, i) => ({ id: `dp-${i + 1}`, ...d })));
+  const [compStore] = useLocalState<any[]>("competencies", mockComps as any[]);
+  const [taskStore] = useLocalState<any[]>("tasks", mockTasks as any[]);
+  const [progStore] = useLocalState<any[]>("programs", mockPrograms as any[]);
+  const [svcStore] = useLocalState<any[]>("satisfaction-services", mockServices.map((s, i) => ({ id: `svc-${i + 1}`, ...s })));
   const [messages, setMessages] = useState<Msg[]>([GREETING]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
@@ -352,10 +370,75 @@ export default function AiAssistantPage() {
   const setParam = (k: keyof typeof gen.params, v: string) =>
     setGen((g) => ({ ...g, params: { ...g.params, [k]: v } }));
 
+  // Offline generator — compiles a markdown artifact from the live localStorage stores.
+  const demoGenerate = (kind: string, p: typeof gen.params): string => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (kind === "kpi") {
+      const level = p.level || "Department";
+      const rows = kpiStore.filter((k) => k.level === level);
+      const src = rows.length ? rows : kpiStore;
+      return [
+        `# SMART KPI Set — ${level}`,
+        p.focus ? `_Focus: ${p.focus}_\n` : "",
+        `| KPI | Weight | Target | Actual |`,
+        `| --- | --- | --- | --- |`,
+        ...src.map((k) => `| ${k.name} | ${k.weight}% | ${k.target}${k.unit} | ${k.actual}${k.unit} |`),
+        ``,
+        `Auto-scored across ${src.length} weighted KPIs. Generated ${today}.`,
+      ].join("\n");
+    }
+    if (kind === "idp") {
+      const emp = p.employee
+        ? planStore.find((x) => x.employee.toLowerCase().includes(p.employee.toLowerCase()))
+        : [...planStore].sort((a, b) => a.readiness - b.readiness)[0];
+      if (!emp) return "_No development-plan data available._";
+      const gaps = compStore.filter((c) => c.current < c.required).slice(0, 3);
+      return [
+        `# Individual Development Plan — ${emp.employee}`,
+        `**Role:** ${emp.role}  ·  **Readiness:** ${emp.readiness}%  ·  **Gaps:** ${emp.gaps}`,
+        ``,
+        `## Next step`,
+        `- ${emp.nextStep}`,
+        ``,
+        `## Priority competency gaps`,
+        ...(gaps.length ? gaps.map((c) => `- ${c.name} (${c.category}): level ${c.current} → ${c.required}`) : ["- None — all competencies met."]),
+        ``,
+        `Generated ${today}.`,
+      ].join("\n");
+    }
+    // executive report
+    const total = Math.max(1, taskStore.length);
+    const done = taskStore.filter((x) => x.status === "Done").length;
+    const req = compStore.reduce((s, c) => s + c.required, 0);
+    const cur = compStore.reduce((s, c) => s + c.current, 0);
+    const compIdx = req ? Math.round((cur / req) * 100) : 0;
+    const avgSvc = svcStore.length ? svcStore.reduce((s, x) => s + x.score, 0) / svcStore.length : 0;
+    const atRisk = progStore.filter((x) => x.status === "At Risk" || x.status === "Delayed").length;
+    return [
+      `# Executive Report`,
+      `_Generated ${today} from live NEXUS data._`,
+      ``,
+      `- **Task completion:** ${Math.round((done / total) * 100)}% (${done}/${taskStore.length})`,
+      `- **Competency index:** ${compIdx}%`,
+      `- **Avg service quality:** ${avgSvc.toFixed(1)} / 5`,
+      `- **Active programs:** ${progStore.filter((x) => x.status !== "Completed").length}`,
+      ``,
+      `## Highlights`,
+      `- ${atRisk} program(s) at risk or delayed.`,
+      `- ${compStore.filter((c) => c.current < c.required).length} critical competency gap(s).`,
+      p.scope ? `\n_Scope: ${p.scope}_` : "",
+    ].join("\n");
+  };
+
   const runGenerator = async () => {
     if (!gen.kind) return;
     if (!getToken()) {
-      setGen((g) => ({ ...g, markdown: "_Sign in to generate this artifact from live NEXUS data._" }));
+      // Offline: build the artifact from live NEXUS data (with a brief "thinking" beat).
+      setGen((g) => ({ ...g, loading: true, streaming: true, markdown: "", source: undefined }));
+      setGenSaved(null);
+      const kind = gen.kind;
+      const params = gen.params;
+      setTimeout(() => setGen((g) => ({ ...g, loading: false, streaming: false, markdown: demoGenerate(kind, params), source: "rules" })), 450);
       return;
     }
     const p = gen.params;
@@ -890,7 +973,7 @@ export default function AiAssistantPage() {
               </button>
             </div>
             <div className="flex-1 space-y-4 overflow-y-auto p-5">
-              {getToken() && (
+              {(
                 <div className="rounded-xl border p-3">
                   <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                     {t("Options")}
@@ -972,11 +1055,7 @@ export default function AiAssistantPage() {
               ) : gen.markdown ? (
                 <Markdown text={gen.markdown} />
               ) : (
-                <div className="text-[13px] text-[var(--muted)]">
-                  {getToken()
-                    ? t("Set the options above and click Generate.")
-                    : t("Sign in to generate this artifact from live NEXUS data.")}
-                </div>
+                <div className="text-[13px] text-[var(--muted)]">{t("Set the options above and click Generate.")}</div>
               )}
             </div>
             <div className="flex items-center justify-end gap-2 border-t p-3">
