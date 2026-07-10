@@ -1,4 +1,4 @@
-import type { DictionaryCompetency, CompetencyLevelDef } from "./data";
+import type { DictionaryCompetency, CompetencyLevelDef, CompetencyCategory } from "./data";
 
 export type RawRow = Record<string, unknown>;
 const s = (v: unknown) => (v == null ? "" : String(v).trim());
@@ -6,7 +6,7 @@ const s = (v: unknown) => (v == null ? "" : String(v).trim());
 const findKey = (row: RawRow, re: RegExp) => Object.keys(row).find((k) => re.test(k));
 
 /** Kamus sheet → competencies (code, name, definition, level 1–5 indicators). */
-export function parseKamus(rows: RawRow[]): DictionaryCompetency[] {
+export function parseKamus(rows: RawRow[], category: CompetencyCategory = "Kompetensi Teknis"): DictionaryCompetency[] {
   const out: DictionaryCompetency[] = [];
   for (const r of rows) {
     const codeKey = findKey(r, /kode/i);
@@ -23,7 +23,7 @@ export function parseKamus(rows: RawRow[]): DictionaryCompetency[] {
       id: (code || name).toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40),
       code: code || "—",
       name,
-      category: "Kompetensi Teknis",
+      category,
       definition: s(defKey ? r[defKey] : ""),
       indicators,
     });

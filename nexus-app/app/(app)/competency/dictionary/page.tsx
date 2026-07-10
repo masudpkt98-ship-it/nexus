@@ -53,15 +53,18 @@ function Modal({ title, onClose, onSave, saveLabel, children, wide }: { title: s
 type CForm = { open: boolean; id: string | null; code: string; name: string; definition: string; indicators: { level: number; indicator: string }[] };
 type LForm = { open: boolean; level: number; name: string; description: string };
 
-const TABS = ["Daftar Kompetensi Teknis", "Level Kompetensi Teknis", "Kamus Kompetensi Teknis"] as const;
+const TABS = ["Daftar", "Level", "Kamus"] as const;
 type Tab = (typeof TABS)[number];
+// Tab label follows the selected category, e.g. "Daftar Kompetensi Teknis" / "Daftar Perilaku".
+const tabLabel = (tab: Tab, cat: string) => `${tab} ${cat}`;
 
 export default function CompetencyDictionaryPage() {
   const { t } = useI18n();
   const [comps, setComps] = useLocalState<DictionaryCompetency[]>("technical-competencies", seedComps);
   const [levels, setLevels] = useLocalState<CompetencyLevelDef[]>("technical-competency-levels", seedLevels);
-  const [cat] = useState<CompetencyCategory>(competencyCategories[0]);
-  const [tab, setTab] = useState<Tab>("Daftar Kompetensi Teknis");
+  const [cat, setCat] = useState<CompetencyCategory>(competencyCategories[0]);
+  const [tab, setTab] = useState<Tab>("Daftar");
+  const switchCat = (c: CompetencyCategory) => { setCat(c); setQ(""); setFJf(""); setOpen({}); };
   const [form, setForm] = useState<CForm>({ open: false, id: null, code: "", name: "", definition: "", indicators: [] });
   const [lForm, setLForm] = useState<LForm>({ open: false, level: 0, name: "", description: "" });
   const [open, setOpen] = useState<Record<string, boolean>>({});
@@ -98,17 +101,19 @@ export default function CompetencyDictionaryPage() {
           const rowsJson = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[sheetName], { defval: "" });
           if (rowsJson.length === 0) continue;
           const keys = Object.keys(rowsJson[0]).join(" ").toLowerCase();
-          if (/kode kompetensi|kode\b/.test(keys) && /level\s*1/.test(keys)) importedComps = parseKamus(rowsJson);
-          else if (/technical competency|kompetensi teknis/.test(keys) && /job family|function/.test(keys)) grouping = parseDaftarGrouping(rowsJson);
+          if (/kode kompetensi|kode\b/.test(keys) && /level\s*1/.test(keys)) importedComps = parseKamus(rowsJson, cat);
+          else if (/competency|kompetensi/.test(keys) && /job family|function/.test(keys)) grouping = parseDaftarGrouping(rowsJson);
           else if (/level kecakapan|standar|proficiency/.test(keys) || (/\blevel\b/.test(keys) && /deskripsi|indikator/.test(keys))) parsedLevels = parseProficiency(rowsJson);
         }
       }
       const msgs: string[] = [];
-      let next = importedComps ?? comps;
+      // Replace only the selected category's competencies; keep the other categories intact.
+      let next = comps;
+      if (importedComps) next = [...comps.filter((c) => c.category !== cat), ...importedComps];
       if (grouping) next = applyGrouping(next, grouping);
       if (importedComps || grouping) {
         setComps(next);
-        if (importedComps) msgs.push(`${importedComps.length} ${t("competencies")}`);
+        if (importedComps) msgs.push(`${importedComps.length} ${t("competencies")} · ${cat}`);
         if (grouping) msgs.push(`${grouping.size} ${t("mapped to Job Family")}`);
       }
       if (parsedLevels) {
@@ -167,29 +172,34 @@ export default function CompetencyDictionaryPage() {
           <>
             <input ref={fileRef} type="file" accept=".xlsx,.xls" multiple className="hidden" onChange={(e) => { if (e.target.files?.length) onImport(e.target.files); }} />
             <Btn variant="ghost" onClick={() => fileRef.current?.click()}><Icon.knowledge className="h-4 w-4" /> {busy ? t("Importing…") : t("Import Excel")}</Btn>
-            {tab === "Daftar Kompetensi Teknis" && <Btn variant="primary" onClick={openCreate}><Icon.plus className="h-4 w-4" /> {t("Add")}</Btn>}
+            {tab === "Daftar" && <Btn variant="primary" onClick={openCreate}><Icon.plus className="h-4 w-4" /> {t("Add")}</Btn>}
           </>
         }
       />
 
       {note && <div className="mb-4 rounded-xl border border-royal-500/30 bg-royal-500/10 px-4 py-2.5 text-[13px] text-royal-300">{note}</div>}
 
-      {/* Category selector (extensible: Manajerial, Perilaku, …) */}
+      {/* Category selector (Kompetensi Teknis · Manajerial · Perilaku) */}
       <div className="mb-3 flex flex-wrap gap-2">
-        {competencyCategories.map((c) => (
-          <span key={c} className={cn("rounded-lg px-3 py-1.5 text-xs font-medium", c === cat ? "bg-royal-500 text-white" : "glass text-[var(--muted)]")}>{c}</span>
-        ))}
+        {competencyCategories.map((c) => {
+          const count = comps.filter((x) => x.category === c).length;
+          return (
+            <button key={c} onClick={() => switchCat(c)} className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition", c === cat ? "bg-royal-500 text-white" : "glass text-[var(--muted)] hover:text-[var(--text)]")}>
+              {c}{count > 0 && <span className={cn("ml-1.5 rounded-full px-1.5 py-0.5 text-[10px]", c === cat ? "bg-white/20" : "bg-black/10 dark:bg-white/10")}>{count}</span>}
+            </button>
+          );
+        })}
       </div>
 
-      {/* View tabs: Daftar / Level / Kamus */}
+      {/* View tabs: Daftar / Level / Kamus (label follows the category) */}
       <div className="mb-4 flex flex-wrap rounded-xl glass p-0.5">
         {TABS.map((v) => (
-          <button key={v} onClick={() => setTab(v)} className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition", tab === v ? "bg-royal-500 text-white" : "text-[var(--muted)] hover:text-[var(--text)]")}>{v}</button>
+          <button key={v} onClick={() => setTab(v)} className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition", tab === v ? "bg-royal-500 text-white" : "text-[var(--muted)] hover:text-[var(--text)]")}>{tabLabel(v, cat)}</button>
         ))}
       </div>
 
       {/* ---- Daftar Kompetensi Teknis ---- */}
-      {tab === "Daftar Kompetensi Teknis" && (
+      {tab === "Daftar" && (
         <div className="glass card overflow-hidden">
           <div className="flex flex-wrap items-center gap-2 border-b p-3">
             <div className="relative min-w-[200px] flex-1">
@@ -240,7 +250,7 @@ export default function CompetencyDictionaryPage() {
       )}
 
       {/* ---- Level Kompetensi Teknis ---- */}
-      {tab === "Level Kompetensi Teknis" && (
+      {tab === "Level" && (
         <div className="space-y-3">
           {levels.map((l) => (
             <Card key={l.level} className="group flex items-start gap-4">
@@ -259,7 +269,7 @@ export default function CompetencyDictionaryPage() {
       )}
 
       {/* ---- Kamus Kompetensi Teknis ---- */}
-      {tab === "Kamus Kompetensi Teknis" && (
+      {tab === "Kamus" && (
         <div className="space-y-3">
           {rows.map((c) => {
             const isOpen = open[c.id] ?? false;

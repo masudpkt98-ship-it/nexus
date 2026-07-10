@@ -290,7 +290,7 @@ export const employees: Employee[] = [];
 
 // ---- Kamus Kompetensi (Competency Dictionary) ----
 // Categories the dictionary is divided into (extensible: Manajerial, Perilaku, …).
-export const competencyCategories = ["Kompetensi Teknis"] as const;
+export const competencyCategories = ["Kompetensi Teknis", "Kompetensi Manajerial", "Perilaku"] as const;
 export type CompetencyCategory = (typeof competencyCategories)[number];
 
 // The proficiency scale (Level Kompetensi Teknis).
