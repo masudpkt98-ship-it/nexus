@@ -324,6 +324,17 @@ export interface DictionaryCompetency {
   functionName?: string;
 }
 
+// ---- Competency Matrix ----
+// Standards: required proficiency level per group (Job Family / category) per competency.
+export type CompetencyStandards = Record<string, Record<string, number>>; // group -> competencyId -> required level (1..N)
+// Assessment: an employee's actual level per competency, grouped by the same key.
+export interface MatrixEmployee {
+  npk: string;
+  name: string;
+  levels: Record<string, number>; // competencyId -> actual level (1..N; absent/0 = not assessed)
+}
+export type CompetencyAssessments = Record<string, MatrixEmployee[]>; // group -> assessed employees
+
 export const technicalCompetencies: DictionaryCompetency[] = [
   {
     id: "tk-01", code: "TK-01", name: "Pemeliharaan Peralatan Rotating", category: "Kompetensi Teknis",
