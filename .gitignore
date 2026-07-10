@@ -13,6 +13,8 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Real HR / employee spreadsheets — never commit PII (import at runtime instead)
+# Real HR / employee & competency source data — never commit PII / proprietary
+# content (import at runtime instead)
 *.xlsx
 *.xls
+*.pdf

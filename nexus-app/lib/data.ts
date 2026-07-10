@@ -288,6 +288,100 @@ export interface Employee {
 
 export const employees: Employee[] = [];
 
+// ---- Kamus Kompetensi (Competency Dictionary) ----
+// Categories the dictionary is divided into (extensible: Manajerial, Perilaku, …).
+export const competencyCategories = ["Kompetensi Teknis"] as const;
+export type CompetencyCategory = (typeof competencyCategories)[number];
+
+// The proficiency scale (Level Kompetensi Teknis).
+export interface CompetencyLevelDef {
+  level: number;
+  name: string;
+  description: string;
+}
+export const technicalCompetencyLevels: CompetencyLevelDef[] = [
+  { level: 1, name: "Knowledgeable", description: "Memahami konsep dan prinsip dasar kompetensi." },
+  { level: 2, name: "Basic Practitioner", description: "Menerapkan kompetensi pada tugas rutin dengan bimbingan." },
+  { level: 3, name: "Intermediate Practitioner", description: "Menerapkan kompetensi secara mandiri pada situasi umum." },
+  { level: 4, name: "Advanced", description: "Menangani situasi kompleks dan membimbing orang lain." },
+  { level: 5, name: "Expert", description: "Menjadi rujukan utama dan merumuskan standar di bidangnya." },
+];
+
+// A competency plus its per-level behavioural indicators (Kamus Kompetensi Teknis).
+export interface CompetencyIndicator {
+  level: number;
+  indicator: string;
+}
+export interface DictionaryCompetency {
+  id: string;
+  code: string;
+  name: string;
+  category: CompetencyCategory;
+  definition: string;
+  indicators: CompetencyIndicator[];
+  jobFamily?: string; // Daftar grouping
+  jobFamilyName?: string;
+  functionName?: string;
+}
+
+export const technicalCompetencies: DictionaryCompetency[] = [
+  {
+    id: "tk-01", code: "TK-01", name: "Pemeliharaan Peralatan Rotating", category: "Kompetensi Teknis",
+    definition: "Kemampuan memelihara dan memperbaiki peralatan berputar (pompa, kompresor, turbin) untuk menjaga keandalan operasi pabrik.",
+    indicators: [
+      { level: 1, indicator: "Mengenal jenis peralatan rotating dan fungsi komponen utamanya." },
+      { level: 2, indicator: "Melakukan pemeliharaan preventif rutin dengan bimbingan." },
+      { level: 3, indicator: "Mendiagnosis gangguan umum dan melakukan perbaikan secara mandiri." },
+      { level: 4, indicator: "Menganalisis akar masalah kegagalan dan menyusun program keandalan." },
+      { level: 5, indicator: "Merumuskan standar pemeliharaan dan strategi reliability tingkat korporat." },
+    ],
+  },
+  {
+    id: "tk-02", code: "TK-02", name: "Instrumentasi dan Sistem Kontrol", category: "Kompetensi Teknis",
+    definition: "Kemampuan mengkalibrasi, memelihara, dan mengoptimalkan instrumentasi serta sistem kontrol proses (DCS/PLC).",
+    indicators: [
+      { level: 1, indicator: "Memahami prinsip pengukuran dan simbol instrumentasi dasar." },
+      { level: 2, indicator: "Melakukan kalibrasi instrumen sederhana sesuai prosedur." },
+      { level: 3, indicator: "Melakukan troubleshooting loop kontrol secara mandiri." },
+      { level: 4, indicator: "Melakukan tuning dan optimasi strategi kontrol lanjutan." },
+      { level: 5, indicator: "Merancang arsitektur sistem kontrol dan menetapkan standar teknis." },
+    ],
+  },
+  {
+    id: "tk-03", code: "TK-03", name: "Operasi Proses Produksi", category: "Kompetensi Teknis",
+    definition: "Kemampuan mengoperasikan unit proses produksi secara aman, efisien, dan sesuai parameter mutu.",
+    indicators: [
+      { level: 1, indicator: "Memahami diagram alir proses dan parameter operasi utama." },
+      { level: 2, indicator: "Menjalankan unit pada kondisi normal dengan pengawasan." },
+      { level: 3, indicator: "Menangani start-up, shutdown, dan gangguan operasi secara mandiri." },
+      { level: 4, indicator: "Mengoptimalkan yield dan konsumsi energi unit proses." },
+      { level: 5, indicator: "Menetapkan operating envelope dan strategi peningkatan kapasitas." },
+    ],
+  },
+  {
+    id: "tk-04", code: "TK-04", name: "Keselamatan Proses (Process Safety)", category: "Kompetensi Teknis",
+    definition: "Kemampuan menerapkan prinsip keselamatan proses untuk mencegah insiden bahan berbahaya dan menjaga integritas aset.",
+    indicators: [
+      { level: 1, indicator: "Mengenal bahaya proses dan aturan keselamatan dasar." },
+      { level: 2, indicator: "Menerapkan prosedur kerja aman dan izin kerja dengan benar." },
+      { level: 3, indicator: "Memfasilitasi HAZOP dan analisis risiko proses secara mandiri." },
+      { level: 4, indicator: "Merancang lapisan proteksi (LOPA/SIS) dan mengelola perubahan (MOC)." },
+      { level: 5, indicator: "Membangun budaya dan sistem manajemen keselamatan proses korporat." },
+    ],
+  },
+  {
+    id: "tk-05", code: "TK-05", name: "Analisis Laboratorium dan Mutu", category: "Kompetensi Teknis",
+    definition: "Kemampuan melakukan pengujian laboratorium dan pengendalian mutu produk sesuai standar.",
+    indicators: [
+      { level: 1, indicator: "Memahami metode sampling dan prosedur pengujian dasar." },
+      { level: 2, indicator: "Menjalankan analisis rutin dan mencatat hasil sesuai prosedur." },
+      { level: 3, indicator: "Memvalidasi hasil, menangani penyimpangan, dan menjaga akurasi." },
+      { level: 4, indicator: "Mengembangkan metode uji dan program jaminan mutu (QA/QC)." },
+      { level: 5, indicator: "Menetapkan standar mutu dan sistem akreditasi laboratorium." },
+    ],
+  },
+];
+
 export type TaskStatus = "Backlog" | "In Progress" | "Review" | "Done";
 export type Priority = "Low" | "Medium" | "High" | "Critical";
 
