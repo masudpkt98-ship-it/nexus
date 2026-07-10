@@ -18,7 +18,7 @@ export const navItems: NavItem[] = [
 
   { label: "Employee Directory", href: "/people", icon: "users", section: "People & Performance" },
   { label: "Competency Management", href: "/competency", icon: "competency", section: "People & Performance" },
-  { label: "Performance", href: "/performance", icon: "performance", section: "People & Performance" },
+  { label: "Performance Management", href: "/performance", icon: "performance", section: "People & Performance" },
   { label: "Development", href: "/development", icon: "development", section: "People & Performance" },
 
   { label: "Customer Request", href: "/requests", icon: "request", section: "Customer", badge: "3" },
