@@ -6,7 +6,7 @@ import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, SectionTitle, Badge, ProgressBar, Avatar, LineChart, Gauge } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { EmployeePicker } from "@/components/EmployeePicker";
-import { performanceKpis as mockPerformanceKpis, kpiTrend, topPerformers as mockTop } from "@/lib/data";
+import { performanceKpis as mockPerformanceKpis, kpiTrend, topPerformers as mockTop, corporateKpis as seedCorporateKpis, type CorporateKpi } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { apiGet, apiSend, apiDownload, getToken } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
@@ -18,7 +18,7 @@ const levelTone: Record<string, "purple" | "blue" | "green"> = {
   Individual: "green",
 };
 
-type Kpi = { id: string; name: string; level: string; weight: number; target: number; actual: number; unit: string };
+type Kpi = { id: string; name: string; level: string; weight: number; target: number; actual: number; unit: string; sourceCode?: string; sourceKpiId?: string };
 type Perf = { id: string; name: string; avatar: string; role: string; score: number };
 
 const inputCls =
@@ -63,12 +63,13 @@ function Modal({ icon, title, onClose, onSave, saveLabel, children }: { icon: Re
   );
 }
 
-const emptyKpi = { open: false, id: null as string | null, name: "", level: "Department", weight: 10, target: 100, actual: 0, unit: "%" };
+const emptyKpi = { open: false, id: null as string | null, name: "", level: "Department", weight: 10, target: 100, actual: 0, unit: "%", sourceCode: "", sourceKpiId: "" };
 const emptyPerf = { open: false, id: null as string | null, name: "", role: "", score: 90 };
 
 export default function PerformancePage() {
   const { t } = useI18n();
   const [rows, setRows] = useLocalState<Kpi[]>("performance-kpis", mockPerformanceKpis.map((k, i) => ({ ...k, id: String(k.id ?? i + 1) })));
+  const [corporateKpis] = useLocalState<CorporateKpi[]>("corporate-kpis", seedCorporateKpis);
   const [perfs, setPerfs] = useLocalState<Perf[]>("appraisals", mockTop.map((p, i) => ({ id: `ap-${i + 1}`, ...p })));
   const [live, setLive] = useState(false);
   const [form, setForm] = useState(emptyKpi);
@@ -99,9 +100,16 @@ export default function PerformancePage() {
 
   // --- KPI CRUD ---
   const openCreate = () => setForm({ ...emptyKpi, open: true });
-  const openEdit = (k: Kpi) => setForm({ open: true, id: k.id, name: k.name, level: k.level, weight: k.weight, target: k.target, actual: k.actual, unit: k.unit });
+  const openEdit = (k: Kpi) => setForm({ open: true, id: k.id, name: k.name, level: k.level, weight: k.weight, target: k.target, actual: k.actual, unit: k.unit, sourceCode: k.sourceCode ?? "", sourceKpiId: k.sourceKpiId ?? "" });
+  // Adopt a Corporate KPI: prefill name/unit/target and record the cascade source.
+  const adoptCorporate = (id: string) => {
+    if (!id) { setForm((f) => ({ ...f, sourceKpiId: "", sourceCode: "" })); return; }
+    const ck = corporateKpis.find((c) => c.id === id);
+    if (!ck) return;
+    setForm((f) => ({ ...f, sourceKpiId: ck.id, sourceCode: ck.code, name: ck.name, unit: ck.unit || f.unit, target: Number(ck.target) || f.target }));
+  };
   const saveForm = () => {
-    const body = { name: form.name.trim(), level: form.level, weight: form.weight, target: form.target, actual: form.actual, unit: form.unit.trim() };
+    const body = { name: form.name.trim(), level: form.level, weight: form.weight, target: form.target, actual: form.actual, unit: form.unit.trim(), sourceCode: form.sourceCode || undefined, sourceKpiId: form.sourceKpiId || undefined };
     if (!body.name) return;
     if (form.id == null) {
       const k: Kpi = { id: newId("kpi"), ...body };
@@ -190,9 +198,10 @@ export default function PerformancePage() {
               return (
                 <div key={k.id} dir="auto" className="group flex items-center gap-4 rounded-xl border p-3">
                   <div className="min-w-[180px] flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[13px] font-medium">{k.name}</span>
                       <Badge tone={levelTone[k.level]}>{t(k.level)}</Badge>
+                      {k.sourceCode && <span className="inline-flex items-center gap-1 rounded bg-royal-500/10 px-1.5 py-0.5 text-[10px] text-royal-400" title={t("Cascaded from Corporate KPI")}><Icon.knowledge className="h-2.5 w-2.5" /> {k.sourceCode}</span>}
                     </div>
                     <div className="mt-1.5">
                       <ProgressBar value={Math.min(100, pct)} tone={pct >= 100 ? "green" : pct >= 90 ? "gold" : "red"} />
@@ -278,9 +287,22 @@ export default function PerformancePage() {
 
       {form.open && (
         <Modal icon={<Icon.performance className="h-4 w-4 shrink-0 text-royal-400" />} title={form.id == null ? t("New KPI") : t("Edit KPI")} onClose={() => setForm(emptyKpi)} onSave={saveForm} saveLabel={form.id == null ? t("Create") : t("Save")}>
+          {corporateKpis.length > 0 && (
+            <label className="block rounded-lg border border-royal-500/30 bg-royal-500/5 p-2.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-royal-400">
+                <Icon.knowledge className="h-3.5 w-3.5" /> {t("Adopt from Corporate KPI")}
+              </div>
+              <select value={form.sourceKpiId} onChange={(e) => adoptCorporate(e.target.value)} className={`${inputCls} text-[var(--text)]`}>
+                <option value="">{t("— none (manual KPI)")}</option>
+                {corporateKpis.map((c) => (<option key={c.id} value={c.id}>{c.code} · {c.name}{c.target ? ` (${c.target}${c.unit ? ` ${c.unit}` : ""})` : ""}</option>))}
+              </select>
+              <div className="mt-1 text-[10px] text-[var(--muted)]">{t("Cascades the corporate KPI down as this individual/department KPI.")}</div>
+            </label>
+          )}
           <label className={labelCls}>
             {t("Name")}
-            <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t("e.g. Revenue Growth")} className={inputCls} />
+            <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value, sourceKpiId: f.sourceKpiId, sourceCode: f.sourceCode }))} placeholder={t("e.g. Revenue Growth")} className={inputCls} />
+            {form.sourceCode && <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-royal-400"><Icon.knowledge className="h-3 w-3" /> {t("Cascaded from")} {form.sourceCode}</span>}
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className={labelCls}>
