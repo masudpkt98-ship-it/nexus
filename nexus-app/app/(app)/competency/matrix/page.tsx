@@ -86,6 +86,38 @@ export default function CompetencyMatrixPage() {
   };
 
   const stdCount = groupComps.filter((c) => (groupStd[c.id] ?? 0) > 0).length;
+
+  // --- export the active group to a .xlsx (Standar / Penilaian / Gap sheets) ---
+  const onExport = async () => {
+    const XLSX = await import("xlsx");
+    const codeHead = groupComps.map((c) => (groupStd[c.id] ? `${c.code} (${t("req")} ${groupStd[c.id]})` : c.code));
+
+    const stdAoa: (string | number)[][] = [[t("Code"), t("Competency"), t("Function"), t("Required level"), t("Name")]];
+    groupComps.forEach((c) => stdAoa.push([c.code, c.name, c.functionName ?? "", groupStd[c.id] ?? "", groupStd[c.id] ? levels.find((l) => l.level === groupStd[c.id])?.name ?? "" : ""]));
+
+    const assessAoa: (string | number)[][] = [["NPK", t("Name"), ...codeHead, t("Ready") + " %"]];
+    groupEmps.forEach((e) => {
+      const r = readiness(e);
+      assessAoa.push([e.npk, e.name, ...groupComps.map((c) => e.levels[c.id] ?? ""), r === null ? "" : r]);
+    });
+
+    const gapAoa: (string | number)[][] = [["NPK", t("Name"), ...groupComps.map((c) => c.code)]];
+    groupEmps.forEach((e) => {
+      gapAoa.push([e.npk, e.name, ...groupComps.map((c) => {
+        const req = groupStd[c.id] ?? 0;
+        const act = e.levels[c.id] ?? 0;
+        return req && act ? act - req : "";
+      })]);
+    });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(stdAoa), "Standar");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(assessAoa), "Penilaian");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(gapAoa), "Gap");
+    const safe = (activeGroup || "matrix").replace(/[^\w]+/g, "-").slice(0, 24);
+    XLSX.writeFile(wb, `nexus-competency-matrix-${safe}.xlsx`);
+  };
+
   const LevelSelect = ({ value, onChange, none }: { value: number; onChange: (v: number) => void; none: string }) => (
     <select value={value || 0} onChange={(e) => onChange(Number(e.target.value))} className="rounded-md border bg-[rgb(var(--surface))] px-1.5 py-1 text-[12px] text-[var(--text)] outline-none focus:border-royal-500">
       <option value={0}>{none}</option>
@@ -98,7 +130,11 @@ export default function CompetencyMatrixPage() {
       <Link href="/competency" className="mb-2 inline-flex items-center gap-1 text-[12px] text-[var(--muted)] transition hover:text-royal-400">
         <Icon.chevron className="h-3.5 w-3.5 rotate-180" /> {t("Competency Management")}
       </Link>
-      <PageHeader title="Competency Matrix" subtitle="Manajemen Kompetensi · Standar & Penilaian Kompetensi" />
+      <PageHeader
+        title="Competency Matrix"
+        subtitle="Manajemen Kompetensi · Standar & Penilaian Kompetensi"
+        actions={groupComps.length > 0 ? <Btn variant="ghost" onClick={onExport}><Icon.document className="h-4 w-4" /> {t("Export Excel")}</Btn> : undefined}
+      />
 
       {comps.length === 0 || groups.length === 0 ? (
         <Card className="flex flex-col items-center justify-center py-16 text-center">
