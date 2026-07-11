@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, SectionTitle, Badge, ProgressBar, Avatar, LineChart, Gauge } from "@/components/ui";
 import { Icon } from "@/components/Icons";
@@ -159,6 +160,15 @@ export default function PerformancePage() {
           </>
         }
       />
+
+      <Link href="/performance/dictionary" className="mb-4 flex items-center gap-3 rounded-xl border border-royal-500/30 bg-royal-500/5 px-4 py-3 transition hover:border-royal-500/50 hover:bg-royal-500/10">
+        <Icon.knowledge className="h-5 w-5 shrink-0 text-royal-400" />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold">{t("Performance Dictionary")}</div>
+          <div className="text-[11px] text-[var(--muted)]">{t("Corporate KPI · Strategic Goal · Alignment & Cascading · Job Profile")}</div>
+        </div>
+        <Icon.chevron className="h-4 w-4 shrink-0 text-[var(--muted)]" />
+      </Link>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="flex flex-col items-center justify-center">

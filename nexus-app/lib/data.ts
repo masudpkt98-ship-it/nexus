@@ -216,6 +216,47 @@ export const strategicGoals: StrategicGoal[] = [
   { id: "sg-3", title: "Elevate internal customer satisfaction", description: "Reach internal-service NPS ≥ 60.", target: "FY27", owner: "Bagus Hartono" },
 ];
 
+// ---- Performance Dictionary ----
+// Balanced-scorecard perspectives a Corporate KPI can belong to.
+export const kpiPerspectives = ["Financial", "Customer", "Internal Process", "Learning & Growth"] as const;
+// Subordinate org levels a Corporate KPI can cascade down to (SVP, SPM, Dirut Anper, …).
+export const subordinateLevels = ["Direktur", "SVP", "VP", "SPM", "GM", "Manager", "Dirut Anper", "Ketua Yayasan"] as const;
+
+export interface CorporateKpi {
+  id: string;
+  code: string;
+  name: string;
+  perspective: string;
+  unit: string;
+  target: string;
+  strategicGoalId?: string; // link to a Strategic Goal (strategy-goals store)
+  cascadableTo: string[]; // subordinate levels/roles that may adopt this KPI
+}
+
+export const corporateKpis: CorporateKpi[] = [
+  { id: "ck-01", code: "CK-01", name: "Corporate Revenue Growth", perspective: "Financial", unit: "%", target: "12", strategicGoalId: "sg-2", cascadableTo: ["Direktur", "SVP", "Dirut Anper"] },
+  { id: "ck-02", code: "CK-02", name: "EBITDA Margin", perspective: "Financial", unit: "%", target: "28", strategicGoalId: "sg-2", cascadableTo: ["Direktur", "SVP", "VP"] },
+  { id: "ck-03", code: "CK-03", name: "Internal Customer Satisfaction (NPS)", perspective: "Customer", unit: "index", target: "60", strategicGoalId: "sg-3", cascadableTo: ["SVP", "VP", "SPM", "Manager"] },
+  { id: "ck-04", code: "CK-04", name: "Digital Process Adoption", perspective: "Internal Process", unit: "%", target: "90", strategicGoalId: "sg-2", cascadableTo: ["VP", "SPM", "Manager"] },
+  { id: "ck-05", code: "CK-05", name: "Competency Index", perspective: "Learning & Growth", unit: "%", target: "85", strategicGoalId: "sg-1", cascadableTo: ["SVP", "VP", "SPM", "GM", "Manager"] },
+  { id: "ck-06", code: "CK-06", name: "Foundation Program Realization", perspective: "Customer", unit: "%", target: "95", strategicGoalId: "sg-3", cascadableTo: ["Ketua Yayasan"] },
+];
+
+export interface JobProfile {
+  id: string;
+  role: string; // position / title
+  level: string; // org level (SVP, VP, …)
+  unit: string;
+  purpose: string;
+  responsibilities: string[];
+  kpiIds: string[]; // linked Corporate KPI ids
+}
+
+export const jobProfiles: JobProfile[] = [
+  { id: "jp-01", role: "SVP Human Capital", level: "SVP", unit: "Human Capital", purpose: "Memimpin strategi human capital dan pengembangan kompetensi korporat.", responsibilities: ["Menyusun strategi human capital", "Mengelola sistem manajemen kinerja", "Memastikan kesiapan talenta"], kpiIds: ["ck-03", "ck-05"] },
+  { id: "jp-02", role: "VP Performance Management", level: "VP", unit: "Performance Management", purpose: "Mengelola sistem manajemen kinerja korporat dan cascading KPI.", responsibilities: ["Menjalankan cascading KPI", "Memantau pencapaian KPI unit", "Mengelola siklus penilaian kinerja"], kpiIds: ["ck-02", "ck-04"] },
+];
+
 export type SwotType = "Strength" | "Weakness" | "Opportunity" | "Threat";
 
 export interface SwotItem {
