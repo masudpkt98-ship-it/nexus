@@ -242,6 +242,57 @@ export const corporateKpis: CorporateKpi[] = [
   { id: "ck-06", code: "CK-06", name: "Foundation Program Realization", perspective: "Customer", unit: "%", target: "95", strategicGoalId: "sg-3", cascadableTo: ["Ketua Yayasan"] },
 ];
 
+// ---- Performance Planning (Add KPI form + recap) ----
+export const kpiGroups = ["KPI Bersama", "KPI Direktorat", "KPI Individu"] as const;
+export const kpiTypes = ["Spesifik", "Mandatory"] as const;
+export const kpiMeasurements = ["Exact", "Proxy", "Activity"] as const;
+export const kpiPolarities = ["Maximize", "Minimize", "Stabilize"] as const;
+export const kpiFrequencies = ["Monthly", "Quarterly", "Yearly"] as const;
+export const kpiCascadeTypes = ["Fully Cascade A", "Fully Cascade B", "Partially Cascade", "Contributory Cascade", "Non Cascade"] as const;
+export const kpiConsolidations = ["Take Last Known", "Average", "Sum"] as const;
+export const kpiUnits = ["Persen", "Rp Miliar", "Rate", "BBTUD", "Index", "Hari", "Unit", "Skor"] as const;
+export const kpiValidities = ["Exact", "Proxy"] as const;
+export const esgCriteriaOptions = ["Environment", "Social", "Governance"] as const;
+export const kpiMonths = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"] as const;
+
+export interface KpiConversion { from: string; to: string; value: string }
+export interface PlanningKpi {
+  id: string;
+  group: string; // KPI Bersama / Direktorat / Individu (recap grouping)
+  perspective: string; // Perspektif Balanced Scorecard
+  strategicGoalId?: string; // Sasaran Strategis — picked from strategic goals
+  name: string;
+  definition: string;
+  purpose: string;
+  type: string; // Tipe KPI (Spesifik / Mandatory)
+  weight: number; // Bobot
+  formula: string; // Formula Penilaian
+  hasConversion: boolean;
+  conversions: KpiConversion[];
+  measurement: string; // Jenis Pengukuran
+  polarity: string;
+  frequency: string;
+  cascadeType: string;
+  consolidation: string; // Take Last Known / Average / Sum
+  monthlyTargets: Record<string, number>; // Jan..Des
+  annualTarget: number;
+  dataSource: string;
+  unit: string; // Satuan
+  esgCriteria: string[];
+  validity: string;
+  proxyMax?: number;
+  supportingFile: string; // link or file name
+  pic: string; // Penanggung Jawab KPI
+  dataManager: string; // Pengelola Data KPI
+  period: string; // Periode KPI (year)
+}
+
+export const planningKpis: PlanningKpi[] = [
+  { id: "pk-01", group: "KPI Bersama", perspective: "Financial", strategicGoalId: "sg-2", name: "% Excess of ROIC - WACC", definition: "Selisih ROIC terhadap WACC.", purpose: "Memastikan penciptaan nilai di atas biaya modal.", type: "Spesifik", weight: 11, formula: "ROIC - WACC", hasConversion: false, conversions: [], measurement: "Exact", polarity: "Maximize", frequency: "Yearly", cascadeType: "Fully Cascade A", consolidation: "Take Last Known", monthlyTargets: {}, annualTarget: 9.63, dataSource: "Laporan Keuangan", unit: "Persen", esgCriteria: [], validity: "Exact", supportingFile: "", pic: "Purwanto", dataManager: "", period: "2026" },
+  { id: "pk-02", group: "KPI Bersama", perspective: "Financial", strategicGoalId: "sg-2", name: "$ Net Income", definition: "Laba bersih perusahaan.", purpose: "Mencapai target profitabilitas.", type: "Mandatory", weight: 11, formula: "Total Revenue - Total Cost", hasConversion: false, conversions: [], measurement: "Exact", polarity: "Maximize", frequency: "Monthly", cascadeType: "Fully Cascade A", consolidation: "Take Last Known", monthlyTargets: {}, annualTarget: 5681.35, dataSource: "Laporan Keuangan", unit: "Rp Miliar", esgCriteria: [], validity: "Exact", supportingFile: "", pic: "Purwanto", dataManager: "", period: "2026" },
+  { id: "pk-03", group: "KPI Direktorat", perspective: "Internal Process", strategicGoalId: "sg-2", name: "% Penghematan Biaya OH COGM", definition: "Efisiensi biaya overhead pada COGM.", purpose: "Menurunkan biaya produksi.", type: "Spesifik", weight: 15, formula: "(Baseline - Aktual) / Baseline", hasConversion: false, conversions: [], measurement: "Exact", polarity: "Maximize", frequency: "Monthly", cascadeType: "Fully Cascade A", consolidation: "Take Last Known", monthlyTargets: {}, annualTarget: 100, dataSource: "SAP", unit: "Persen", esgCriteria: [], validity: "Exact", supportingFile: "", pic: "Purwanto", dataManager: "", period: "2026" },
+];
+
 export interface JobProfile {
   id: string;
   role: string; // position / title
