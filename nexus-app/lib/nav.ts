@@ -1,11 +1,17 @@
 import type { IconName } from "@/components/Icons";
 
+export interface NavChild {
+  label: string;
+  href: string;
+}
+
 export interface NavItem {
   label: string;
   href: string;
   icon: IconName;
   section: "Overview" | "Plan & Execute" | "People & Performance" | "Customer" | "Workspace" | "Intelligence";
   badge?: string;
+  children?: NavChild[]; // submodules — rendered as a collapsible group in the sidebar
 }
 
 export const navItems: NavItem[] = [
@@ -17,8 +23,26 @@ export const navItems: NavItem[] = [
   { label: "Cascade", href: "/cascade", icon: "target", section: "Plan & Execute" },
 
   { label: "Employee Directory", href: "/people", icon: "users", section: "People & Performance" },
-  { label: "Competency Management", href: "/competency", icon: "competency", section: "People & Performance" },
-  { label: "Performance Management", href: "/performance", icon: "performance", section: "People & Performance" },
+  {
+    label: "Competency Management",
+    href: "/competency",
+    icon: "competency",
+    section: "People & Performance",
+    children: [
+      { label: "Competency Dictionary", href: "/competency/dictionary" },
+      { label: "Competency Matrix", href: "/competency/matrix" },
+    ],
+  },
+  {
+    label: "Performance Management",
+    href: "/performance",
+    icon: "performance",
+    section: "People & Performance",
+    children: [
+      { label: "Performance Dictionary", href: "/performance/dictionary" },
+      { label: "Performance Planning", href: "/performance/planning" },
+    ],
+  },
   { label: "Development", href: "/development", icon: "development", section: "People & Performance" },
 
   { label: "Customer Request", href: "/requests", icon: "request", section: "Customer", badge: "3" },
