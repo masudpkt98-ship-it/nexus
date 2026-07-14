@@ -58,7 +58,7 @@ export default function PerformanceDictionaryPage() {
   // Shared reference stores — consumable by any module that needs them.
   const [kpis, setKpis] = useLocalState<CorporateKpi[]>("corporate-kpis", seedKpis);
   const [profiles, setProfiles] = useLocalState<JobProfile[]>("job-profiles", seedProfiles);
-  const [goals] = useLocalState<StrategicGoal[]>("strategy-goals", seedGoals); // pulled from Strategic Planning
+  const [goals] = useLocalState<StrategicGoal[]>("strategy-goals-2026", seedGoals); // pulled from Strategic Planning
   const [tab, setTab] = useState<Tab>("Corporate KPI");
   const [kForm, setKForm] = useState<KForm>(emptyK);
   const [jForm, setJForm] = useState<JForm>(emptyJ);
@@ -297,7 +297,7 @@ export default function PerformanceDictionaryPage() {
           <label className={labelCls}>{t("Strategic Goal")}
             <select value={kForm.strategicGoalId} onChange={(e) => setKForm((f) => ({ ...f, strategicGoalId: e.target.value }))} className={`${inputCls} text-[var(--text)]`}>
               <option value="">{t("— none")}</option>
-              {goals.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
+              {goals.map((g) => <option key={g.id} value={g.id}>{g.code ? `${g.code} — ${g.title}` : g.title}</option>)}
             </select>
           </label>
           <div>

@@ -34,7 +34,7 @@ const emptyForm = (period: string): Form => ({
 export default function PerformancePlanningPage() {
   const { t } = useI18n();
   const [kpis, setKpis] = useLocalState<PlanningKpi[]>("planning-kpis", seedPlanning);
-  const [goals] = useLocalState<StrategicGoal[]>("strategy-goals", seedGoals);
+  const [goals] = useLocalState<StrategicGoal[]>("strategy-goals-2026", seedGoals);
   const [period, setPeriod] = useState("2026");
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<Form>(emptyForm("2026"));
@@ -192,7 +192,7 @@ export default function PerformancePlanningPage() {
               <label className={labelCls}>{t("Strategic Objective")}
                 <select value={form.strategicGoalId} onChange={(e) => setF("strategicGoalId", e.target.value)} className={selCls}>
                   <option value="">{t("— pick a Strategic Goal")}</option>
-                  {goals.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
+                  {goals.map((g) => <option key={g.id} value={g.id}>{g.code ? `${g.code} — ${g.title}` : g.title}</option>)}
                 </select>
                 <span className="mt-1 block text-[10px] text-[var(--muted)]">{t("Pulled from Strategic Planning.")}</span>
               </label>

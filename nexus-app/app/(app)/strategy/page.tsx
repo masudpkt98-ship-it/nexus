@@ -11,6 +11,8 @@ import {
   strategicGoals as mockGoals,
   swotItems as mockSwot,
   type SwotType,
+  type StrategicGoal,
+  type GoalStrategy,
 } from "@/lib/data";
 import { useApiData } from "@/lib/useApi";
 import { useLocalState } from "@/lib/useLocalState";
@@ -326,28 +328,70 @@ function CoreValues() {
 }
 
 // ---------------------------------------------------------------------------
-// Strategic Goals — CRUD list.
+// Strategic Goals — CRUD list. Sourced from the RKAP 2026 "Program Kegiatan"
+// (Sasaran → Strategi → Program Kegiatan) across every division.
 // ---------------------------------------------------------------------------
-type Goal = { id: string; title: string; description: string; target: string; owner: string };
-const emptyGoal = { open: false, id: null as string | null, title: "", description: "", target: "FY26", owner: "" };
+type GoalForm = {
+  open: boolean;
+  id: string | null;
+  code: string;
+  division: string;
+  title: string;
+  target: string;
+  strategies: GoalStrategy[];
+};
+const emptyGoal: GoalForm = { open: false, id: null, code: "", division: "", title: "", target: "FY26", strategies: [] };
+const blankStrategy: GoalStrategy = { strategy: "", programs: "" };
 
 function StrategicGoals() {
   const { t } = useI18n();
-  const [rows, setRows] = useLocalState<Goal[]>("strategy-goals", mockGoals);
-  const [form, setForm] = useState(emptyGoal);
+  // Versioned key: replaces any goals stored under the old "strategy-goals" seed.
+  const [rows, setRows] = useLocalState<StrategicGoal[]>("strategy-goals-2026", mockGoals);
+  const [form, setForm] = useState<GoalForm>(emptyGoal);
+  const [query, setQuery] = useState("");
+  const [division, setDivision] = useState("All");
 
-  const openCreate = () => setForm({ ...emptyGoal, open: true });
-  const openEdit = (g: Goal) =>
-    setForm({ open: true, id: g.id, title: g.title, description: g.description, target: g.target, owner: g.owner });
+  const divisions = ["All", ...Array.from(new Set(rows.map((g) => g.division)))];
+  const q = query.trim().toLowerCase();
+  const filtered = rows.filter((g) => {
+    if (division !== "All" && g.division !== division) return false;
+    if (!q) return true;
+    const hay = `${g.code} ${g.division} ${g.title} ${g.strategies.map((s) => s.strategy + " " + s.programs).join(" ")}`.toLowerCase();
+    return hay.includes(q);
+  });
+
+  const openCreate = () => setForm({ ...emptyGoal, strategies: [{ ...blankStrategy }], open: true });
+  const openEdit = (g: StrategicGoal) =>
+    setForm({
+      open: true,
+      id: g.id,
+      code: g.code,
+      division: g.division,
+      title: g.title,
+      target: g.target,
+      strategies: g.strategies.length ? g.strategies.map((s) => ({ ...s })) : [{ ...blankStrategy }],
+    });
   const close = () => setForm(emptyGoal);
+
+  const setStrategy = (i: number, patch: Partial<GoalStrategy>) =>
+    setForm((f) => ({ ...f, strategies: f.strategies.map((s, idx) => (idx === i ? { ...s, ...patch } : s)) }));
+  const addStrategy = () => setForm((f) => ({ ...f, strategies: [...f.strategies, { ...blankStrategy }] }));
+  const removeStrategy = (i: number) => setForm((f) => ({ ...f, strategies: f.strategies.filter((_, idx) => idx !== i) }));
+
   const save = () => {
     const title = form.title.trim();
     if (!title) return;
+    const division = form.division.trim();
+    const strategies = form.strategies
+      .map((s) => ({ strategy: s.strategy.trim(), programs: s.programs.trim() }))
+      .filter((s) => s.strategy || s.programs);
     const body = {
+      code: form.code.trim(),
+      division,
       title,
-      description: form.description.trim(),
       target: form.target,
-      owner: form.owner.trim() || "You",
+      owner: division || "You",
+      strategies,
     };
     if (form.id == null) {
       setRows((r) => [...r, { id: nextId("sg"), ...body }]);
@@ -356,87 +400,156 @@ function StrategicGoals() {
     }
     close();
   };
-  const remove = (g: Goal) => setRows((r) => r.filter((x) => x.id !== g.id));
+  const remove = (g: StrategicGoal) => setRows((r) => r.filter((x) => x.id !== g.id));
 
   return (
     <div className="mt-4">
       <Card>
         <SectionTitle
           title="Strategic Goals"
-          subtitle="Department-level goals that cascade into OKR"
+          subtitle="RKAP 2026 — Sasaran · Strategi · Program Kegiatan per division"
           action={
             <button onClick={openCreate} className="text-royal-400 transition hover:text-royal-300" aria-label="Add strategic goal" title={t("Add")}>
               <Icon.plus className="h-4 w-4" />
             </button>
           }
         />
+
+        {/* Filter bar — 90 goals across 14 divisions, so make them findable. */}
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[180px]">
+            <Icon.search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("Search goals, strategies, programs…")}
+              className="w-full rounded-lg border bg-[rgb(var(--surface))] py-1.5 pl-8 pr-2.5 text-[13px] outline-none focus:border-royal-500"
+            />
+          </div>
+          <select
+            value={division}
+            onChange={(e) => setDivision(e.target.value)}
+            className="rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500"
+          >
+            {divisions.map((d) => (
+              <option key={d} value={d}>{d === "All" ? t("All divisions") : d}</option>
+            ))}
+          </select>
+          <span className="text-[11px] text-[var(--muted)]">{filtered.length}/{rows.length}</span>
+        </div>
+
         <div className="space-y-2.5">
-          {rows.map((g, i) => (
+          {filtered.map((g) => (
             <div key={g.id} dir="auto" className="group flex items-start gap-3 rounded-lg border p-2.5">
-              <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-royal-500/15 text-[11px] font-bold text-royal-400">
-                {i + 1}
+              <div className="mt-0.5 flex h-6 shrink-0 items-center justify-center rounded-lg bg-royal-500/15 px-1.5 text-[10px] font-bold text-royal-400">
+                {g.code || "—"}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
-                  <span className="text-[13px] font-semibold">{g.title}</span>
+                  <span className="whitespace-pre-line text-[13px] font-semibold">{g.title}</span>
                   <RowActions onEdit={() => openEdit(g)} onDelete={() => remove(g)} label={g.title} />
                 </div>
-                {g.description && <p className="mt-0.5 text-[12px] text-[var(--muted)]">{g.description}</p>}
-                <div className="mt-1.5 flex items-center gap-2 text-xs text-[var(--muted)]">
+                {g.strategies.length > 0 && (
+                  <div className="mt-2 space-y-2 border-t pt-2">
+                    {g.strategies.map((s, idx) => (
+                      <div key={idx}>
+                        {s.strategy && <div className="text-[12px] font-medium text-[var(--text)]">{s.strategy}</div>}
+                        {s.programs && <p className="mt-0.5 whitespace-pre-line text-[11px] leading-relaxed text-[var(--muted)]">{s.programs}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-2 flex items-center gap-2 text-xs text-[var(--muted)]">
                   <Badge tone="blue">{g.target}</Badge>
-                  <Avatar initials={g.owner.split(" ").map((s) => s[0]).join("").slice(0, 2) || "?"} />
-                  {t(g.owner)}
+                  <Avatar initials={g.division.replace(/^Bidang\s+/i, "").split(" ").map((s) => s[0]).join("").slice(0, 2) || "?"} />
+                  {g.division}
                 </div>
               </div>
             </div>
           ))}
-          {rows.length === 0 && <p className="py-4 text-center text-[12px] text-[var(--muted)]">{t("No strategic goals yet. Add one.")}</p>}
+          {filtered.length === 0 && <p className="py-4 text-center text-[12px] text-[var(--muted)]">{t("No strategic goals match your filter.")}</p>}
         </div>
       </Card>
 
       {form.open && (
         <Modal title={form.id == null ? t("New Strategic Goal") : t("Edit Strategic Goal")} onClose={close} onSave={save} saveLabel={form.id == null ? t("Create") : t("Save")}>
-          <label className={labelCls}>
-            {t("Goal")}
-            <input
-              value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              placeholder={t("e.g. Build a competency-driven culture")}
-              className={inputCls}
-            />
-          </label>
-          <label className={labelCls}>
-            {t("Description")}
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              rows={3}
-              placeholder={t("What this goal aims to achieve…")}
-              className={inputCls}
-            />
-          </label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-[110px_1fr] gap-3">
             <label className={labelCls}>
-              {t("Target")}
-              <select
-                value={form.target}
-                onChange={(e) => setForm((f) => ({ ...f, target: e.target.value }))}
-                className={`${inputCls} text-[var(--text)]`}
-              >
-                <option>FY26</option>
-                <option>FY27</option>
-                <option>FY28</option>
-              </select>
+              {t("Code")}
+              <input
+                value={form.code}
+                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
+                placeholder="PRD-01"
+                className={`${inputCls} uppercase`}
+              />
             </label>
             <label className={labelCls}>
-              {t("Owner")}
+              {t("Division")}
               <input
-                value={form.owner}
-                onChange={(e) => setForm((f) => ({ ...f, owner: e.target.value }))}
-                placeholder={t("e.g. Arif Wibowo")}
+                value={form.division}
+                onChange={(e) => setForm((f) => ({ ...f, division: e.target.value }))}
+                placeholder={t("e.g. Bidang Produksi")}
                 className={inputCls}
               />
             </label>
+          </div>
+          <label className={labelCls}>
+            {t("Goal")}
+            <textarea
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              rows={3}
+              placeholder={t("The strategic goal (Sasaran)…")}
+              className={inputCls}
+            />
+          </label>
+          <label className={labelCls}>
+            {t("Target")}
+            <select
+              value={form.target}
+              onChange={(e) => setForm((f) => ({ ...f, target: e.target.value }))}
+              className={`${inputCls} text-[var(--text)]`}
+            >
+              <option>FY26</option>
+              <option>FY27</option>
+              <option>FY28</option>
+            </select>
+          </label>
+
+          <div className="border-t pt-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-[var(--muted)]">{t("Strategies & Programs")}</span>
+              <button onClick={addStrategy} className="text-royal-400 transition hover:text-royal-300" aria-label="Add strategy" title={t("Add")}>
+                <Icon.plus className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              {form.strategies.map((s, i) => (
+                <div key={i} className="rounded-lg border p-2.5">
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-[10px] font-medium text-[var(--muted)]">#{i + 1}</span>
+                    {form.strategies.length > 1 && (
+                      <button onClick={() => removeStrategy(i)} className="text-[11px] text-[var(--muted)] transition hover:text-rose-400" aria-label="Remove strategy">
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    value={s.strategy}
+                    onChange={(e) => setStrategy(i, { strategy: e.target.value })}
+                    placeholder={t("Strategy…")}
+                    className={inputCls}
+                  />
+                  <textarea
+                    value={s.programs}
+                    onChange={(e) => setStrategy(i, { programs: e.target.value })}
+                    rows={3}
+                    placeholder={t("Program activities (one per line)…")}
+                    className={`${inputCls} mt-2`}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </Modal>
       )}
