@@ -15,7 +15,16 @@ export interface NavItem {
 }
 
 export const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: "dashboard", section: "Overview" },
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    icon: "dashboard",
+    section: "Overview",
+    children: [
+      { label: "Performance Dashboard", href: "/dashboard/performance" },
+      { label: "Competency Dashboard", href: "/dashboard/competency" },
+    ],
+  },
 
   { label: "Strategic Planning", href: "/strategy", icon: "strategy", section: "Plan & Execute" },
   { label: "Program Management", href: "/programs", icon: "program", section: "Plan & Execute" },
