@@ -137,8 +137,13 @@ function classifyAppraisal(status: string): "approved" | "waiting" | "not" {
 // with no record counts as "not done", NOT excluded from the base.
 // -----------------------------------------------------------------------------
 
-// One Wajib-KPI employee (from the Directory) — its directorate is authoritative.
-export interface WajibEmp { npk: string; directorate: string }
+// One Wajib-KPI employee (from the Directory) — its org fields are authoritative.
+export interface WajibEmp { npk: string; directorate: string; compartment: string; unit: string }
+
+// Org breakdown levels — ONLY the fields present in the KPI Eligibility source
+// (Employee Directory). No mixing with the performance exports.
+export type OrgLevel = "Direktorat" | "Kompartemen" | "Unit Kerja";
+export const ORG_LEVELS: OrgLevel[] = ["Direktorat", "Kompartemen", "Unit Kerja"];
 
 // NIK → its (deduped) dataset row, for O(1) per-employee lookup.
 export function buildIndex(kind: DatasetKind, rows: Row[]): Map<string, Row> {
@@ -217,31 +222,35 @@ export function coachingStats(wajib: WajibEmp[], idx: Map<string, Row>): Coachin
   return { employees: coached, coverage: total ? (coached / total) * 100 : 0, totalSessions: sessions, avgPresentase: pctN ? pctSum / pctN : 0 };
 }
 
-// ---- Per-directorate breakdown — denominator = Wajib KPI per directorate -------
+// ---- Org breakdown — denominator = Wajib KPI per org unit (any level) ----------
 export interface DirRow {
-  directorate: string;
-  planningTotal: number; // wajib employees in the directorate
+  key: string; // the org unit name at the selected level
+  planningTotal: number; // wajib employees in this org unit
   planningApproved: number;
   appraisalTotal: number; // same wajib base
   appraisalApproved: number;
 }
 
-export function byDirectorate(wajib: WajibEmp[], pIdx: Map<string, Row>, aIdx: Map<string, Row>, p: Period): DirRow[] {
+// Group the Wajib-KPI employees by the chosen org level and tally approvals.
+// Every count is over the wajib set, so excluded employees never appear.
+export function byOrg(wajib: WajibEmp[], pIdx: Map<string, Row>, aIdx: Map<string, Row>, p: Period, level: OrgLevel): DirRow[] {
   const map = new Map<string, DirRow>();
-  const get = (d: string) => {
-    const key = d || "—";
-    if (!map.has(key)) map.set(key, { directorate: key, planningTotal: 0, planningApproved: 0, appraisalTotal: 0, appraisalApproved: 0 });
+  const get = (k: string) => {
+    const key = k || "—";
+    if (!map.has(key)) map.set(key, { key, planningTotal: 0, planningApproved: 0, appraisalTotal: 0, appraisalApproved: 0 });
     return map.get(key)!;
   };
   const qs = quartersFor(p);
   const cols = qs.length ? qs.map((q) => APR_STATUS(q)) : [APR_STATUS(null)];
   for (const e of wajib) {
-    const row = get(e.directorate);
+    const pr = pIdx.get(e.npk);
+    const ar = aIdx.get(e.npk);
+    // Group key comes only from the Directory (KPI Eligibility) fields.
+    const orgKey = level === "Direktorat" ? e.directorate : level === "Kompartemen" ? e.compartment : e.unit;
+    const row = get(orgKey);
     row.planningTotal++;
     row.appraisalTotal++;
-    const pr = pIdx.get(e.npk);
     if (pr && str(pr["Status KPI Individu"]) === "Approved") row.planningApproved++;
-    const ar = aIdx.get(e.npk);
     if (ar && cols.some((c) => classifyAppraisal(str(ar[c])) === "approved")) row.appraisalApproved++;
   }
   return [...map.values()].sort((a, b) => b.planningTotal - a.planningTotal);

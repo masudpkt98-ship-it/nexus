@@ -25,8 +25,10 @@ import {
   planningStats,
   appraisalStats,
   coachingStats,
-  byDirectorate,
+  byOrg,
+  ORG_LEVELS,
   type WajibEmp,
+  type OrgLevel,
 } from "@/lib/perfMonitor";
 import {
   type Snapshot,
@@ -74,7 +76,12 @@ function computeViews(snap: Snapshot) {
     poolSize++; // eligible pool (NIK 9 already out)
     if (excl[n]) continue; // excluded from Wajib KPI
     validNiks.add(n);
-    wajib.push({ npk: n, directorate: String(e.directorate ?? "").trim() });
+    wajib.push({
+      npk: n,
+      directorate: String(e.directorate ?? "").trim(),
+      compartment: String(e.compartment ?? "").trim(),
+      unit: String(e.unit ?? "").trim(),
+    });
   }
   const excluded = poolSize - validNiks.size;
   // Clean each dataset (rules) → restrict to Wajib set → index by NIK.
@@ -89,10 +96,9 @@ function computeViews(snap: Snapshot) {
   const pStats = planningStats(wajib, pIdx);
   const aStats = appraisalStats(wajib, aIdx, period);
   const cStats = coachingStats(wajib, cIdx);
-  const dirRows = byDirectorate(wajib, pIdx, aIdx, period);
   const population = wajib.length || 1;
   const coachingCoverage = cStats.coverage;
-  return { validNiks, cPlanning, cAppraisal, cCoaching, pStats, aStats, cStats, dirRows, population, coachingCoverage, poolSize, excluded };
+  return { validNiks, cPlanning, cAppraisal, cCoaching, pStats, aStats, cStats, wajib, pIdx, aIdx, period, population, coachingCoverage, poolSize, excluded };
 }
 
 const metaOf = (s: Snapshot): SnapshotMeta => ({
@@ -112,6 +118,7 @@ export default function PerformanceDashboardPage() {
   const [year, setYear] = useState(2026);
   const [gran, setGran] = useState<Gran>("Triwulanan");
   const [value, setValue] = useState(1);
+  const [orgLevel, setOrgLevel] = useState<OrgLevel>("Direktorat");
   const id = periodId(year, gran, value);
 
   const [snap, setSnap] = useState<Snapshot | null>(null);
@@ -225,6 +232,7 @@ export default function PerformanceDashboardPage() {
   };
 
   const views = useMemo(() => (snap ? computeViews(snap) : null), [snap]);
+  const orgRows = useMemo(() => (views ? byOrg(views.wajib, views.pIdx, views.aIdx, views.period, orgLevel) : []), [views, orgLevel]);
   const hasData = snap && (snap.planning || snap.appraisal || snap.coaching);
   const sortedIndex = useMemo(
     () => [...index].sort((a, b) => a.year - b.year || GRAN_RANK[a.gran] - GRAN_RANK[b.gran] || a.value - b.value),
@@ -389,26 +397,41 @@ export default function PerformanceDashboardPage() {
             </Card>
           </div>
 
-          {/* ---- Directorate breakdown ---- */}
+          {/* ---- Org breakdown (Direktorat / Kompartemen / Departemen / Unit Kerja) ---- */}
           {(snap!.planning || snap!.appraisal) && (
             <Card className="mt-4">
-              <SectionTitle title="By Directorate" subtitle={`Planning approval · Appraisal approval — ${periodLabel({ gran, value })}`} />
-              <div className="overflow-x-auto">
+              <SectionTitle
+                title="Breakdown"
+                subtitle={`Planning · Appraisal approval — Wajib KPI base · ${periodLabel({ gran, value })}`}
+                action={
+                  <div className="flex gap-1">
+                    {ORG_LEVELS.map((lv) => (
+                      <button key={lv} onClick={() => setOrgLevel(lv)}
+                        className={cn("rounded-lg px-2.5 py-1 text-[12px] font-medium transition", orgLevel === lv ? "bg-royal-500/15 text-royal-400" : "text-[var(--muted)] hover:bg-black/5 dark:hover:bg-white/5")}>
+                        {t(lv)}
+                      </button>
+                    ))}
+                  </div>
+                }
+              />
+              <div className="max-h-[420px] overflow-auto">
                 <table className="w-full min-w-[560px] text-[12.5px]">
                   <thead>
                     <tr className="border-b text-left text-[11px] uppercase tracking-wider text-[var(--muted)]">
-                      <th className="py-2 pr-2">{t("Directorate")}</th>
-                      <th className="px-2 text-right">{t("Planning")}</th>
-                      <th className="px-2 text-right">{t("Appraisal")}</th>
+                      <th className="sticky top-0 bg-[rgb(var(--surface))] py-2 pr-2">{t(orgLevel)}</th>
+                      <th className="sticky top-0 bg-[rgb(var(--surface))] px-2 text-right">{t("Wajib")}</th>
+                      <th className="sticky top-0 bg-[rgb(var(--surface))] px-2 text-right">{t("Planning")}</th>
+                      <th className="sticky top-0 bg-[rgb(var(--surface))] px-2 text-right">{t("Appraisal")}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {views.dirRows.map((d) => {
+                    {orgRows.map((d) => {
                       const pp = d.planningTotal ? (d.planningApproved / d.planningTotal) * 100 : 0;
                       const ap = d.appraisalTotal ? (d.appraisalApproved / d.appraisalTotal) * 100 : 0;
                       return (
-                        <tr key={d.directorate} className="border-b last:border-0">
-                          <td className="py-2 pr-2">{d.directorate}</td>
+                        <tr key={d.key} className="border-b last:border-0">
+                          <td className="py-2 pr-2">{d.key}</td>
+                          <td className="px-2 text-right tabular-nums text-[var(--muted)]">{fmt(d.planningTotal)}</td>
                           <td className="px-2"><div className="flex items-center justify-end gap-2"><span className="tabular-nums text-[var(--muted)]">{fmt(d.planningApproved)}/{fmt(d.planningTotal)}</span><div className="w-20"><ProgressBar value={pp} tone="gold" /></div><span className="w-9 text-right tabular-nums">{pct(pp)}</span></div></td>
                           <td className="px-2"><div className="flex items-center justify-end gap-2"><span className="tabular-nums text-[var(--muted)]">{fmt(d.appraisalApproved)}/{fmt(d.appraisalTotal)}</span><div className="w-20"><ProgressBar value={ap} tone="blue" /></div><span className="w-9 text-right tabular-nums">{pct(ap)}</span></div></td>
                         </tr>
