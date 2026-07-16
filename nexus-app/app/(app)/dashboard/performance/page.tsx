@@ -63,9 +63,9 @@ const labelOf = (year: number, gran: Gran, value: number) => `${year} · ${perio
 
 // ---- Compile a snapshot's frozen data into monitoring views --------------------
 // Wajib KPI = frozen Directory − NIK 9 − employees excluded (frozen exclusions).
-function computeViews(snap: Snapshot) {
+function computeViews(snap: Snapshot, exclusions: Exclusions) {
   const period: Period = { gran: snap.gran, value: snap.value };
-  const excl = snap.exclusions ?? {};
+  const excl = exclusions ?? {};
   // Wajib-KPI employee set from the frozen Directory (NIK 9 + exclusions removed).
   const wajib: WajibEmp[] = [];
   const validNiks = new Set<string>();
@@ -170,7 +170,7 @@ export default function PerformanceDashboardPage() {
       base[kind] = rows;
       base.importedAt = nowISO();
 
-      const views = computeViews(base);
+      const views = computeViews(base, liveExclusions);
       const counted = kind === "planning" ? views.cPlanning.length : kind === "appraisal" ? views.cAppraisal.length : views.cCoaching.length;
       base.datasets = { ...base.datasets, [kind]: { fileName: file.name, sheet: sheetName, rows: rows.length, counted, importedAt: nowISO() } };
       base.directoryCount = views.poolSize;
@@ -210,29 +210,32 @@ export default function PerformanceDashboardPage() {
     if (!snap) return;
     const base: Snapshot = { ...snap, [kind]: null, datasets: { ...snap.datasets } };
     delete base.datasets[kind];
-    const views = computeViews(base);
+    const views = computeViews(base, liveExclusions);
     base.summary = summaryOf(views);
     await putSnapshot(base);
     setIndex((prev) => [...prev.filter((m) => m.id !== id), metaOf(base)]);
     setSnap(base);
   };
 
-  // Re-freeze the CURRENT live exclusions into the selected period (explicit,
-  // keeps other periods immutable). Use after editing KPI Eligibility.
-  const syncExclusions = async () => {
-    if (!snap) return;
-    const base: Snapshot = { ...snap, exclusions: liveExclusions };
-    const views = computeViews(base);
-    base.directoryCount = views.poolSize;
-    base.summary = summaryOf(views);
-    await putSnapshot(base);
-    setIndex((prev) => [...prev.filter((m) => m.id !== id), metaOf(base)]);
-    setSnap(base);
-    setNote(`${t("Exclusions synced")} · ${t("Total Wajib KPI")}: ${fmt(views.population)} (${fmt(views.excluded)} ${t("excluded")})`);
-  };
-
-  const views = useMemo(() => (snap ? computeViews(snap) : null), [snap]);
+  const views = useMemo(() => (snap ? computeViews(snap, liveExclusions) : null), [snap, liveExclusions]);
   const orgRows = useMemo(() => (views ? byOrg(views.wajib, views.pIdx, views.aIdx, views.period, orgLevel) : []), [views, orgLevel]);
+
+  // Live exclusions always apply. Persist them into the viewed period's snapshot
+  // (and its History summary) whenever they diverge — so the whole dashboard,
+  // including History, reflects the current KPI Eligibility with no manual step.
+  useEffect(() => {
+    if (!snap || !views) return;
+    const s = snap.summary;
+    const exKeys = Object.keys(liveExclusions);
+    const sameExcl = snap.exclusions && Object.keys(snap.exclusions).length === exKeys.length && exKeys.every((k) => snap.exclusions[k]);
+    if (sameExcl && s.population === views.population && s.excluded === views.excluded) return;
+    const base: Snapshot = { ...snap, exclusions: liveExclusions, directoryCount: views.poolSize, summary: summaryOf(views) };
+    putSnapshot(base).then(() => {
+      setIndex((prev) => [...prev.filter((m) => m.id !== id), metaOf(base)]);
+      setSnap(base);
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snap, views, liveExclusions, id]);
   const hasData = snap && (snap.planning || snap.appraisal || snap.coaching);
   const sortedIndex = useMemo(
     () => [...index].sort((a, b) => a.year - b.year || GRAN_RANK[a.gran] - GRAN_RANK[b.gran] || a.value - b.value),
@@ -311,13 +314,10 @@ export default function PerformanceDashboardPage() {
         {snap ? (
           <>
             <span className="font-medium">{t("Frozen Directory")}</span>
-            <span className="text-[var(--muted)]">— {fmt(snap.directoryCount)} {t("employees (NIK 9 excluded)")}</span>
-            <Badge tone="green">{t("Total Wajib KPI")}: {fmt(snap.summary?.population ?? 0)}</Badge>
-            <Badge tone="amber">{t("Excluded")}: {fmt(snap.summary?.excluded ?? 0)}</Badge>
+            <span className="text-[var(--muted)]">— {fmt(views?.poolSize ?? snap.directoryCount)} {t("employees (NIK 9 excluded)")}</span>
+            <Badge tone="green">{t("Total Wajib KPI")}: {fmt(views?.population ?? snap.summary?.population ?? 0)}</Badge>
+            <Badge tone="amber">{t("Excluded")}: {fmt(views?.excluded ?? snap.summary?.excluded ?? 0)}</Badge>
             <span className="text-[var(--muted)]">· {t("captured")} {new Date(snap.importedAt).toLocaleDateString("id-ID")}</span>
-            <button onClick={syncExclusions} className="ml-auto inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium text-royal-400 transition hover:bg-royal-500/10" title={t("Re-apply current KPI Eligibility exclusions to this period")}>
-              <Icon.spark className="h-3.5 w-3.5" /> {t("Sync exclusions")}
-            </button>
           </>
         ) : (
           <span className="text-[var(--muted)]">{t("On first import this period will freeze the current Directory")} ({fmt(liveDirCount)} {t("employees")}).</span>
