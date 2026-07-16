@@ -20,11 +20,13 @@ import {
   detectKind,
   cleanRows,
   nikOf,
+  buildIndex,
   periodLabel,
   planningStats,
   appraisalStats,
   coachingStats,
   byDirectorate,
+  type WajibEmp,
 } from "@/lib/perfMonitor";
 import {
   type Snapshot,
@@ -62,6 +64,8 @@ const labelOf = (year: number, gran: Gran, value: number) => `${year} · ${perio
 function computeViews(snap: Snapshot) {
   const period: Period = { gran: snap.gran, value: snap.value };
   const excl = snap.exclusions ?? {};
+  // Wajib-KPI employee set from the frozen Directory (NIK 9 + exclusions removed).
+  const wajib: WajibEmp[] = [];
   const validNiks = new Set<string>();
   let poolSize = 0;
   for (const e of snap.directory) {
@@ -70,18 +74,24 @@ function computeViews(snap: Snapshot) {
     poolSize++; // eligible pool (NIK 9 already out)
     if (excl[n]) continue; // excluded from Wajib KPI
     validNiks.add(n);
+    wajib.push({ npk: n, directorate: String(e.directorate ?? "").trim() });
   }
   const excluded = poolSize - validNiks.size;
+  // Clean each dataset (rules) → restrict to Wajib set → index by NIK.
   const inDir = (kind: DatasetKind, rows: Row[]) => rows.filter((r) => validNiks.has(nikOf(kind, r)));
   const cPlanning = snap.planning ? inDir("planning", cleanRows("planning", snap.planning)) : [];
   const cAppraisal = snap.appraisal ? inDir("appraisal", cleanRows("appraisal", snap.appraisal)) : [];
   const cCoaching = snap.coaching ? inDir("coaching", cleanRows("coaching", snap.coaching)) : [];
-  const pStats = planningStats(cPlanning);
-  const aStats = appraisalStats(cAppraisal, period);
-  const cStats = coachingStats(cCoaching);
-  const dirRows = byDirectorate(cPlanning, cAppraisal, period);
-  const population = validNiks.size || 1;
-  const coachingCoverage = (cStats.employees / population) * 100;
+  const pIdx = buildIndex("planning", cPlanning);
+  const aIdx = buildIndex("appraisal", cAppraisal);
+  const cIdx = buildIndex("coaching", cCoaching);
+  // All metrics use the Wajib-KPI base as the denominator.
+  const pStats = planningStats(wajib, pIdx);
+  const aStats = appraisalStats(wajib, aIdx, period);
+  const cStats = coachingStats(wajib, cIdx);
+  const dirRows = byDirectorate(wajib, pIdx, aIdx, period);
+  const population = wajib.length || 1;
+  const coachingCoverage = cStats.coverage;
   return { validNiks, cPlanning, cAppraisal, cCoaching, pStats, aStats, cStats, dirRows, population, coachingCoverage, poolSize, excluded };
 }
 

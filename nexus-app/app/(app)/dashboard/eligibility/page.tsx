@@ -152,7 +152,6 @@ export default function EligibilityPage() {
                 <th className="px-2 py-2">PG/JG</th>
                 <th className="px-2 py-2">{t("Gender")}</th>
                 <th className="px-2 py-2">S/F</th>
-                <th className="px-2 py-2">PBP</th>
                 <th className="px-2 py-2">{t("Reason")}</th>
               </tr>
             </thead>
@@ -172,7 +171,6 @@ export default function EligibilityPage() {
                     <td className="px-2 py-1.5 tabular-nums">{e.pg}/{e.jg}</td>
                     <td className="px-2 py-1.5">{genderLabel(e.gender)}</td>
                     <td className="px-2 py-1.5">{e.sf}</td>
-                    <td className="px-2 py-1.5">{e.pbp ? <Badge tone="amber">PBP</Badge> : ""}</td>
                     <td className="px-2 py-1.5">
                       {excl ? (
                         <select value={exclusions[e.npk].reason} onChange={(ev) => setReason(e.npk, ev.target.value)} className="rounded border bg-[rgb(var(--surface))] px-1.5 py-1 text-[11px] outline-none focus:border-royal-500">

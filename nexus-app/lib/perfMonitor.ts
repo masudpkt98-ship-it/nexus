@@ -130,12 +130,30 @@ function classifyAppraisal(status: string): "approved" | "waiting" | "not" {
   return "not";
 }
 
-export function appraisalStats(rows: Row[], p: Period): AppraisalStats {
+// -----------------------------------------------------------------------------
+// Aggregation is EMPLOYEE-DRIVEN: it iterates the Wajib-KPI employee set (from
+// the frozen Directory) and joins each employee to their dataset row by NIK.
+// So every percentage's denominator is the Total Wajib KPI — a wajib employee
+// with no record counts as "not done", NOT excluded from the base.
+// -----------------------------------------------------------------------------
+
+// One Wajib-KPI employee (from the Directory) — its directorate is authoritative.
+export interface WajibEmp { npk: string; directorate: string }
+
+// NIK → its (deduped) dataset row, for O(1) per-employee lookup.
+export function buildIndex(kind: DatasetKind, rows: Row[]): Map<string, Row> {
+  const m = new Map<string, Row>();
+  for (const r of rows) { const nik = nikOf(kind, r); if (nik && !m.has(nik)) m.set(nik, r); }
+  return m;
+}
+
+export function appraisalStats(wajib: WajibEmp[], idx: Map<string, Row>, p: Period): AppraisalStats {
   const qs = quartersFor(p);
   const cols = qs.length ? qs.map((q) => ({ s: APR_STATUS(q), n: APR_SCORE(q) })) : [{ s: APR_STATUS(null), n: APR_SCORE(null) }];
   let approved = 0, waiting = 0, notSubmitted = 0, scoreSum = 0, scoreN = 0;
-  for (const r of rows) {
-    // A row's period status = best across the covered quarters (approved wins).
+  for (const e of wajib) {
+    const r = idx.get(e.npk);
+    if (!r) { notSubmitted++; continue; } // wajib but no appraisal → not submitted
     let best: "approved" | "waiting" | "not" = "not";
     let bestScore = 0;
     for (const c of cols) {
@@ -150,12 +168,8 @@ export function appraisalStats(rows: Row[], p: Period): AppraisalStats {
     else notSubmitted++;
     if (bestScore > 0) { scoreSum += bestScore; scoreN++; }
   }
-  const total = rows.length;
-  return {
-    approved, waiting, notSubmitted, total,
-    avgScore: scoreN ? scoreSum / scoreN : 0,
-    pctApproved: total ? (approved / total) * 100 : 0,
-  };
+  const total = wajib.length;
+  return { approved, waiting, notSubmitted, total, avgScore: scoreN ? scoreSum / scoreN : 0, pctApproved: total ? (approved / total) * 100 : 0 };
 }
 
 // ---- Planning ----------------------------------------------------------------
@@ -166,68 +180,69 @@ export interface PlanningStats {
   pctIndividuApproved: number;
 }
 
-const tally = (rows: Row[], col: string) => {
-  const m: Record<string, number> = {};
-  for (const r of rows) { const v = str(r[col]) || "—"; m[v] = (m[v] || 0) + 1; }
-  return m;
-};
-
-export function planningStats(rows: Row[]): PlanningStats {
-  const individu = tally(rows, "Status KPI Individu");
-  const unit = tally(rows, "Status KPI UNIT");
+export function planningStats(wajib: WajibEmp[], idx: Map<string, Row>): PlanningStats {
+  const individu: Record<string, number> = {};
+  const unit: Record<string, number> = {};
+  for (const e of wajib) {
+    const r = idx.get(e.npk);
+    const iv = r ? str(r["Status KPI Individu"]) || "Belum" : "Belum"; // no record → Belum
+    const un = r ? str(r["Status KPI UNIT"]) || "Belum" : "Belum";
+    individu[iv] = (individu[iv] || 0) + 1;
+    unit[un] = (unit[un] || 0) + 1;
+  }
   const approved = individu["Approved"] || 0;
-  return {
-    total: rows.length,
-    individu,
-    unit,
-    pctIndividuApproved: rows.length ? (approved / rows.length) * 100 : 0,
-  };
+  const total = wajib.length;
+  return { total, individu, unit, pctIndividuApproved: total ? (approved / total) * 100 : 0 };
 }
 
 // ---- Coaching ----------------------------------------------------------------
 export interface CoachingStats {
-  employees: number; // distinct coached employees (after clean)
+  employees: number; // wajib employees with a coaching record
+  coverage: number; // employees / Total Wajib KPI
   totalSessions: number; // Σ Jumlah Coaching
   avgPresentase: number; // mean of Presentase column
 }
 
-export function coachingStats(rows: Row[]): CoachingStats {
-  let sessions = 0, pctSum = 0, pctN = 0;
-  for (const r of rows) {
+export function coachingStats(wajib: WajibEmp[], idx: Map<string, Row>): CoachingStats {
+  let coached = 0, sessions = 0, pctSum = 0, pctN = 0;
+  for (const e of wajib) {
+    const r = idx.get(e.npk);
+    if (!r) continue;
+    coached++;
     sessions += Number(r["Jumlah Coaching"]) || 0;
     const p = Number(String(r["Presentase"]).replace("%", "").replace(",", ".")) || 0;
     if (p > 0) { pctSum += p; pctN++; }
   }
-  return { employees: rows.length, totalSessions: sessions, avgPresentase: pctN ? pctSum / pctN : 0 };
+  const total = wajib.length;
+  return { employees: coached, coverage: total ? (coached / total) * 100 : 0, totalSessions: sessions, avgPresentase: pctN ? pctSum / pctN : 0 };
 }
 
-// ---- Per-directorate breakdown (planning approval + appraisal approval) --------
+// ---- Per-directorate breakdown — denominator = Wajib KPI per directorate -------
 export interface DirRow {
   directorate: string;
-  planningTotal: number;
+  planningTotal: number; // wajib employees in the directorate
   planningApproved: number;
-  appraisalTotal: number;
+  appraisalTotal: number; // same wajib base
   appraisalApproved: number;
 }
 
-export function byDirectorate(planning: Row[], appraisal: Row[], p: Period): DirRow[] {
+export function byDirectorate(wajib: WajibEmp[], pIdx: Map<string, Row>, aIdx: Map<string, Row>, p: Period): DirRow[] {
   const map = new Map<string, DirRow>();
   const get = (d: string) => {
     const key = d || "—";
     if (!map.has(key)) map.set(key, { directorate: key, planningTotal: 0, planningApproved: 0, appraisalTotal: 0, appraisalApproved: 0 });
     return map.get(key)!;
   };
-  for (const r of planning) {
-    const row = get(str(r["Nama Direktorat"]));
-    row.planningTotal++;
-    if (str(r["Status KPI Individu"]) === "Approved") row.planningApproved++;
-  }
   const qs = quartersFor(p);
   const cols = qs.length ? qs.map((q) => APR_STATUS(q)) : [APR_STATUS(null)];
-  for (const r of appraisal) {
-    const row = get(str(r["Nama Direktorat"]));
+  for (const e of wajib) {
+    const row = get(e.directorate);
+    row.planningTotal++;
     row.appraisalTotal++;
-    if (cols.some((c) => classifyAppraisal(str(r[c])) === "approved")) row.appraisalApproved++;
+    const pr = pIdx.get(e.npk);
+    if (pr && str(pr["Status KPI Individu"]) === "Approved") row.planningApproved++;
+    const ar = aIdx.get(e.npk);
+    if (ar && cols.some((c) => classifyAppraisal(str(ar[c])) === "approved")) row.appraisalApproved++;
   }
-  return [...map.values()].sort((a, b) => (b.planningTotal + b.appraisalTotal) - (a.planningTotal + a.appraisalTotal));
+  return [...map.values()].sort((a, b) => b.planningTotal - a.planningTotal);
 }
