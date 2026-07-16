@@ -18,3 +18,6 @@ Thumbs.db
 *.xlsx
 *.xls
 *.pdf
+
+# dropped screenshots / scratch images at repo root
+/Progress.png
