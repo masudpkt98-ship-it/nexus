@@ -288,6 +288,8 @@ export default function PerformanceDashboardPage() {
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {KINDS.map((kind) => {
           const dm = snap?.datasets[kind];
+          // "counted" is LIVE (Wajib-KPI base), not the frozen import-time number.
+          const liveCounted = views ? (kind === "planning" ? views.cPlanning.length : kind === "appraisal" ? views.cAppraisal.length : views.cCoaching.length) : dm?.counted ?? 0;
           return (
             <Card key={kind} className="group">
               <div className="flex items-start justify-between gap-2">
@@ -299,7 +301,7 @@ export default function PerformanceDashboardPage() {
               </div>
               {dm && (
                 <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--muted)]">
-                  <span>{fmt(dm.counted)} {t("counted")} · {fmt(dm.rows)} {t("rows")}</span>
+                  <span>{fmt(liveCounted)} {t("counted (Wajib KPI)")} · {fmt(dm.rows)} {t("in file")}</span>
                   <button onClick={() => clearDataset(kind)} className="opacity-0 transition hover:text-rose-400 group-hover:opacity-100">{t("Clear")}</button>
                 </div>
               )}
