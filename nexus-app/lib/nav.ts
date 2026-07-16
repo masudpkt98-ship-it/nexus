@@ -23,6 +23,7 @@ export const navItems: NavItem[] = [
     children: [
       { label: "Performance Dashboard", href: "/dashboard/performance" },
       { label: "Competency Dashboard", href: "/dashboard/competency" },
+      { label: "KPI Eligibility", href: "/dashboard/eligibility" },
     ],
   },
 

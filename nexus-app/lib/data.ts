@@ -1407,6 +1407,7 @@ export interface Employee {
   major: string; // Prodi
   university: string; // Universitas
   sf: string; // S/F
+  pbp: string; // PBP date (pre-retirement) — empty if not applicable
 }
 
 export const employees: Employee[] = [];

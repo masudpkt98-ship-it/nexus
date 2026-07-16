@@ -7,6 +7,7 @@ import { Icon } from "@/components/Icons";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import { employees as employeeSeed, type Employee } from "@/lib/data";
+import { EXCLUSION_KEY, type Exclusions, isNik9 } from "@/lib/kpiEligibility";
 import {
   type Row,
   type DatasetKind,
@@ -57,13 +58,20 @@ const valueLabel = (g: Gran, v: number) =>
 const labelOf = (year: number, gran: Gran, value: number) => `${year} · ${periodLabel({ gran, value })}`;
 
 // ---- Compile a snapshot's frozen data into monitoring views --------------------
+// Wajib KPI = frozen Directory − NIK 9 − employees excluded (frozen exclusions).
 function computeViews(snap: Snapshot) {
   const period: Period = { gran: snap.gran, value: snap.value };
+  const excl = snap.exclusions ?? {};
   const validNiks = new Set<string>();
+  let poolSize = 0;
   for (const e of snap.directory) {
     const n = String(e.npk ?? "").trim();
-    if (n && !n.startsWith("9")) validNiks.add(n);
+    if (!n || isNik9(n)) continue;
+    poolSize++; // eligible pool (NIK 9 already out)
+    if (excl[n]) continue; // excluded from Wajib KPI
+    validNiks.add(n);
   }
+  const excluded = poolSize - validNiks.size;
   const inDir = (kind: DatasetKind, rows: Row[]) => rows.filter((r) => validNiks.has(nikOf(kind, r)));
   const cPlanning = snap.planning ? inDir("planning", cleanRows("planning", snap.planning)) : [];
   const cAppraisal = snap.appraisal ? inDir("appraisal", cleanRows("appraisal", snap.appraisal)) : [];
@@ -74,7 +82,7 @@ function computeViews(snap: Snapshot) {
   const dirRows = byDirectorate(cPlanning, cAppraisal, period);
   const population = validNiks.size || 1;
   const coachingCoverage = (cStats.employees / population) * 100;
-  return { validNiks, cPlanning, cAppraisal, cCoaching, pStats, aStats, cStats, dirRows, population, coachingCoverage };
+  return { validNiks, cPlanning, cAppraisal, cCoaching, pStats, aStats, cStats, dirRows, population, coachingCoverage, poolSize, excluded };
 }
 
 const metaOf = (s: Snapshot): SnapshotMeta => ({
@@ -85,8 +93,9 @@ const metaOf = (s: Snapshot): SnapshotMeta => ({
 export default function PerformanceDashboardPage() {
   const { t } = useI18n();
 
-  // Live Directory (used only to freeze into a new snapshot on import).
+  // Live Directory + exclusions (frozen into a snapshot on import / sync).
   const [directory] = useLocalState<Employee[]>("employees", employeeSeed);
+  const [liveExclusions] = useLocalState<Exclusions>(EXCLUSION_KEY, {});
   // Lightweight index of all period snapshots (heavy rows live in IndexedDB).
   const [index, setIndex] = useLocalState<SnapshotMeta[]>("perf-snapshot-index", []);
 
@@ -133,13 +142,13 @@ export default function PerformanceDashboardPage() {
       if (!kind) { setNote(t("Unrecognized file. Expected a Planning, Appraisal, or Coaching export.")); return; }
 
       const existing = await getSnapshot(id);
-      // Freeze the CURRENT Directory only when the period snapshot is first created.
+      // Freeze the CURRENT Directory + exclusions only when the snapshot is created.
       const frozenDir = existing?.directory ?? directory;
       const base: Snapshot = existing ?? {
         id, year, gran, value, label: labelOf(year, gran, value),
         importedAt: nowISO(), directoryCount: 0,
-        directory: frozenDir, planning: null, appraisal: null, coaching: null,
-        datasets: {}, summary: { population: 0, planningPct: 0, appraisalPct: 0, coachingPct: 0 },
+        directory: frozenDir, exclusions: liveExclusions, planning: null, appraisal: null, coaching: null,
+        datasets: {}, summary: { population: 0, excluded: 0, planningPct: 0, appraisalPct: 0, coachingPct: 0 },
       };
       base[kind] = rows;
       base.importedAt = nowISO();
@@ -147,9 +156,10 @@ export default function PerformanceDashboardPage() {
       const views = computeViews(base);
       const counted = kind === "planning" ? views.cPlanning.length : kind === "appraisal" ? views.cAppraisal.length : views.cCoaching.length;
       base.datasets = { ...base.datasets, [kind]: { fileName: file.name, sheet: sheetName, rows: rows.length, counted, importedAt: nowISO() } };
-      base.directoryCount = views.validNiks.size;
+      base.directoryCount = views.poolSize;
       base.summary = {
-        population: views.validNiks.size,
+        population: views.population,
+        excluded: views.excluded,
         planningPct: views.pStats.pctIndividuApproved,
         appraisalPct: views.aStats.pctApproved,
         coachingPct: views.coachingCoverage,
@@ -174,15 +184,34 @@ export default function PerformanceDashboardPage() {
     if (sid === id) setSnap(null);
   };
 
+  const summaryOf = (v: ReturnType<typeof computeViews>) => ({
+    population: v.population, excluded: v.excluded,
+    planningPct: v.pStats.pctIndividuApproved, appraisalPct: v.aStats.pctApproved, coachingPct: v.coachingCoverage,
+  });
+
   const clearDataset = async (kind: DatasetKind) => {
     if (!snap) return;
     const base: Snapshot = { ...snap, [kind]: null, datasets: { ...snap.datasets } };
     delete base.datasets[kind];
     const views = computeViews(base);
-    base.summary = { population: views.validNiks.size, planningPct: views.pStats.pctIndividuApproved, appraisalPct: views.aStats.pctApproved, coachingPct: views.coachingCoverage };
+    base.summary = summaryOf(views);
     await putSnapshot(base);
     setIndex((prev) => [...prev.filter((m) => m.id !== id), metaOf(base)]);
     setSnap(base);
+  };
+
+  // Re-freeze the CURRENT live exclusions into the selected period (explicit,
+  // keeps other periods immutable). Use after editing KPI Eligibility.
+  const syncExclusions = async () => {
+    if (!snap) return;
+    const base: Snapshot = { ...snap, exclusions: liveExclusions };
+    const views = computeViews(base);
+    base.directoryCount = views.poolSize;
+    base.summary = summaryOf(views);
+    await putSnapshot(base);
+    setIndex((prev) => [...prev.filter((m) => m.id !== id), metaOf(base)]);
+    setSnap(base);
+    setNote(`${t("Exclusions synced")} · ${t("Total Wajib KPI")}: ${fmt(views.population)} (${fmt(views.excluded)} ${t("excluded")})`);
   };
 
   const views = useMemo(() => (snap ? computeViews(snap) : null), [snap]);
@@ -258,13 +287,19 @@ export default function PerformanceDashboardPage() {
         })}
       </div>
 
-      {/* ---- Frozen Directory banner ---- */}
+      {/* ---- Frozen Directory + Wajib KPI banner ---- */}
       <div className={cn("mt-3 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-[12px]", snap ? "border-royal-500/25 bg-royal-500/5" : "border-amber-500/30 bg-amber-500/5")}>
         <Icon.users className="h-4 w-4 text-royal-400" />
         {snap ? (
           <>
-            <span className="font-medium">{t("Frozen Employee Directory")}</span>
-            <span className="text-[var(--muted)]">— {fmt(snap.directoryCount)} {t("employees (NIK 9 excluded)")} · {t("captured")} {new Date(snap.importedAt).toLocaleDateString("id-ID")}</span>
+            <span className="font-medium">{t("Frozen Directory")}</span>
+            <span className="text-[var(--muted)]">— {fmt(snap.directoryCount)} {t("employees (NIK 9 excluded)")}</span>
+            <Badge tone="green">{t("Total Wajib KPI")}: {fmt(snap.summary?.population ?? 0)}</Badge>
+            <Badge tone="amber">{t("Excluded")}: {fmt(snap.summary?.excluded ?? 0)}</Badge>
+            <span className="text-[var(--muted)]">· {t("captured")} {new Date(snap.importedAt).toLocaleDateString("id-ID")}</span>
+            <button onClick={syncExclusions} className="ml-auto inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium text-royal-400 transition hover:bg-royal-500/10" title={t("Re-apply current KPI Eligibility exclusions to this period")}>
+              <Icon.spark className="h-3.5 w-3.5" /> {t("Sync exclusions")}
+            </button>
           </>
         ) : (
           <span className="text-[var(--muted)]">{t("On first import this period will freeze the current Directory")} ({fmt(liveDirCount)} {t("employees")}).</span>

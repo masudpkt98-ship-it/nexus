@@ -14,6 +14,7 @@
 // -----------------------------------------------------------------------------
 import type { Employee } from "./data";
 import type { Row, DatasetKind, Gran } from "./perfMonitor";
+import type { Exclusions } from "./kpiEligibility";
 
 const DB_NAME = "nexus-perf";
 const STORE = "snapshots";
@@ -28,7 +29,8 @@ export interface DatasetMeta {
 }
 
 export interface SnapshotSummary {
-  population: number; // Directory employees counted (NIK 9 excluded)
+  population: number; // Total Wajib KPI (Directory − NIK 9 − excluded)
+  excluded: number; // employees excluded from Wajib KPI
   planningPct: number; // KPI Individu Approved %
   appraisalPct: number; // Appraisal Approved % for the period
   coachingPct: number; // coaching coverage %
@@ -48,6 +50,7 @@ export interface SnapshotMeta {
 
 export interface Snapshot extends SnapshotMeta {
   directory: Employee[]; // frozen Directory for this period
+  exclusions: Exclusions; // frozen Wajib-KPI exclusions for this period
   planning: Row[] | null;
   appraisal: Row[] | null;
   coaching: Row[] | null;

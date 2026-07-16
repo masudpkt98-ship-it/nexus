@@ -9,6 +9,8 @@ const clean = (v: unknown): string => {
 };
 // Numeric-ish codes come through as "10.0" / "12345.0" — drop the trailing .0.
 const num = (v: unknown): string => clean(v).replace(/\.0+$/, "");
+// Date cells (cellDates:true) → ISO yyyy-mm-dd; otherwise a clean string.
+const dateStr = (v: unknown): string => (v instanceof Date && !isNaN(v.getTime()) ? v.toISOString().slice(0, 10) : clean(v));
 
 // Map our field → the header spellings we accept from the sheet.
 const HEADERS: Record<keyof Omit<Employee, never>, string[]> = {
@@ -29,6 +31,7 @@ const HEADERS: Record<keyof Omit<Employee, never>, string[]> = {
   major: ["Prodi", "Program Studi", "Major"],
   university: ["Universitas", "University"],
   sf: ["S/F", "SF"],
+  pbp: ["PBP"],
 };
 
 export type RawRow = Record<string, unknown>;
@@ -62,6 +65,7 @@ export function rowsToEmployees(rows: RawRow[]): Employee[] {
       major: clean(pick(r, HEADERS.major)),
       university: clean(pick(r, HEADERS.university)),
       sf: clean(pick(r, HEADERS.sf)),
+      pbp: dateStr(pick(r, HEADERS.pbp)),
     });
   }
   // de-dupe by NPK, keeping the last occurrence
