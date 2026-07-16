@@ -11,7 +11,6 @@ import { EXCLUSION_KEY, EXCLUSION_REASONS, type Exclusions, isNik9, reasonCounts
 
 const fmt = (n: number) => n.toLocaleString("id-ID");
 const nowISO = () => new Date().toISOString();
-const PAGE_SIZE = 25;
 const selCls = "rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500";
 
 const uniq = (rows: Employee[], key: keyof Employee) =>
@@ -34,7 +33,6 @@ export default function EligibilityPage() {
   const [fStream, setFStream] = useState("");
   const [fStatus, setFStatus] = useState<"" | "wajib" | "excluded">("");
   const [bulkReason, setBulkReason] = useState<string>(EXCLUSION_REASONS[0]);
-  const [page, setPage] = useState(0);
 
   const isExcluded = (npk: string) => !!exclusions[npk];
 
@@ -78,10 +76,7 @@ export default function EligibilityPage() {
       return n;
     });
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const cur = Math.min(page, pageCount - 1);
-  const shown = filtered.slice(cur * PAGE_SIZE, cur * PAGE_SIZE + PAGE_SIZE);
-  const resetPage = () => setPage(0);
+  const resetPage = () => {}; // all rows shown (no pagination)
 
   const genderLabel = (g: string) => (g === "L" ? t("Male") : g === "P" ? t("Female") : g || "—");
 
@@ -137,26 +132,20 @@ export default function EligibilityPage() {
         </div>
       </Card>
 
-      {/* ---- Table ---- */}
+      {/* ---- Table: all employees, scrollable (no pagination) ---- */}
       <Card className="mt-4">
-        <div className="overflow-x-auto">
+        <div className="mb-2 text-[11px] text-[var(--muted)]">{fmt(filtered.length)} {t("employees shown")}</div>
+        <div className="max-h-[72vh] overflow-auto">
           <table className="w-full min-w-[900px] text-[12px]">
             <thead>
-              <tr className="border-b text-left text-[10px] uppercase tracking-wider text-[var(--muted)]">
-                <th className="px-2 py-2">{t("Wajib?")}</th>
-                <th className="px-2 py-2">{t("Name")}</th>
-                <th className="px-2 py-2">NPK</th>
-                <th className="px-2 py-2">{t("Position")}</th>
-                <th className="px-2 py-2">{t("Unit")}</th>
-                <th className="px-2 py-2">{t("Directorate")}</th>
-                <th className="px-2 py-2">PG/JG</th>
-                <th className="px-2 py-2">{t("Gender")}</th>
-                <th className="px-2 py-2">S/F</th>
-                <th className="px-2 py-2">{t("Reason")}</th>
+              <tr className="text-left text-[10px] uppercase tracking-wider text-[var(--muted)]">
+                {[t("Wajib?"), t("Name"), "NPK", t("Position"), t("Unit"), t("Directorate"), "PG/JG", t("Gender"), "S/F", t("Reason")].map((h, i) => (
+                  <th key={i} className="sticky top-0 z-10 border-b bg-[rgb(var(--surface))] px-2 py-2">{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {shown.map((e) => {
+              {filtered.map((e) => {
                 const excl = isExcluded(e.npk);
                 return (
                   <tr key={e.npk} className={cn("border-b last:border-0 hover:bg-black/5 dark:hover:bg-white/5", excl && "bg-amber-500/5")}>
@@ -183,13 +172,6 @@ export default function EligibilityPage() {
               })}
             </tbody>
           </table>
-        </div>
-        <div className="mt-3 flex items-center justify-between text-[12px] text-[var(--muted)]">
-          <span>{t("Page")} {cur + 1} / {pageCount}</span>
-          <div className="flex gap-1.5">
-            <Btn variant="ghost" onClick={() => setPage((p) => Math.max(0, p - 1))}>{t("Prev")}</Btn>
-            <Btn variant="ghost" onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}>{t("Next")}</Btn>
-          </div>
         </div>
       </Card>
 
