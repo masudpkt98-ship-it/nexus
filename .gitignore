@@ -19,5 +19,6 @@ Thumbs.db
 *.xls
 *.pdf
 
-# dropped screenshots / scratch images at repo root
-/Progress.png
+# dropped screenshots / scratch images at repo root (keep the brand asset)
+/*.png
+!/Nexus.png
