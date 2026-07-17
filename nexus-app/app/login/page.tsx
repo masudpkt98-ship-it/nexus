@@ -40,7 +40,8 @@ export default function LoginPage() {
       const data = await apiLogin(email, password);
       // Derive the client access scope (unit kerja) from the authenticated user.
       if (data?.user) persistSession(sessionFromApiUser(data.user));
-      router.push("/dashboard");
+      // First login (provisioned account) → force a password change.
+      router.push(data?.user?.must_change_password ? "/change-password" : "/dashboard");
     } catch (err) {
       if (err instanceof ApiError && err.status === 422) {
         setError("Invalid credentials. Try the demo password: nexus");

@@ -1,13 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { cn } from "@/components/ui";
 import { AuthProvider } from "@/lib/auth";
+import { getStoredUser } from "@/lib/api";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
+
+  // Force provisioned accounts to change their initial password first.
+  useEffect(() => {
+    const u = getStoredUser<{ must_change_password?: boolean }>();
+    if (u?.must_change_password) router.replace("/change-password");
+  }, [router]);
 
   return (
     <AuthProvider>

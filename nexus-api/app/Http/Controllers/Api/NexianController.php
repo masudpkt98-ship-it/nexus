@@ -42,24 +42,32 @@ class NexianController extends Controller
             $initials = collect(preg_split('/\s+/', trim($m['name'])))
                 ->filter()->map(fn ($w) => mb_substr($w, 0, 1))->take(2)->implode('');
 
-            $existed = User::where('email', $email)->exists();
+            $user = User::where('email', $email)->first();
 
-            User::updateOrCreate(
-                ['email' => $email],
-                [
-                    'name' => $m['name'],
+            $profile = [
+                'name' => $m['name'],
+                'role' => $role,
+                'title' => $role,
+                'avatar' => mb_strtoupper($initials ?: 'N'),
+                'npk' => $npk,
+                'unit' => $m['unit'] ?? null,
+                'directorate' => $m['directorate'] ?? null,
+            ];
+
+            if ($user) {
+                // Update profile/scope only — never reset a password the user changed.
+                $user->fill($profile)->save();
+                $updated++;
+            } else {
+                User::create([
+                    ...$profile,
+                    'email' => $email,
                     'password' => Hash::make($npk),
-                    'role' => $role,
-                    'title' => $role,
-                    'avatar' => mb_strtoupper($initials ?: 'N'),
-                    'npk' => $npk,
-                    'unit' => $m['unit'] ?? null,
-                    'directorate' => $m['directorate'] ?? null,
+                    'must_change_password' => true, // force change on first login
                     'email_verified_at' => now(),
-                ]
-            );
-
-            $existed ? $updated++ : $created++;
+                ]);
+                $created++;
+            }
         }
 
         return response()->json([

@@ -27,6 +27,7 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
 
     // Bulk-provision Nexian (KPI Partner) login accounts (Admin only).
     Route::post('/nexian/provision', [NexianController::class, 'provision'])->middleware('permission:nexian.provision');

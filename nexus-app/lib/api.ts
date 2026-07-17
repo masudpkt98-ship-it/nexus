@@ -63,6 +63,21 @@ export async function apiLogin(email: string, password: string) {
   return data;
 }
 
+export async function apiChangePassword(currentPassword: string, newPassword: string) {
+  const res = await fetch(`${BASE}/auth/change-password`, {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify({ current_password: currentPassword, password: newPassword, password_confirmation: newPassword }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(body.message || "Change password failed", res.status);
+  }
+  const data = await res.json();
+  if (data?.user) localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+  return data;
+}
+
 export async function apiLogout() {
   try {
     await fetch(`${BASE}/auth/logout`, { method: "POST", headers: headers() });

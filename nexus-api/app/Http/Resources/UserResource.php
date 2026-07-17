@@ -19,6 +19,7 @@ class UserResource extends JsonResource
             'npk' => $this->npk,
             'unit' => $this->unit,
             'directorate' => $this->directorate,
+            'must_change_password' => (bool) $this->must_change_password,
             'permissions' => $this->permissions(),
         ];
     }
