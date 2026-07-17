@@ -51,6 +51,7 @@ export const navItems: NavItem[] = [
     children: [
       { label: "Performance Dictionary", href: "/performance/dictionary" },
       { label: "Performance Planning", href: "/performance/planning" },
+      { label: "Performance Mapping", href: "/performance/mapping" },
     ],
   },
   { label: "Development", href: "/development", icon: "development", section: "People & Performance" },
