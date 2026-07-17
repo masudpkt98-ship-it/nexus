@@ -8,6 +8,7 @@ import { employees as seed, type Employee } from "@/lib/data";
 import { rowsToEmployees } from "@/lib/importEmployees";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
+import { useAuth, scopeAllows } from "@/lib/auth";
 
 const PAGE_SIZE = 50;
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).map((s) => s[0]).slice(0, 2).join("").toUpperCase() || "?";
@@ -16,7 +17,11 @@ const distinct = (list: Employee[], key: keyof Employee) =>
 
 export default function PeoplePage() {
   const { t } = useI18n();
-  const [rows, setRows] = useLocalState<Employee[]>("employees", seed);
+  const [rows, setRowsRaw] = useLocalState<Employee[]>("employees", seed);
+  const { session } = useAuth();
+  // Scoped view: a KPI Partner only sees employees within their unit-kerja scope.
+  const scoped = useMemo(() => rows.filter((e) => scopeAllows(session, e.directorate, e.unit)), [rows, session]);
+  const setRows = setRowsRaw;
   const [q, setQ] = useState("");
   const [fDir, setFDir] = useState("");
   const [fLoc, setFLoc] = useState("");
@@ -27,13 +32,13 @@ export default function PeoplePage() {
   const [note, setNote] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const directorates = useMemo(() => distinct(rows, "directorate"), [rows]);
-  const locations = useMemo(() => distinct(rows, "location"), [rows]);
-  const grades = useMemo(() => distinct(rows, "pg").sort((a, b) => Number(a) - Number(b) || a.localeCompare(b)), [rows]);
+  const directorates = useMemo(() => distinct(scoped, "directorate"), [scoped]);
+  const locations = useMemo(() => distinct(scoped, "location"), [scoped]);
+  const grades = useMemo(() => distinct(scoped, "pg").sort((a, b) => Number(a) - Number(b) || a.localeCompare(b)), [scoped]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return rows.filter((e) => {
+    return scoped.filter((e) => {
       if (fDir && e.directorate !== fDir) return false;
       if (fLoc && e.location !== fLoc) return false;
       if (fGrade && e.pg !== fGrade) return false;
@@ -41,7 +46,7 @@ export default function PeoplePage() {
       if (needle && !(`${e.name} ${e.npk} ${e.position} ${e.unit}`.toLowerCase().includes(needle))) return false;
       return true;
     });
-  }, [rows, q, fDir, fLoc, fGrade, fGender]);
+  }, [scoped, q, fDir, fLoc, fGrade, fGender]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const clampedPage = Math.min(page, pageCount - 1);
@@ -84,11 +89,11 @@ export default function PeoplePage() {
   };
 
   const genderLabel = (g: string) => (g === "L" ? t("Male") : g === "P" ? t("Female") : g || "—");
-  const maleCount = rows.filter((e) => e.gender === "L").length;
-  const femaleCount = rows.filter((e) => e.gender === "P").length;
+  const maleCount = scoped.filter((e) => e.gender === "L").length;
+  const femaleCount = scoped.filter((e) => e.gender === "P").length;
 
   const stats = [
-    { label: "Total employees", value: rows.length },
+    { label: "Total employees", value: scoped.length },
     { label: "Directorates", value: directorates.length },
     { label: "Locations", value: locations.length },
     { label: "Male / Female", value: `${maleCount} / ${femaleCount}` },
@@ -221,7 +226,7 @@ export default function PeoplePage() {
             </div>
 
             <div className="mt-3 flex items-center justify-between text-[12px] text-[var(--muted)]">
-              <span>{t("Showing")} {shown.length} {t("of")} {filtered.length} {t("employees")}{filtered.length !== rows.length ? ` (${rows.length} ${t("total")})` : ""}</span>
+              <span>{t("Showing")} {shown.length} {t("of")} {filtered.length} {t("employees")}{filtered.length !== scoped.length ? ` (${scoped.length} ${t("total")})` : ""}</span>
               {pageCount > 1 && (
                 <div className="flex items-center gap-2">
                   <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={clampedPage === 0} className="rounded-lg border px-2.5 py-1 transition hover:border-royal-500/40 disabled:opacity-40">{t("Prev")}</button>

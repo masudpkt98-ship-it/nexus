@@ -8,12 +8,14 @@ import { useI18n, LANGS } from "@/lib/i18n";
 import { Avatar, cn } from "@/components/ui";
 import { currentUser, notifications as mockNotifications } from "@/lib/data";
 import { apiGet, apiLogout, apiSend, getToken } from "@/lib/api";
+import { useAuth, scopeLabel } from "@/lib/auth";
 
 type Notif = { id: string; channel: string; kind?: string; title: string; time: string; read: boolean };
 
 export function Topbar({ onMenu }: { onMenu?: () => void }) {
   const { theme, toggle } = useTheme();
   const { t, lang, setLang } = useI18n();
+  const { session, resetAdmin } = useAuth();
   const [openNotif, setOpenNotif] = useState(false);
   const [openLang, setOpenLang] = useState(false);
 
@@ -176,17 +178,30 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
           )}
         </div>
 
+        {/* RBAC: when viewing as a Nexian, show a scope pill + exit-to-admin */}
+        {session.role !== "Admin" && (
+          <button
+            onClick={resetAdmin}
+            title={t("Exit to Admin (full access)")}
+            className="hidden items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-600 transition hover:bg-amber-500/20 dark:text-amber-400 sm:flex"
+          >
+            <Icon.users className="h-3.5 w-3.5" />
+            {session.role} · {scopeLabel(session)}
+            <Icon.logout className="h-3.5 w-3.5" />
+          </button>
+        )}
+
         <div className="mx-1 h-6 w-px bg-[rgba(var(--border),1)]" />
 
         <div className="flex items-center gap-2.5 pl-1">
-          <Avatar initials={currentUser.avatar} />
+          <Avatar initials={session.role === "Admin" ? currentUser.avatar : (session.name.split(" ").map((s) => s[0]).join("").slice(0, 2).toUpperCase() || "N")} />
           <div className="hidden leading-tight sm:block">
-            <div className="text-[13px] font-semibold">{currentUser.name}</div>
-            <div className="text-[10px] text-[var(--muted)]">{currentUser.role} · {currentUser.title}</div>
+            <div className="text-[13px] font-semibold">{session.role === "Admin" ? currentUser.name : session.name}</div>
+            <div className="text-[10px] text-[var(--muted)]">{session.role === "Admin" ? `${currentUser.role} · ${currentUser.title}` : `${session.role} · ${scopeLabel(session)}`}</div>
           </div>
           <Link
             href="/login"
-            onClick={() => apiLogout()}
+            onClick={() => { resetAdmin(); apiLogout(); }}
             className="ml-1 rounded-lg p-2 text-[var(--muted)] transition hover:bg-black/5 hover:text-rose-400 dark:hover:bg-white/5"
             aria-label="Log out"
           >

@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, Badge, Avatar, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import { NEXIAN_KEY, type Nexian, parseNexian, waLink } from "@/lib/nexian";
+import { employees as employeeSeed, type Employee } from "@/lib/data";
+import { useAuth, sessionFromNexian } from "@/lib/auth";
 
 const fmt = (n: number) => n.toLocaleString("id-ID");
 const selCls = "rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500";
@@ -18,7 +21,16 @@ const initials = (name: string) => name.split(" ").map((s) => s[0]).join("").sli
 
 export default function NexianPage() {
   const { t } = useI18n();
+  const router = useRouter();
+  const { setSession } = useAuth();
+  const [directory] = useLocalState<Employee[]>("employees", employeeSeed);
   const [team, setTeam] = useLocalState<Nexian[]>(NEXIAN_KEY, []);
+
+  // RBAC: impersonate a Nexian → restrict the app to their unit-kerja scope.
+  const viewAs = (n: Nexian) => {
+    setSession(sessionFromNexian(n, directory));
+    router.push("/dashboard/performance");
+  };
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -129,7 +141,7 @@ export default function NexianPage() {
               <table className="w-full min-w-[820px] text-[12.5px]">
                 <thead>
                   <tr className="text-left text-[10px] uppercase tracking-wider text-[var(--muted)]">
-                    {[t("Name"), "NPK", t("Unit Kerja"), t("Role"), "No WA", "PIC"].map((h, i) => (
+                    {[t("Name"), "NPK", t("Unit Kerja"), t("Role"), "No WA", "PIC", t("Access")].map((h, i) => (
                       <th key={i} className="sticky top-0 z-10 border-b bg-[rgb(var(--surface))] px-2 py-2">{h}</th>
                     ))}
                   </tr>
@@ -156,6 +168,12 @@ export default function NexianPage() {
                           ) : <span className="text-[var(--muted)]">—</span>}
                         </td>
                         <td className="px-2 py-1.5">{r.pic || <span className="text-[var(--muted)]">—</span>}</td>
+                        <td className="px-2 py-1.5">
+                          <button onClick={() => viewAs(r)} title={t("View the app as this Nexian (their unit scope)")}
+                            className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium text-royal-400 transition hover:bg-royal-500/10">
+                            <Icon.logout className="h-3.5 w-3.5" /> {t("View as")}
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}

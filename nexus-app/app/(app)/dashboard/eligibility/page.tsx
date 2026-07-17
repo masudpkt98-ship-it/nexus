@@ -8,6 +8,7 @@ import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import { employees as employeeSeed, type Employee } from "@/lib/data";
 import { EXCLUSION_KEY, EXCLUSION_REASONS, type Exclusions, isNik9, reasonCounts } from "@/lib/kpiEligibility";
+import { useAuth, scopeAllows } from "@/lib/auth";
 
 const fmt = (n: number) => n.toLocaleString("id-ID");
 const nowISO = () => new Date().toISOString();
@@ -20,9 +21,13 @@ export default function EligibilityPage() {
   const { t } = useI18n();
   const [directory] = useLocalState<Employee[]>("employees", employeeSeed);
   const [exclusions, setExclusions] = useLocalState<Exclusions>(EXCLUSION_KEY, {});
+  const { session } = useAuth();
 
-  // Eligible pool = Directory minus NIK-9 (those never count).
-  const pool = useMemo(() => directory.filter((e) => !isNik9(e.npk)), [directory]);
+  // Eligible pool = Directory minus NIK-9, within the session's unit-kerja scope.
+  const pool = useMemo(
+    () => directory.filter((e) => !isNik9(e.npk) && scopeAllows(session, e.directorate, e.unit)),
+    [directory, session]
+  );
 
   const [q, setQ] = useState("");
   const [fDir, setFDir] = useState("");

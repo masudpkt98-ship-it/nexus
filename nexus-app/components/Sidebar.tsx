@@ -8,10 +8,15 @@ import { Icon } from "@/components/Icons";
 import { navItems, navSections, type NavItem } from "@/lib/nav";
 import { cn } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
+import { useAuth, navAllowed } from "@/lib/auth";
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { t } = useI18n();
+  const { session } = useAuth();
+  // RBAC: keep only nav the current role may open (Admin sees everything).
+  const visibleChildren = (item: NavItem) => item.children?.filter((c) => navAllowed(session, c.href)) ?? [];
+  const itemVisible = (item: NavItem) => navAllowed(session, item.href) || visibleChildren(item).length > 0;
 
   // Which submodule groups are expanded. Auto-open the group whose parent or a
   // child matches the current route, so the active submodule is always visible.
@@ -35,7 +40,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   const renderItem = (item: NavItem) => {
     const IconCmp = Icon[item.icon];
-    const hasChildren = !!item.children?.length;
+    const kids = visibleChildren(item);
+    const hasChildren = kids.length > 0;
     // A parent is highlighted when you're on its page; a child route highlights
     // the child instead (parent stays in a softer "within this group" state).
     const exact = pathname === item.href;
@@ -99,7 +105,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
         {expanded && (
           <div className="mt-0.5 space-y-0.5 pl-[26px]">
-            {item.children!.map((child) => {
+            {kids.map((child) => {
               const childActive = pathname === child.href;
               return (
                 <Link
@@ -142,16 +148,18 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 pb-4">
-        {navSections.map((section) => (
-          <div key={section}>
-            <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-              {t(section)}
+        {navSections.map((section) => {
+          const items = navItems.filter((n) => n.section === section && itemVisible(n));
+          if (items.length === 0) return null; // hide sections the role can't access
+          return (
+            <div key={section}>
+              <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                {t(section)}
+              </div>
+              <div className="space-y-0.5">{items.map(renderItem)}</div>
             </div>
-            <div className="space-y-0.5">
-              {navItems.filter((n) => n.section === section).map(renderItem)}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       <div className="border-t p-3">

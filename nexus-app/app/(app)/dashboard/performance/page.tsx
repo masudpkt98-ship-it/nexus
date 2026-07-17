@@ -8,6 +8,7 @@ import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import { employees as employeeSeed, type Employee } from "@/lib/data";
 import { EXCLUSION_KEY, type Exclusions, isNik9 } from "@/lib/kpiEligibility";
+import { useAuth, scopeAllows, scopeLabel } from "@/lib/auth";
 import {
   type Row,
   type DatasetKind,
@@ -63,16 +64,18 @@ const labelOf = (year: number, gran: Gran, value: number) => `${year} · ${perio
 
 // ---- Compile a snapshot's frozen data into monitoring views --------------------
 // Wajib KPI = frozen Directory − NIK 9 − employees excluded (frozen exclusions).
-function computeViews(snap: Snapshot, exclusions: Exclusions) {
+function computeViews(snap: Snapshot, exclusions: Exclusions, allow: (dir: string, unit: string) => boolean) {
   const period: Period = { gran: snap.gran, value: snap.value };
   const excl = exclusions ?? {};
-  // Wajib-KPI employee set from the frozen Directory (NIK 9 + exclusions removed).
+  // Wajib-KPI employee set from the frozen Directory (NIK 9 + exclusions removed),
+  // further restricted to the current session's unit-kerja scope (RBAC).
   const wajib: WajibEmp[] = [];
   const validNiks = new Set<string>();
   let poolSize = 0;
   for (const e of snap.directory) {
     const n = String(e.npk ?? "").trim();
     if (!n || isNik9(n)) continue;
+    if (!allow(String(e.directorate ?? "").trim(), String(e.unit ?? "").trim())) continue; // RBAC scope
     poolSize++; // eligible pool (NIK 9 already out)
     if (excl[n]) continue; // excluded from Wajib KPI
     validNiks.add(n);
@@ -112,6 +115,8 @@ export default function PerformanceDashboardPage() {
   // Live Directory + exclusions (frozen into a snapshot on import / sync).
   const [directory] = useLocalState<Employee[]>("employees", employeeSeed);
   const [liveExclusions] = useLocalState<Exclusions>(EXCLUSION_KEY, {});
+  const { session } = useAuth();
+  const allow = useMemo(() => (dir: string, unit: string) => scopeAllows(session, dir, unit), [session]);
   // Lightweight index of all period snapshots (heavy rows live in IndexedDB).
   const [index, setIndex] = useLocalState<SnapshotMeta[]>("perf-snapshot-index", []);
 
@@ -170,7 +175,7 @@ export default function PerformanceDashboardPage() {
       base[kind] = rows;
       base.importedAt = nowISO();
 
-      const views = computeViews(base, liveExclusions);
+      const views = computeViews(base, liveExclusions, allow);
       const counted = kind === "planning" ? views.cPlanning.length : kind === "appraisal" ? views.cAppraisal.length : views.cCoaching.length;
       base.datasets = { ...base.datasets, [kind]: { fileName: file.name, sheet: sheetName, rows: rows.length, counted, importedAt: nowISO() } };
       base.directoryCount = views.poolSize;
@@ -210,14 +215,14 @@ export default function PerformanceDashboardPage() {
     if (!snap) return;
     const base: Snapshot = { ...snap, [kind]: null, datasets: { ...snap.datasets } };
     delete base.datasets[kind];
-    const views = computeViews(base, liveExclusions);
+    const views = computeViews(base, liveExclusions, allow);
     base.summary = summaryOf(views);
     await putSnapshot(base);
     setIndex((prev) => [...prev.filter((m) => m.id !== id), metaOf(base)]);
     setSnap(base);
   };
 
-  const views = useMemo(() => (snap ? computeViews(snap, liveExclusions) : null), [snap, liveExclusions]);
+  const views = useMemo(() => (snap ? computeViews(snap, liveExclusions, allow) : null), [snap, liveExclusions, allow]);
   const orgRows = useMemo(() => (views ? byOrg(views.wajib, views.pIdx, views.aIdx, views.period, orgLevel) : []), [views, orgLevel]);
 
   // Live exclusions always apply. Persist them into the viewed period's snapshot
@@ -319,6 +324,7 @@ export default function PerformanceDashboardPage() {
             <span className="text-[var(--muted)]">— {fmt(views?.poolSize ?? snap.directoryCount)} {t("employees (NIK 9 excluded)")}</span>
             <Badge tone="green">{t("Total Wajib KPI")}: {fmt(views?.population ?? snap.summary?.population ?? 0)}</Badge>
             <Badge tone="amber">{t("Excluded")}: {fmt(views?.excluded ?? snap.summary?.excluded ?? 0)}</Badge>
+            {!session.scope.all && <Badge tone="purple">{t("Scope")}: {scopeLabel(session)}</Badge>}
             <span className="text-[var(--muted)]">· {t("captured")} {new Date(snap.importedAt).toLocaleDateString("id-ID")}</span>
           </>
         ) : (
