@@ -22,3 +22,6 @@ Thumbs.db
 # dropped screenshots / scratch images at repo root (keep the brand asset)
 /*.png
 !/Nexus.png
+
+# temp scratch scripts
+nexus-app/_*
