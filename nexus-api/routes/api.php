@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\ChatThreadController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\CompetencyController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\NexianController;
 use App\Http\Controllers\Api\SatisfactionController;
 use App\Http\Controllers\Api\ObjectiveController;
 use App\Http\Controllers\Api\PerformanceKpiController;
@@ -26,6 +27,9 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+
+    // Bulk-provision Nexian (KPI Partner) login accounts (Admin only).
+    Route::post('/nexian/provision', [NexianController::class, 'provision'])->middleware('permission:nexian.provision');
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('permission:dashboard.view');
 

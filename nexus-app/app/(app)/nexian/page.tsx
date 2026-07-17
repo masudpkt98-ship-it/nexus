@@ -10,6 +10,7 @@ import { useI18n } from "@/lib/i18n";
 import { NEXIAN_KEY, type Nexian, parseNexian, waLink } from "@/lib/nexian";
 import { employees as employeeSeed, type Employee } from "@/lib/data";
 import { useAuth, sessionFromNexian } from "@/lib/auth";
+import { apiSend, getToken } from "@/lib/api";
 
 const fmt = (n: number) => n.toLocaleString("id-ID");
 const selCls = "rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500";
@@ -22,14 +23,46 @@ const initials = (name: string) => name.split(" ").map((s) => s[0]).join("").sli
 export default function NexianPage() {
   const { t } = useI18n();
   const router = useRouter();
-  const { setSession } = useAuth();
+  const { setSession, session } = useAuth();
   const [directory] = useLocalState<Employee[]>("employees", employeeSeed);
   const [team, setTeam] = useLocalState<Nexian[]>(NEXIAN_KEY, []);
+  const [provisioning, setProvisioning] = useState(false);
 
   // RBAC: impersonate a Nexian → restrict the app to their unit-kerja scope.
   const viewAs = (n: Nexian) => {
     setSession(sessionFromNexian(n, directory));
     router.push("/dashboard/performance");
+  };
+
+  // Directorate that owns a Nexian's unit (via the Employee Directory).
+  const resolveDir = (n: Nexian) => {
+    const inUnit = directory.find((e) => String(e.unit ?? "").trim() === n.unit.trim());
+    const byNpk = directory.find((e) => String(e.npk) === String(n.npk));
+    return (inUnit?.directorate || byNpk?.directorate || "").trim();
+  };
+
+  // Bulk-create real Laravel login accounts for the whole team (Admin only).
+  // Email = NPK@nexus.co, password = NPK. Needs an Admin API token.
+  const provision = async () => {
+    if (!getToken()) { setNote(t("Log in as Admin via the API first (admin@nexus.co) to provision.")); return; }
+    setProvisioning(true);
+    setNote(null);
+    try {
+      const members = team.map((n) => ({ npk: n.npk, name: n.name, role: n.role, unit: n.unit, directorate: resolveDir(n) }));
+      // Chunk to keep each request short (bcrypt is slow) and under PHP limits.
+      const CHUNK = 20;
+      let created = 0, updated = 0, skipped = 0;
+      for (let i = 0; i < members.length; i += CHUNK) {
+        setNote(`${t("Provisioning")} ${Math.min(i + CHUNK, members.length)}/${members.length}…`);
+        const res = await apiSend<{ created: number; updated: number; skipped: number }>("POST", "/nexian/provision", { members: members.slice(i, i + CHUNK) });
+        created += res.created; updated += res.updated; skipped += res.skipped;
+      }
+      setNote(`${t("Provisioned")} ${created + updated} ${t("logins")} — ${created} ${t("new")}, ${updated} ${t("updated")}, ${skipped} ${t("skipped (NIK 9)")}. ${t("Email = NPK@nexus.co · password = NPK.")}`);
+    } catch {
+      setNote(t("Provision failed — make sure you are logged in as Admin via the API."));
+    } finally {
+      setProvisioning(false);
+    }
   };
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -92,6 +125,11 @@ export default function NexianPage() {
         subtitle="The team driving Competency & Performance — KPI Partners per unit kerja"
         actions={
           <>
+            {session.role === "Admin" && team.length > 0 && (
+              <Btn variant="ghost" onClick={provision}>
+                <Icon.users className="h-4 w-4" /> {provisioning ? t("Provisioning…") : t("Provision logins")}
+              </Btn>
+            )}
             {team.length > 0 && <Btn variant="ghost" onClick={() => { if (confirm(t("Remove all Nexian data from this browser?"))) setTeam([]); }}>{t("Clear data")}</Btn>}
             <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onImport(f); }} />
             <Btn variant="primary" onClick={() => fileRef.current?.click()}>
