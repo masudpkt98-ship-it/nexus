@@ -11,7 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'role', 'title', 'avatar'])]
+#[Fillable(['name', 'email', 'password', 'role', 'title', 'avatar', 'npk', 'unit', 'directorate'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -63,6 +63,16 @@ class User extends Authenticatable
         'Internal Customer' => [
             'dashboard.view', 'requests.view', 'requests.create', 'knowledge.view', 'notifications.view',
             'satisfaction.view',
+        ],
+        // Nexian — the KPI Partner team. Data is scoped to their unit kerja
+        // (Partner) / directorate (Manajemen) by the frontend via unit/directorate.
+        'KPI Partner Manajemen' => [
+            'dashboard.view', 'competency.view', 'performance.view', 'performance.manage',
+            'objectives.view', 'analytics.view', 'knowledge.view', 'notifications.view', 'ai.view',
+        ],
+        'KPI Partner' => [
+            'dashboard.view', 'competency.view', 'performance.view',
+            'knowledge.view', 'notifications.view', 'ai.view',
         ],
     ];
 

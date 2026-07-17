@@ -34,6 +34,9 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Rani Kusuma', 'email' => 'rani@nexus.co', 'role' => 'Staff', 'title' => 'Competency Analyst', 'avatar' => 'RK'],
             ['name' => 'Bagus Hartono', 'email' => 'bagus@nexus.co', 'role' => 'Executive', 'title' => 'Director Operations', 'avatar' => 'BH'],
             ['name' => 'Admin Nexus', 'email' => 'admin@nexus.co', 'role' => 'Administrator', 'title' => 'System Administrator', 'avatar' => 'AN'],
+            // Nexian (KPI Partner team) — data scoped to their unit kerja / directorate.
+            ['name' => 'Kharisma Ayuning Putri', 'email' => 'kharisma@nexus.co', 'role' => 'KPI Partner', 'title' => 'KPI Partner', 'avatar' => 'KA', 'npk' => '4234747', 'unit' => 'Departemen Audit Bisnis & Keuangan', 'directorate' => 'Direktorat Utama'],
+            ['name' => 'Rahmadian Ariseno', 'email' => 'rahmadian@nexus.co', 'role' => 'KPI Partner Manajemen', 'title' => 'KPI Partner Manajemen', 'avatar' => 'RA', 'npk' => '4144364', 'unit' => 'Satuan Pengawasan Intern', 'directorate' => 'Direktorat Utama'],
         ];
 
         $byEmail = [];

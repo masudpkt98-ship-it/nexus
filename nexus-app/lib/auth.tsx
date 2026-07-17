@@ -27,11 +27,12 @@ const KEY = "nexus-session";
 export const ADMIN: Session = { name: "Administrator", npk: "", role: "Admin", scope: { all: true, directorates: [], units: [] } };
 
 // Nav hrefs a non-admin (KPI Partner / Manajemen) may open. Admin sees all.
+// Nexian (team roster + "View as") is Admin-only, so it's intentionally absent.
 export const PARTNER_NAV = new Set<string>([
   "/dashboard", "/dashboard/performance", "/dashboard/competency", "/dashboard/eligibility",
   "/people", "/competency", "/competency/dictionary", "/competency/matrix",
   "/performance", "/performance/dictionary", "/performance/planning",
-  "/development", "/nexian", "/notifications",
+  "/development", "/notifications",
 ]);
 
 export function scopeAllows(s: Session, directorate?: string, unit?: string): boolean {
@@ -69,24 +70,64 @@ export function scopeLabel(s: Session): string {
   return parts.length ? parts.join(" · ") : "—";
 }
 
+// ---- Real login bridge: derive the client scope from the Laravel API user ----
+export interface ApiUser { name?: string; role?: string; npk?: string; unit?: string; directorate?: string }
+
+export function sessionFromApiUser(u: ApiUser): Session {
+  const role = String(u.role ?? "");
+  const isMgmt = /manajemen/i.test(role);
+  const isPartner = /kpi\s*partner/i.test(role);
+  if (isPartner) {
+    const unit = (u.unit ?? "").trim();
+    const directorate = (u.directorate ?? "").trim();
+    return {
+      name: u.name ?? "Nexian",
+      npk: u.npk ?? "",
+      role: isMgmt ? "KPI Partner Manajemen" : "KPI Partner",
+      scope: isMgmt
+        ? { all: false, directorates: directorate ? [directorate] : [], units: unit ? [unit] : [] }
+        : { all: false, directorates: [], units: unit ? [unit] : [] },
+    };
+  }
+  // Administrator / VP / Manager / … → full access.
+  return { name: u.name ?? "Administrator", npk: u.npk ?? "", role: "Admin", scope: { all: true, directorates: [], units: [] } };
+}
+
+export function persistSession(s: Session) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* ignore */ } }
+
 interface Ctx {
   session: Session;
   setSession: (s: Session) => void;
   resetAdmin: () => void;
+  logout: () => void;
 }
-const AuthContext = createContext<Ctx>({ session: ADMIN, setSession: () => {}, resetAdmin: () => {} });
+const AuthContext = createContext<Ctx>({ session: ADMIN, setSession: () => {}, resetAdmin: () => {}, logout: () => {} });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSessionState] = useState<Session>(ADMIN);
   useEffect(() => {
-    try { const raw = localStorage.getItem(KEY); if (raw) setSessionState(JSON.parse(raw) as Session); } catch { /* keep default */ }
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) { setSessionState(JSON.parse(raw) as Session); return; }
+      // No explicit client session → derive scope from the logged-in API user.
+      const rawUser = localStorage.getItem("nexus-user");
+      if (rawUser) {
+        const s = sessionFromApiUser(JSON.parse(rawUser) as ApiUser);
+        setSessionState(s);
+        localStorage.setItem(KEY, JSON.stringify(s));
+      }
+    } catch { /* keep default */ }
   }, []);
   const setSession = (s: Session) => {
     setSessionState(s);
     try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* ignore */ }
   };
   const resetAdmin = () => setSession(ADMIN);
-  return <AuthContext.Provider value={{ session, setSession, resetAdmin }}>{children}</AuthContext.Provider>;
+  const logout = () => {
+    setSessionState(ADMIN);
+    try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+  };
+  return <AuthContext.Provider value={{ session, setSession, resetAdmin, logout }}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);

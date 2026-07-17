@@ -15,7 +15,7 @@ type Notif = { id: string; channel: string; kind?: string; title: string; time: 
 export function Topbar({ onMenu }: { onMenu?: () => void }) {
   const { theme, toggle } = useTheme();
   const { t, lang, setLang } = useI18n();
-  const { session, resetAdmin } = useAuth();
+  const { session, resetAdmin, logout } = useAuth();
   const [openNotif, setOpenNotif] = useState(false);
   const [openLang, setOpenLang] = useState(false);
 
@@ -201,7 +201,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
           </div>
           <Link
             href="/login"
-            onClick={() => { resetAdmin(); apiLogout(); }}
+            onClick={() => { logout(); apiLogout(); }}
             className="ml-1 rounded-lg p-2 text-[var(--muted)] transition hover:bg-black/5 hover:text-rose-400 dark:hover:bg-white/5"
             aria-label="Log out"
           >

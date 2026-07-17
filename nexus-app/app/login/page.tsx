@@ -7,18 +7,19 @@ import { Icon } from "@/components/Icons";
 import { cn } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
 import { apiLogin, ApiError } from "@/lib/api";
+import { persistSession, sessionFromApiUser } from "@/lib/auth";
 
 const roles = [
-  { role: "VP", email: "arif.wibowo@nexus.co", label: "Executive access — full visibility" },
-  { role: "Manager", email: "sinta@nexus.co", label: "Manage programs, teams & KPI" },
-  { role: "Staff", email: "rani@nexus.co", label: "Execute tasks & development" },
+  { role: "Administrator", email: "admin@nexus.co", label: "Full access — all units" },
+  { role: "KPI Partner", email: "kharisma@nexus.co", label: "Scoped to Departemen Audit Bisnis & Keuangan" },
+  { role: "KPI Partner Manajemen", email: "rahmadian@nexus.co", label: "Scoped to Direktorat Utama" },
 ];
 
 export default function LoginPage() {
   const { t } = useI18n();
   const router = useRouter();
-  const [selected, setSelected] = useState("VP");
-  const [email, setEmail] = useState("arif.wibowo@nexus.co");
+  const [selected, setSelected] = useState("Administrator");
+  const [email, setEmail] = useState("admin@nexus.co");
   const [password, setPassword] = useState("nexus");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +37,9 @@ export default function LoginPage() {
     setError(null);
     setNote(null);
     try {
-      await apiLogin(email, password);
+      const data = await apiLogin(email, password);
+      // Derive the client access scope (unit kerja) from the authenticated user.
+      if (data?.user) persistSession(sessionFromApiUser(data.user));
       router.push("/dashboard");
     } catch (err) {
       if (err instanceof ApiError && err.status === 422) {
