@@ -54,6 +54,7 @@ export const navItems: NavItem[] = [
     ],
   },
   { label: "Development", href: "/development", icon: "development", section: "People & Performance" },
+  { label: "Nexian", href: "/nexian", icon: "spark", section: "People & Performance" },
 
   { label: "Customer Request", href: "/requests", icon: "request", section: "Customer", badge: "3" },
   { label: "Satisfaction", href: "/satisfaction", icon: "satisfaction", section: "Customer" },
