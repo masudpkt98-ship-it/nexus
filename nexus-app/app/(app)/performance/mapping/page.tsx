@@ -16,9 +16,11 @@ const sourceTone: Record<MapSource, "green" | "amber" | "blue" | "purple"> = { K
 const inputCls = "mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500";
 const labelCls = "block text-[11px] font-medium text-[var(--muted)]";
 const ALL_VP = Object.keys(AVP_BY_VP);
+// AVP targets for a VP — a VP-unique "Staf …" node when there is no AVP.
+const targetsForVp = (vp: string): string[] => (AVP_BY_VP[vp]?.length ? AVP_BY_VP[vp] : [`Staf ${vp.replace(/^VP\s+/, "")}`]);
 
 const fmt = (n: number) => n.toLocaleString("id-ID");
-const TABS = ["KPI Korporat", "KPI Manajemen (SVP)", "KPI VP", "KPI AVP"] as const;
+const TABS = ["KPI Korporat", "KPI Manajemen (SVP)", "KPI VP", "KPI AVP", "KPI Individu"] as const;
 const shortDir = (d: string) => d.replace(/^Direktur\s+/, "");
 
 export default function MappingPage() {
@@ -221,6 +223,8 @@ export default function MappingPage() {
       {tab === 2 && (hasData ? <IndividuTab state={state} setState={setState} /> : <Staged t={t} title="KPI VP" note="Cascade to the SVP first (KPI Manajemen tab)." />)}
       {/* ---- Tab 3: KPI AVP — cascade VP → AVP (VP → Staf if no AVP) ---- */}
       {tab === 3 && (hasData ? <AvpTab state={state} setState={setState} /> : <Staged t={t} title="KPI AVP" note="Cascade to a VP first (KPI VP tab)." />)}
+      {/* ---- Tab 4: KPI Individu — the AVP's KPI, inherited by all staff/pelaksana ---- */}
+      {tab === 4 && (hasData ? <IndividuFinalTab state={state} setState={setState} /> : <Staged t={t} title="KPI Individu" note="Cascade to an AVP first (KPI AVP tab)." />)}
     </>
   );
 }
@@ -510,7 +514,7 @@ function AvpTab({ state, setState }: { state: MappingState; setState: (u: (s: Ma
   const [vp, setVp] = useState(ALL_VP[0]);
   const [src, setSrc] = useState<"vp" | "history">("vp");
   const [showForm, setShowForm] = useState(false);
-  const avps = (AVP_BY_VP[vp] ?? []).length ? AVP_BY_VP[vp] : ["Staf"]; // VP → Staf when no AVP
+  const avps = targetsForVp(vp); // VP → Staf when no AVP (unique per VP)
   const avpCascade = state.avpCascade ?? {};
 
   const rows = useMemo(() => (
@@ -606,6 +610,85 @@ function AvpTab({ state, setState }: { state: MappingState; setState: (u: (s: Ma
           <CascadeResult title={AVP_BY_VP[vp]?.length ? "KPI AVP" : "KPI Staf"} rows={rows} targets={avps} cascadeMap={avpCascade} onRemove={removeKpi} />
         </>
       )}
+    </>
+  );
+}
+
+// ---- KPI Individu: the AVP's KPI set — inherited by ALL its staff/pelaksana ---
+function IndividuFinalTab({ state, setState }: { state: MappingState; setState: (u: (s: MappingState) => MappingState) => void }) {
+  const { t } = useI18n();
+  const [vp, setVp] = useState(ALL_VP[0]);
+  const targets = targetsForVp(vp);
+  const [avp, setAvp] = useState(targets[0]);
+  const curAvp = targets.includes(avp) ? avp : targets[0];
+  const [showForm, setShowForm] = useState(false);
+  const avpCascade = state.avpCascade ?? {};
+  const list = state.kpis.filter((k) => (avpCascade[k.id] ?? []).includes(curAvp));
+
+  const addManual = (f: Omit<MapKpi, "id" | "esg" | "fungsi" | "sources">, target: string) => setState((s) => {
+    let id = ""; try { id = `manual-${crypto.randomUUID().slice(0, 8)}`; } catch { id = `manual-${Date.now()}`; }
+    const k: MapKpi = { ...f, id, esg: "", fungsi: "Manual", sources: ["Manual"] };
+    return { ...s, kpis: [...s.kpis, k], avpCascade: { ...(s.avpCascade ?? {}), [id]: [target] } };
+  });
+  const removeKpi = (id: string) => setState((s) => {
+    const avc = { ...(s.avpCascade ?? {}) }; delete avc[id];
+    return { ...s, kpis: s.kpis.filter((k) => k.id !== id), avpCascade: avc };
+  });
+
+  return (
+    <>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">VP</span>
+        <select value={vp} onChange={(e) => setVp(e.target.value)} className="max-w-[260px] rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500">
+          {ALL_VP.map((v) => <option key={v} value={v}>{v}</option>)}
+        </select>
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">{AVP_BY_VP[vp]?.length ? "AVP" : "Staf"}</span>
+        <select value={curAvp} onChange={(e) => setAvp(e.target.value)} className="max-w-[260px] rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500">
+          {targets.map((a) => <option key={a} value={a}>{a}</option>)}
+        </select>
+        <Badge tone="green">{fmt(list.length)} {t("KPI")}</Badge>
+        <div className="ml-auto"><Btn variant="primary" onClick={() => setShowForm(true)}><Icon.plus className="h-4 w-4" /> {t("Add KPI")}</Btn></div>
+      </div>
+
+      {showForm && <AddManualKpiForm title={t("Add KPI Individu")} targetLabel={AVP_BY_VP[vp]?.length ? "AVP" : "Staf"} targets={targets} contextLabel={vp} onClose={() => setShowForm(false)} onSave={(f, target) => { addManual(f, target); setShowForm(false); }} />}
+
+      <div className="mb-4 flex items-center gap-2 rounded-lg border border-royal-500/25 bg-royal-500/5 px-3 py-2 text-[12px]">
+        <Icon.users className="h-4 w-4 text-royal-400" />
+        <span>{t("These KPIs automatically become the KPI of every karyawan / staf / pelaksana under")} <span className="font-medium">{curAvp}</span>.</span>
+      </div>
+
+      <Card>
+        <SectionTitle title="KPI Individu" subtitle={`${vp} · ${curAvp}`} />
+        {list.length === 0 ? (
+          <p className="py-4 text-center text-[12px] text-[var(--muted)]">{t("No KPI here yet — cascade to this AVP in the KPI AVP tab, or add one manually.")}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[820px] text-[12px]">
+              <thead>
+                <tr className="border-b text-left text-[10px] uppercase tracking-wider text-[var(--muted)]">
+                  {["No", "KPI", t("Validity"), t("Unit"), t("Polarity"), t("Priority"), "Bobot", "Frekuensi", "Target", ""].map((h, i) => <th key={i} className="px-2 py-2">{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((k, i) => (
+                  <tr key={k.id} className="group border-b last:border-0">
+                    <td className="px-2 py-1.5 tabular-nums text-[var(--muted)]">{i + 1}</td>
+                    <td className="px-2 py-1.5"><span className="font-medium">{k.kpi}</span>{k.sources.includes("Manual") && <Badge tone="purple">{t("Manual")}</Badge>}</td>
+                    <td className="px-2 py-1.5">{k.validitas}</td>
+                    <td className="px-2 py-1.5">{k.satuan}</td>
+                    <td className="px-2 py-1.5">{k.polaritas}</td>
+                    <td className="px-2 py-1.5">{k.prioritas || "—"}</td>
+                    <td className="px-2 py-1.5">{k.bobot || "—"}</td>
+                    <td className="px-2 py-1.5">{k.frekuensi || "—"}</td>
+                    <td className="px-2 py-1.5">{k.target || "—"}</td>
+                    <td className="px-2 py-1.5 text-right">{k.sources.includes("Manual") && <button onClick={() => removeKpi(k.id)} className="text-[11px] text-[var(--muted)] opacity-0 transition hover:text-rose-400 group-hover:opacity-100">✕</button>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </>
   );
 }
