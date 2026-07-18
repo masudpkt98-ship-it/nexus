@@ -7,9 +7,12 @@ import { Icon } from "@/components/Icons";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import {
-  MAPPING_KEY, DIREKTUR, type Direktur, type MappingState,
-  emptyMapping, detectSource, parseSheet, mergeMapping,
+  MAPPING_KEY, DIREKTUR, type Direktur, type MapSource, type MappingState,
+  emptyMapping, detectSource, parseSheet, mergeMapping, sourceCounts,
 } from "@/lib/perfMapping";
+
+const SOURCES: MapSource[] = ["Korporat", "Matrix", "KatalogAP"];
+const sourceTone: Record<MapSource, "green" | "amber" | "blue"> = { Korporat: "green", Matrix: "amber", KatalogAP: "blue" };
 
 const fmt = (n: number) => n.toLocaleString("id-ID");
 const TABS = ["KPI Korporat", "KPI Manajemen (SVP)", "KPI Individu"] as const;
@@ -23,6 +26,7 @@ export default function MappingPage() {
   const [note, setNote] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [fFungsi, setFFungsi] = useState("");
+  const [fSource, setFSource] = useState<"" | MapSource>("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const onImport = async (file: File) => {
@@ -55,10 +59,13 @@ export default function MappingPage() {
     const needle = q.trim().toLowerCase();
     return state.kpis.filter((k) => {
       if (fFungsi && k.fungsi !== fFungsi) return false;
+      if (fSource && !k.sources.includes(fSource)) return false;
       if (needle && !`${k.kpi} ${k.fungsi} ${k.tipe}`.toLowerCase().includes(needle)) return false;
       return true;
     });
-  }, [state.kpis, q, fFungsi]);
+  }, [state.kpis, q, fFungsi, fSource]);
+
+  const srcCounts = useMemo(() => sourceCounts(state.kpis), [state.kpis]);
 
   const isOn = (id: string, d: Direktur) => (state.cascade[id] ?? []).includes(d);
   const toggle = (id: string, d: Direktur) => setState((s) => {
@@ -142,7 +149,21 @@ export default function MappingPage() {
                 <select value={fFungsi} onChange={(e) => setFFungsi(e.target.value)} className="rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500">
                   {fungsiList.map((f) => <option key={f} value={f}>{f || t("All functions")}</option>)}
                 </select>
+                <select value={fSource} onChange={(e) => setFSource(e.target.value as "" | MapSource)} className="rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500">
+                  <option value="">{t("All sources")}</option>
+                  {SOURCES.map((s) => <option key={s} value={s}>{s} ({srcCounts[s]})</option>)}
+                </select>
                 <span className="text-[11px] text-[var(--muted)]">{fmt(filtered.length)}/{fmt(state.kpis.length)} {t("KPI")}</span>
+              </div>
+
+              {/* Source legend / counts */}
+              <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span className="text-[var(--muted)]">{t("Sources")}:</span>
+                {SOURCES.map((s) => (
+                  <button key={s} onClick={() => setFSource(fSource === s ? "" : s)} className={cn("transition", fSource === s && "ring-1 ring-royal-500 rounded-full")}>
+                    <Badge tone={sourceTone[s]}>{s} {srcCounts[s]}</Badge>
+                  </button>
+                ))}
               </div>
 
               {/* Cascade matrix */}
@@ -168,8 +189,8 @@ export default function MappingPage() {
                           <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-[var(--muted)]">
                             {k.satuan && <span>{k.satuan}</span>}
                             {k.tipe && <Badge tone="gray">{k.tipe}</Badge>}
-                            {k.prioritas && <Badge tone="amber">{k.prioritas}</Badge>}
-                            {k.sources.map((s) => <Badge key={s} tone="blue">{s}</Badge>)}
+                            {k.prioritas && <Badge tone="purple">{k.prioritas}</Badge>}
+                            {k.sources.map((s) => <Badge key={s} tone={sourceTone[s]}>{s}</Badge>)}
                           </div>
                         </td>
                         <td className="px-2 py-1.5 text-[var(--muted)]">{k.fungsi}</td>

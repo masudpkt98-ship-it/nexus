@@ -43,12 +43,23 @@ const truthy = (v: unknown) => v === true || /^(true|1|x|v|ya|yes|✓)$/i.test(c
 type Row = Record<string, unknown>;
 const pick = (r: Row, keys: string[]) => { for (const k of keys) if (k in r) return r[k]; return ""; };
 
-// Detect which of the three sources a sheet is, by its columns.
+// The source column name(s) that carry each canonical Direktur's cascade flag.
+// (Korporat/Matrix label the 3rd one "Direktur SDM dan Umum"; KatalogAP uses
+// "Direktur Keuangan & Umum".)
+const DIREKTUR_COLS: Record<Direktur, string[]> = {
+  "Direktur Produksi": ["Direktur Produksi"],
+  "Direktur Pengembangan": ["Direktur Pengembangan"],
+  "Direktur Keuangan & Umum": ["Direktur Keuangan & Umum", "Direktur SDM dan Umum"],
+  "Direktur Manajemen Risiko": ["Direktur Manajemen Risiko"],
+};
+
+// Detect which of the three sources a sheet is, by columns UNIQUE to each.
+// (All three carry the Direktur columns, so detect on distinctive fields.)
 export function detectSource(columns: string[]): MapSource | null {
   const has = (c: string) => columns.includes(c);
-  if (has("Sumber Cascade PIHC") || has("Direktur Produksi")) return "KatalogAP";
-  if (has("Skala \nPrioritas") || has("Skala Prioritas")) return "Korporat";
-  if (has("Fungsi") && has("Sumber Cascade")) return "Matrix";
+  if (has("Sumber Cascade PIHC")) return "KatalogAP";               // only KatalogAP
+  if (has("Bobot") || has("Target Tahunan") || has("Jenis Pengukuran")) return "Korporat"; // only Korporat
+  if (has("Fungsi")) return "Matrix";                                // Matrix (has Fungsi, no Bobot/PIHC)
   return null;
 }
 
@@ -81,12 +92,18 @@ export function parseSheet(source: MapSource, rows: Row[]): { kpis: MapKpi[]; ca
     const k = toKpi(r, fungsi, source);
     if (!k) continue;
     kpis.push(k);
-    if (source === "KatalogAP") {
-      const checked = DIREKTUR.filter((d) => truthy(r[d]));
-      if (checked.length) cascade[k.id] = [...checked];
-    }
+    // Seed the cascade from any Direktur column present in this file.
+    const checked = DIREKTUR.filter((d) => DIREKTUR_COLS[d].some((col) => truthy(r[col])));
+    if (checked.length) cascade[k.id] = [...checked];
   }
   return { kpis, cascade };
+}
+
+// Count KPIs per source (a KPI may belong to several).
+export function sourceCounts(kpis: MapKpi[]): Record<MapSource, number> {
+  const c: Record<MapSource, number> = { Korporat: 0, Matrix: 0, KatalogAP: 0 };
+  for (const k of kpis) for (const s of k.sources) c[s]++;
+  return c;
 }
 
 // Merge a parsed contribution into the current state (dedupe KPIs by id).
