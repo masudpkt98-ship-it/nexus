@@ -29,6 +29,9 @@ export const SVP_BY_DIREKTUR: Record<Direktur, string[]> = {
 
 // VPs under each SVP — per SO.png. Cascade targets for the SVP → VP level.
 export const VP_BY_SVP: Record<string, string[]> = {
+  // Direktur Utama's two units (Sekper & SPI) and their VPs — per the org chart.
+  "Sekretaris Perusahaan": ["VP Administrasi Korporat", "VP Komunikasi Korporat", "VP Tanggung Jawab Sosial & Lingkungan", "VP Board Office"],
+  "SPI": ["VP Audit Bisnis & Keuangan", "VP Konsultasi & Jaminan Kualitas", "VP Perencanaan & Monitoring"],
   "SVP Operasi 1": ["VP Operasi Pabrik 2", "VP Operasi Pabrik 5", "VP Operasi Pabrik 6 / EX P1"],
   "SVP Operasi 2": ["VP Operasi Pabrik 1A", "VP Operasi Pabrik 3", "VP Operasi Pabrik 4", "VP Operasi Pabrik 7"],
   "SVP Teknologi & K3LH": ["VP Proses & Pengelolaan Energi", "VP Laboratorium", "VP Keselamatan & Kesehatan Kerja", "VP Lingkungan Hidup", "VP Inspeksi Teknik 1", "VP Inspeksi Teknik 2"],
