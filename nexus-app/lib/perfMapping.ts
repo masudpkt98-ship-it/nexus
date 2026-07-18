@@ -1,12 +1,15 @@
 // -----------------------------------------------------------------------------
-// Performance Mapping — cascade the Corporate KPI down to the 4 Direktur via a
+// Performance Mapping — cascade the Corporate KPI down to the Direksi via a
 // checkbox matrix, supplemented from Matrix.xlsx / KatalogAP.xlsx.
 // -----------------------------------------------------------------------------
 
 export const MAPPING_KEY = "perf-mapping";
 
-// The 4 Direktorat (Direksi) — cascade targets. Match KatalogAP column headers.
+// The Direksi — cascade targets. Direktur Utama heads the board; the other 4
+// match KatalogAP column headers. Direktur Utama holds the corporate/kolegial
+// KPI and cascades to Sekretaris Perusahaan (Sekper) & SPI (Satuan Pengawasan Intern).
 export const DIREKTUR = [
+  "Direktur Utama",
   "Direktur Produksi",
   "Direktur Pengembangan",
   "Direktur Keuangan & Umum",
@@ -17,6 +20,7 @@ export type Direktur = (typeof DIREKTUR)[number];
 // SVPs (+ direct VPs) under each Direktur — per the org chart (SO.png).
 // These are the cascade targets for the Direktur → SVP level.
 export const SVP_BY_DIREKTUR: Record<Direktur, string[]> = {
+  "Direktur Utama": ["Sekretaris Perusahaan", "SPI"],
   "Direktur Produksi": ["SVP Operasi 1", "SVP Operasi 2", "SVP Teknologi & K3LH", "SVP Pemeliharaan"],
   "Direktur Pengembangan": ["SVP Teknik & Pengembangan", "SVP Manajemen Logistik", "SVP SBU Jasa Pelayanan Pabrik"],
   "Direktur Keuangan & Umum": ["SVP Manajemen Keuangan", "SVP Mitra Bisnis & Pelabuhan", "SVP Sumber Daya Manusia", "SVP Umum"],
@@ -142,6 +146,7 @@ const pick = (r: Row, keys: string[]) => { for (const k of keys) if (k in r) ret
 // (Korporat/Matrix label the 3rd one "Direktur SDM dan Umum"; KatalogAP uses
 // "Direktur Keuangan & Umum".)
 const DIREKTUR_COLS: Record<Direktur, string[]> = {
+  "Direktur Utama": ["Direktur Utama"],
   "Direktur Produksi": ["Direktur Produksi"],
   "Direktur Pengembangan": ["Direktur Pengembangan"],
   "Direktur Keuangan & Umum": ["Direktur Keuangan & Umum", "Direktur SDM dan Umum"],

@@ -127,7 +127,7 @@ export default function MappingPage() {
     <>
       <PageHeader
         title="Performance Mapping"
-        subtitle="Cascade the Corporate KPI down to the 4 Direktur — check the matrix to assign"
+        subtitle="Cascade the Corporate KPI down to the Direksi — check the matrix to assign"
         actions={
           <>
             {hasData && <Btn variant="ghost" onClick={clearAll}>{t("Clear data")}</Btn>}
