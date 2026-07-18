@@ -65,7 +65,7 @@ export function IndividuStatusCard({
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {METRICS.map((m) => {
-            const s = statuses[m.key];
+            const s = statuses[m.key] ?? { done: false, label: "—", tone: "gray" as const, available: false };
             return (
               <div key={m.key} className={cn("rounded-xl border px-4 py-3 transition", toneTile[s.tone])}>
                 <div className="flex items-center justify-between gap-2">

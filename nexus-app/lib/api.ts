@@ -110,6 +110,39 @@ export async function apiSend<T = any>(
   return (json && typeof json === "object" && "data" in json ? json.data : json) as T;
 }
 
+// ---- Progress portal (cross-device employee self-service) ------------------
+export interface ProgressMetric { done: boolean; label: string; tone: string; available: boolean }
+export interface ProgressLookup {
+  npk: string; name: string; position: string; unit: string; directorate: string; compartment: string;
+  metrics: Record<string, ProgressMetric>;
+  period: string;
+}
+
+/** Public: look up an employee's own progress by NPK + PIN (no auth). Never
+ *  throws — returns a discriminated result so the caller can fall back locally. */
+export async function apiLookupProgress(
+  npk: string,
+  pin: string
+): Promise<{ ok: true; data: ProgressLookup } | { ok: false; status: number; message: string }> {
+  try {
+    const res = await fetch(`${BASE}/progress/lookup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ npk, pin }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, status: res.status, message: json.message || "Gagal memuat" };
+    return { ok: true, data: json as ProgressLookup };
+  } catch {
+    return { ok: false, status: 0, message: "offline" };
+  }
+}
+
+/** Admin: publish a period's per-employee progress + access PINs to the server. */
+export async function apiPublishProgress(payload: unknown): Promise<{ records: number; pins: number; period: string }> {
+  return apiSend("POST", "/progress/publish", payload);
+}
+
 /** Download a binary response to a file (PDF/Excel/PPTX). Defaults to POST; pass
  *  method "GET" (with no body) for plain download endpoints. */
 export async function apiDownload(

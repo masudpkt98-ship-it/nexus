@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\SatisfactionController;
 use App\Http\Controllers\Api\ObjectiveController;
 use App\Http\Controllers\Api\PerformanceKpiController;
 use App\Http\Controllers\Api\ProgramController;
+use App\Http\Controllers\Api\ProgressController;
 use App\Http\Controllers\Api\ServiceRequestController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\WorkspaceController;
@@ -23,6 +24,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/health', fn () => response()->json(['status' => 'ok', 'app' => 'NEXUS API', 'version' => '1.0']));
 Route::post('/auth/login', [AuthController::class, 'login']);
 
+// Employee self-service: look up your own progress by NPK + PIN (no login).
+Route::post('/progress/lookup', [ProgressController::class, 'lookup'])->middleware('throttle:20,1');
+
 // ---- Protected (Sanctum bearer token) ----
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
@@ -31,6 +35,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Bulk-provision Nexian (KPI Partner) login accounts (Admin only).
     Route::post('/nexian/provision', [NexianController::class, 'provision'])->middleware('permission:nexian.provision');
+
+    // Publish per-employee KPI progress + access PINs for the public portal (Admin only).
+    Route::post('/progress/publish', [ProgressController::class, 'publish'])->middleware('permission:progress.publish');
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('permission:dashboard.view');
 

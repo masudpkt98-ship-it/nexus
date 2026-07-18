@@ -44,6 +44,8 @@ import { ProgressUnitView } from "@/components/progress/ProgressUnitView";
 import { ProgressIndividuView } from "@/components/progress/ProgressIndividuView";
 import { type IndividuPerson } from "@/components/progress/IndividuStatusCard";
 import { PIN_KEY, type PinMap, provisionAll, getPin } from "@/lib/progressPins";
+import { type MetricKey, type MetricStatus } from "@/lib/perfProgress";
+import { apiPublishProgress } from "@/lib/api";
 
 const KINDS: DatasetKind[] = ["planning", "appraisal", "coaching"];
 const YEARS = [2024, 2025, 2026, 2027];
@@ -383,7 +385,7 @@ export default function PerformanceDashboardPage() {
       {/* ---- Data & Riwayat (Admin) ---- */}
       {view === "data" && isAdmin && (
         <div className="mt-4 space-y-4">
-          <PinManager people={people} pins={pins} setPins={setPins} />
+          <PinManager people={people} pins={pins} setPins={setPins} statusFor={statusFor} period={{ id, year, gran, value, label: periodText }} />
 
           {/* Import status */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -602,14 +604,44 @@ function Rosette({ className }: { className?: string }) {
 }
 
 // ---- PIN manager: provision employee self-service access ----------------------
-function PinManager({ people, pins, setPins }: { people: IndividuPerson[]; pins: PinMap; setPins: React.Dispatch<React.SetStateAction<PinMap>>; }) {
+function PinManager({ people, pins, setPins, statusFor, period }: {
+  people: IndividuPerson[];
+  pins: PinMap;
+  setPins: React.Dispatch<React.SetStateAction<PinMap>>;
+  statusFor: (npk: string) => Record<MetricKey, MetricStatus>;
+  period: { id: string; year: number; gran: Gran; value: number; label: string };
+}) {
   const [q, setQ] = useState("");
   const [copied, setCopied] = useState("");
+  const [publishing, setPublishing] = useState(false);
+  const [pubMsg, setPubMsg] = useState<string | null>(null);
   const provisioned = people.filter((p) => pins[p.npk]).length;
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const match = people.find((p) => q.trim() && `${p.name} ${p.npk}`.toLowerCase().includes(q.trim().toLowerCase()));
 
   const provision = () => setPins((prev) => provisionAll(prev, people.map((p) => p.npk)));
+
+  // Push this period's per-employee progress + PINs to the Laravel backend so
+  // employees can open /progress from any device (not just this browser).
+  const publish = async () => {
+    setPublishing(true);
+    setPubMsg(null);
+    try {
+      const records = people.map((p) => ({
+        npk: p.npk, name: p.name, position: p.position, unit: p.unit,
+        directorate: p.directorate, compartment: p.compartment, metrics: statusFor(p.npk),
+      }));
+      const res = await apiPublishProgress({ period, records, pins });
+      setPubMsg(`Terpublikasi: ${fmt(res.records)} progress · ${fmt(res.pins)} PIN → ${period.label}. Karyawan dapat akses lintas perangkat.`);
+    } catch (e) {
+      const msg = (e as { status?: number })?.status === 401
+        ? "Harus login API sebagai admin dulu (halaman Login) untuk mempublikasikan."
+        : "Gagal publish — pastikan server API (nexus-api) berjalan di :8000.";
+      setPubMsg(msg);
+    } finally {
+      setPublishing(false);
+    }
+  };
   const copyLink = (npk: string) => {
     const link = `${origin}/progress?npk=${encodeURIComponent(npk)}`;
     navigator.clipboard?.writeText(link).then(() => { setCopied(npk); setTimeout(() => setCopied(""), 1500); }).catch(() => {});
@@ -621,7 +653,9 @@ function PinManager({ people, pins, setPins }: { people: IndividuPerson[]; pins:
       <div className="flex flex-wrap items-center gap-2">
         <Btn variant="primary" onClick={provision}><Icon.spark className="h-4 w-4" /> Generate PIN untuk semua</Btn>
         <Badge tone="green">{fmt(provisioned)} / {fmt(people.length)} ter-provision</Badge>
+        <Btn variant="ghost" onClick={publish}><Icon.check className="h-4 w-4" /> {publishing ? "Mempublikasikan…" : "Publish ke server (lintas perangkat)"}</Btn>
       </div>
+      {pubMsg && <div className="mt-2 rounded-lg border border-royal-500/30 bg-royal-500/5 px-3 py-2 text-[12px]">{pubMsg}</div>}
       <div className="relative mt-3">
         <Icon.search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari karyawan untuk melihat PIN & link akses…" className="w-full rounded-xl border bg-[rgb(var(--surface))] py-2 pl-10 pr-3 text-[13px] outline-none focus:border-royal-500" />
