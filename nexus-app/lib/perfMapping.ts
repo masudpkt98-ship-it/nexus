@@ -23,6 +23,23 @@ export const SVP_BY_DIREKTUR: Record<Direktur, string[]> = {
   "Direktur Manajemen Risiko": ["SVP Tata Kelola & Manajemen Risiko", "VP Hukum"],
 };
 
+// VPs under each SVP — per SO.png. Cascade targets for the SVP → VP level.
+export const VP_BY_SVP: Record<string, string[]> = {
+  "SVP Operasi 1": ["VP Operasi Pabrik 2", "VP Operasi Pabrik 5", "VP Operasi Pabrik 6 / EX P1"],
+  "SVP Operasi 2": ["VP Operasi Pabrik 1A", "VP Operasi Pabrik 3", "VP Operasi Pabrik 4", "VP Operasi Pabrik 7"],
+  "SVP Teknologi & K3LH": ["VP Proses & Pengelolaan Energi", "VP Laboratorium", "VP Keselamatan & Kesehatan Kerja", "VP Lingkungan Hidup", "VP Inspeksi Teknik 1", "VP Inspeksi Teknik 2"],
+  "SVP Pemeliharaan": ["VP Perencanaan & Pengendalian Pemeliharaan", "VP Perencanaan & Pengendalian Turn Around", "VP Keandalan", "VP Pemeliharaan Mekanik", "VP Pemeliharaan Instrumen", "VP Pemeliharaan Listrik", "VP Bengkel"],
+  "SVP Teknik & Pengembangan": ["VP Perencanaan Strategis", "VP Pengembangan Bisnis", "VP Portofolio Bisnis", "VP Riset", "VP Teknologi Informasi"],
+  "SVP Manajemen Logistik": ["VP Perencanaan Penerimaan & Pergudangan", "VP Pengadaan Barang", "VP Pengadaan Jasa"],
+  "SVP SBU Jasa Pelayanan Pabrik": ["VP Bisnis & Administrasi", "VP Teknik & Kontrol Kualitas", "VP Manufacturing", "VP Rancang Bangun"],
+  "SVP Manajemen Keuangan": ["VP Anggaran", "VP Keuangan", "VP Akuntansi", "VP Pelaporan Manajemen"],
+  "SVP Mitra Bisnis & Pelabuhan": ["VP Pengelolaan Pelanggan", "VP Operasional Penjualan", "VP Administrasi Penjualan", "VP Pelayanan Pelabuhan & Pengapalan"],
+  "SVP Sumber Daya Manusia": ["VP Sistem Manajemen Terpadu & Inovasi", "VP Manajemen & Pengembangan SDM", "VP Operasional SDM"],
+  "SVP Umum": ["VP Pelayanan Umum", "VP Keamanan", "VP Manajemen Aset"],
+  "SVP Tata Kelola & Manajemen Risiko": ["VP Manajemen Risiko Korporasi", "Staf Tata Kelola & Kepatuhan"],
+  "VP Hukum": [],
+};
+
 export type MapSource = "Korporat" | "Matrix" | "KatalogAP" | "Manual";
 
 export interface MapKpi {
@@ -48,9 +65,10 @@ export interface MappingState {
   kpis: MapKpi[];
   cascade: Record<string, string[]>; // kpiId → Direktur[] checked
   svpCascade: Record<string, string[]>; // kpiId → SVP[] checked (Direktur → SVP level)
+  vpCascade: Record<string, string[]>; // kpiId → VP[] checked (SVP → VP level)
 }
 
-export const emptyMapping = (): MappingState => ({ kpis: [], cascade: {}, svpCascade: {} });
+export const emptyMapping = (): MappingState => ({ kpis: [], cascade: {}, svpCascade: {}, vpCascade: {} });
 
 const clean = (v: unknown) => String(v ?? "").replace(/\s+/g, " ").trim();
 const idOf = (kpi: string) => clean(kpi).toLowerCase();
@@ -166,5 +184,5 @@ export function mergeMapping(state: MappingState, add: { kpis: MapKpi[]; cascade
   for (const [id, svps] of Object.entries(add.svpCascade ?? {})) {
     svpCascade[id] = [...new Set([...(svpCascade[id] ?? []), ...svps])];
   }
-  return { kpis: [...byId.values()], cascade, svpCascade };
+  return { kpis: [...byId.values()], cascade, svpCascade, vpCascade: { ...state.vpCascade } };
 }

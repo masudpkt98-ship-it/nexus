@@ -7,7 +7,7 @@ import { Icon } from "@/components/Icons";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import {
-  MAPPING_KEY, DIREKTUR, SVP_BY_DIREKTUR, type Direktur, type MapSource, type MapKpi, type MappingState,
+  MAPPING_KEY, DIREKTUR, SVP_BY_DIREKTUR, VP_BY_SVP, type Direktur, type MapSource, type MapKpi, type MappingState,
   emptyMapping, detectSource, parseSheet, mergeMapping, sourceCounts,
 } from "@/lib/perfMapping";
 
@@ -216,7 +216,8 @@ export default function MappingPage() {
 
       {/* ---- Tab 1: KPI Manajemen (SVP) — cascade Direktur → SVP ---- */}
       {tab === 1 && (hasData ? <ManajemenTab state={state} setState={setState} /> : <Staged t={t} title="KPI Manajemen (SVP)" note="Import & cascade to the Direktur first (KPI Korporat tab)." />)}
-      {tab === 2 && <Staged t={t} title="KPI Individu" note="Cascade SVP → Individu is the next level." />}
+      {/* ---- Tab 2: KPI Individu (VP) — cascade SVP → VP ---- */}
+      {tab === 2 && (hasData ? <IndividuTab state={state} setState={setState} /> : <Staged t={t} title="KPI Individu" note="Cascade to the SVP first (KPI Manajemen tab)." />)}
     </>
   );
 }
@@ -323,7 +324,7 @@ function ManajemenTab({ state, setState }: { state: MappingState; setState: (u: 
         </div>
       </div>
 
-      {showForm && <AddSvpKpiForm dir={dir} svps={svps} onClose={() => setShowForm(false)} onSave={(f, svp) => { addManual(f, svp); setShowForm(false); }} />}
+      {showForm && <AddManualKpiForm title={t("Add KPI SVP")} targetLabel="SVP" targets={svps} contextLabel={dir} onClose={() => setShowForm(false)} onSave={(f, svp) => { addManual(f, svp); setShowForm(false); }} />}
 
       {rows.length === 0 ? (
         <Card className="text-center text-[13px] text-[var(--muted)]">
@@ -375,23 +376,141 @@ function ManajemenTab({ state, setState }: { state: MappingState; setState: (u: 
             </div>
           </Card>
 
-          <SvpResult rows={rows} svps={svps} svpCascade={svpCascade} onRemove={removeKpi} />
+          <CascadeResult title="KPI SVP" rows={rows} targets={svps} cascadeMap={svpCascade} onRemove={removeKpi} />
         </>
       )}
     </>
   );
 }
 
-function SvpResult({ rows, svps, svpCascade, onRemove }: { rows: MapKpi[]; svps: string[]; svpCascade: Record<string, string[]>; onRemove: (id: string) => void }) {
+// ---- KPI Individu (VP): cascade an SVP's KPI down to their VPs ---------------
+function IndividuTab({ state, setState }: { state: MappingState; setState: (u: (s: MappingState) => MappingState) => void }) {
   const { t } = useI18n();
-  const [sel, setSel] = useState(svps[0]);
-  const cur = svps.includes(sel) ? sel : svps[0];
-  const list = rows.filter((k) => (svpCascade[k.id] ?? []).includes(cur));
+  const [dir, setDir] = useState<Direktur>(DIREKTUR[0]);
+  const svpsOfDir = SVP_BY_DIREKTUR[dir];
+  const [svp, setSvp] = useState(svpsOfDir[0]);
+  const curSvp = svpsOfDir.includes(svp) ? svp : svpsOfDir[0];
+  const [src, setSrc] = useState<"svp" | "history">("svp");
+  const [showForm, setShowForm] = useState(false);
+  const vps = VP_BY_SVP[curSvp] ?? [];
+  const vpCascade = state.vpCascade ?? {};
+
+  // Source of VP KPI: cascade from the SVP, or the whole KPI history (previous KPIs).
+  const rows = useMemo(() => (
+    src === "history"
+      ? state.kpis
+      : state.kpis.filter((k) => (state.svpCascade?.[k.id] ?? []).includes(curSvp))
+  ), [state.kpis, state.svpCascade, curSvp, src]);
+
+  const on = (id: string, vp: string) => (vpCascade[id] ?? []).includes(vp);
+  const toggle = (id: string, vp: string) => setState((s) => {
+    const set = new Set(s.vpCascade?.[id] ?? []);
+    set.has(vp) ? set.delete(vp) : set.add(vp);
+    return { ...s, vpCascade: { ...(s.vpCascade ?? {}), [id]: [...set] } };
+  });
+  const toggleCol = (vp: string) => setState((s) => {
+    const allOn = rows.every((k) => (s.vpCascade?.[k.id] ?? []).includes(vp));
+    const c = { ...(s.vpCascade ?? {}) };
+    for (const k of rows) { const set = new Set(c[k.id] ?? []); allOn ? set.delete(vp) : set.add(vp); c[k.id] = [...set]; }
+    return { ...s, vpCascade: c };
+  });
+  const countFor = (vp: string) => rows.filter((k) => (vpCascade[k.id] ?? []).includes(vp)).length;
+
+  const addManual = (f: Omit<MapKpi, "id" | "esg" | "fungsi" | "sources">, vp: string) => setState((s) => {
+    let id = ""; try { id = `manual-${crypto.randomUUID().slice(0, 8)}`; } catch { id = `manual-${Date.now()}`; }
+    const k: MapKpi = { ...f, id, esg: "", fungsi: "Manual", sources: ["Manual"] };
+    return { ...s, kpis: [...s.kpis, k], svpCascade: { ...s.svpCascade, [id]: [curSvp] }, vpCascade: { ...(s.vpCascade ?? {}), [id]: [vp] } };
+  });
+  const removeKpi = (id: string) => setState((s) => {
+    const sv = { ...(s.svpCascade ?? {}) }; delete sv[id];
+    const vp = { ...(s.vpCascade ?? {}) }; delete vp[id];
+    return { ...s, kpis: s.kpis.filter((k) => k.id !== id), svpCascade: sv, vpCascade: vp };
+  });
+
+  return (
+    <>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">{t("Source")}</span>
+        <div className="flex gap-1">
+          {([["svp", "From SVP"], ["history", "Performance History"]] as const).map(([v, label]) => (
+            <button key={v} onClick={() => setSrc(v)}
+              className={cn("rounded-lg px-3 py-1.5 text-[12px] font-medium transition", src === v ? "bg-royal-500/15 text-royal-400" : "glass hover:bg-black/5 dark:hover:bg-white/5")}>
+              {t(label)}
+            </button>
+          ))}
+        </div>
+        <select value={dir} onChange={(e) => { setDir(e.target.value as Direktur); }} className="rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500">
+          {DIREKTUR.map((d) => <option key={d} value={d}>{d}</option>)}
+        </select>
+        <select value={curSvp} onChange={(e) => setSvp(e.target.value)} className="rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500">
+          {svpsOfDir.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <Badge tone="blue">{fmt(rows.length)} {t("KPI to cascade")}</Badge>
+        <div className="ml-auto"><Btn variant="primary" onClick={() => setShowForm(true)}><Icon.plus className="h-4 w-4" /> {t("Add KPI")}</Btn></div>
+      </div>
+
+      {showForm && vps.length > 0 && <AddManualKpiForm title={t("Add KPI VP")} targetLabel="VP" targets={vps} contextLabel={curSvp} onClose={() => setShowForm(false)} onSave={(f, vp) => { addManual(f, vp); setShowForm(false); }} />}
+
+      {vps.length === 0 ? (
+        <Card className="text-center text-[13px] text-[var(--muted)]">{t("This SVP has no VP under it in the org chart.")}</Card>
+      ) : rows.length === 0 ? (
+        <Card className="text-center text-[13px] text-[var(--muted)]">
+          {src === "svp" ? t("No KPI cascaded to this SVP yet — use the KPI Manajemen tab.") : t("No KPI in history yet.")}
+        </Card>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {vps.map((v) => (
+              <Card key={v}><div className="text-[11px] text-[var(--muted)]">{v.replace(/^VP\s+/, "")}</div><div className="mt-1 text-2xl font-bold text-royal-400">{fmt(countFor(v))}</div><div className="text-[10px] text-[var(--muted)]">{t("KPI cascaded")}</div></Card>
+            ))}
+          </div>
+
+          <Card className="mt-4">
+            <SectionTitle title="Cascade SVP → VP" subtitle={curSvp} />
+            <div className="max-h-[60vh] overflow-auto">
+              <table className="w-full min-w-[720px] text-[12px]">
+                <thead>
+                  <tr className="text-left text-[10px] uppercase tracking-wider text-[var(--muted)]">
+                    <th className="sticky top-0 z-10 border-b bg-[rgb(var(--surface))] px-2 py-2">KPI</th>
+                    {vps.map((v) => (
+                      <th key={v} className="sticky top-0 z-10 border-b bg-[rgb(var(--surface))] px-2 py-2 text-center">
+                        <div className="whitespace-nowrap">{v.replace(/^VP\s+/, "")}</div>
+                        <button onClick={() => toggleCol(v)} className="mt-0.5 text-[9px] font-medium text-royal-400 hover:underline">{t("toggle all")}</button>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((k) => (
+                    <tr key={k.id} className="border-b last:border-0 hover:bg-black/5 dark:hover:bg-white/5">
+                      <td className="px-2 py-1.5"><div className="font-medium">{k.kpi}</div><div className="mt-0.5 text-[10px] text-[var(--muted)]">{k.fungsi}{k.satuan ? ` · ${k.satuan}` : ""}</div></td>
+                      {vps.map((v) => (
+                        <td key={v} className="px-2 py-1.5 text-center"><input type="checkbox" checked={on(k.id, v)} onChange={() => toggle(k.id, v)} className="accent-royal-500" /></td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <CascadeResult title="KPI VP" rows={rows} targets={vps} cascadeMap={vpCascade} onRemove={removeKpi} />
+        </>
+      )}
+    </>
+  );
+}
+
+function CascadeResult({ title, rows, targets, cascadeMap, onRemove }: { title: string; rows: MapKpi[]; targets: string[]; cascadeMap: Record<string, string[]>; onRemove: (id: string) => void }) {
+  const { t } = useI18n();
+  const [sel, setSel] = useState(targets[0]);
+  const cur = targets.includes(sel) ? sel : targets[0];
+  const list = rows.filter((k) => (cascadeMap[k.id] ?? []).includes(cur));
   return (
     <Card className="mt-4">
-      <SectionTitle title="KPI SVP" subtitle="Result — the SVP's KPI form" action={
+      <SectionTitle title={title} subtitle="Result — the assigned KPI form" action={
         <select value={cur} onChange={(e) => setSel(e.target.value)} className="rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500">
-          {svps.map((s) => <option key={s} value={s}>{s}</option>)}
+          {targets.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       } />
       {list.length === 0 ? (
@@ -434,16 +553,18 @@ function SvpResult({ rows, svps, svpCascade, onRemove }: { rows: MapKpi[]; svps:
   );
 }
 
-// ---- Manual KPI form (matches the KPI SVP.xlsx columns) ----------------------
-function AddSvpKpiForm({ dir, svps, onClose, onSave }: {
-  dir: Direktur;
-  svps: string[];
+// ---- Manual KPI form (matches the KPI SVP.xlsx columns) — reused for SVP & VP -
+function AddManualKpiForm({ title, targetLabel, targets, contextLabel, onClose, onSave }: {
+  title: string;
+  targetLabel: string; // "SVP" | "VP"
+  targets: string[];
+  contextLabel: string;
   onClose: () => void;
-  onSave: (f: Omit<MapKpi, "id" | "esg" | "fungsi" | "sources">, svp: string) => void;
+  onSave: (f: Omit<MapKpi, "id" | "esg" | "fungsi" | "sources">, target: string) => void;
 }) {
   const { t } = useI18n();
   const [f, setF] = useState({ kpi: "", validitas: "", satuan: "", polaritas: "Maximize", sumberCascade: "", tipe: "", prioritas: "", bobot: "", pengukuran: "", frekuensi: "", target: "" });
-  const [svp, setSvp] = useState(svps[0]);
+  const [svp, setSvp] = useState(targets[0]);
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
   const save = () => { if (!f.kpi.trim()) return; onSave({ ...f, kpi: f.kpi.trim() }, svp); };
 
@@ -459,14 +580,14 @@ function AddSvpKpiForm({ dir, svps, onClose, onSave }: {
       <div className="relative z-10 w-full max-w-lg glass card shadow-glass animate-fade-up">
         <div className="flex items-center gap-2 border-b p-4">
           <Icon.performance className="h-4 w-4 shrink-0 text-royal-400" />
-          <div className="text-sm font-semibold">{t("Add KPI SVP")}</div>
-          <span className="text-[11px] text-[var(--muted)]">· {dir}</span>
+          <div className="text-sm font-semibold">{title}</div>
+          <span className="text-[11px] text-[var(--muted)]">· {contextLabel}</span>
           <button onClick={onClose} className="ml-auto rounded-lg px-2 py-1 text-[var(--muted)] transition hover:text-rose-400" aria-label="Close">✕</button>
         </div>
         <div className="max-h-[70vh] space-y-3 overflow-y-auto p-5">
-          <label className={labelCls}>{t("SVP (target)")}
+          <label className={labelCls}>{targetLabel} ({t("target")})
             <select value={svp} onChange={(e) => setSvp(e.target.value)} className={`${inputCls} text-[var(--text)]`}>
-              {svps.map((s) => <option key={s} value={s}>{s}</option>)}
+              {targets.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </label>
           <label className={labelCls}>KPI
