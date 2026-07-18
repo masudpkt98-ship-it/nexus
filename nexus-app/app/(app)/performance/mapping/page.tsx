@@ -7,7 +7,7 @@ import { Icon } from "@/components/Icons";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import {
-  MAPPING_KEY, DIREKTUR, type Direktur, type MapSource, type MappingState,
+  MAPPING_KEY, DIREKTUR, SVP_BY_DIREKTUR, type Direktur, type MapSource, type MapKpi, type MappingState,
   emptyMapping, detectSource, parseSheet, mergeMapping, sourceCounts,
 } from "@/lib/perfMapping";
 
@@ -212,8 +212,8 @@ export default function MappingPage() {
         )
       )}
 
-      {/* ---- Tab 1 & 2: staged ---- */}
-      {tab === 1 && <Staged t={t} title="KPI Manajemen (SVP)" note="Cascade Direktur → SVP will build on the matrix above." />}
+      {/* ---- Tab 1: KPI Manajemen (SVP) — cascade Direktur → SVP ---- */}
+      {tab === 1 && (hasData ? <ManajemenTab state={state} setState={setState} /> : <Staged t={t} title="KPI Manajemen (SVP)" note="Import & cascade to the Direktur first (KPI Korporat tab)." />)}
       {tab === 2 && <Staged t={t} title="KPI Individu" note="Cascade SVP → Individu is the next level." />}
     </>
   );
@@ -242,6 +242,142 @@ function DireksiResult({ state }: { state: MappingState }) {
             </li>
           ))}
         </ol>
+      )}
+    </Card>
+  );
+}
+
+// ---- KPI Manajemen (SVP): cascade a Direktur's KPI down to their SVPs --------
+function ManajemenTab({ state, setState }: { state: MappingState; setState: (u: (s: MappingState) => MappingState) => void }) {
+  const { t } = useI18n();
+  const [dir, setDir] = useState<Direktur>(DIREKTUR[0]);
+  const svps = SVP_BY_DIREKTUR[dir];
+  const svpCascade = state.svpCascade ?? {};
+
+  // Rows = KPIs cascaded to the selected Direktur (from the KPI Korporat tab).
+  const rows = useMemo(() => state.kpis.filter((k) => (state.cascade[k.id] ?? []).includes(dir)), [state.kpis, state.cascade, dir]);
+
+  const on = (id: string, svp: string) => (svpCascade[id] ?? []).includes(svp);
+  const toggle = (id: string, svp: string) => setState((s) => {
+    const set = new Set(s.svpCascade?.[id] ?? []);
+    set.has(svp) ? set.delete(svp) : set.add(svp);
+    return { ...s, svpCascade: { ...(s.svpCascade ?? {}), [id]: [...set] } };
+  });
+  const toggleCol = (svp: string) => setState((s) => {
+    const allOn = rows.every((k) => (s.svpCascade?.[k.id] ?? []).includes(svp));
+    const c = { ...(s.svpCascade ?? {}) };
+    for (const k of rows) {
+      const set = new Set(c[k.id] ?? []);
+      allOn ? set.delete(svp) : set.add(svp);
+      c[k.id] = [...set];
+    }
+    return { ...s, svpCascade: c };
+  });
+  const countFor = (svp: string) => rows.filter((k) => (svpCascade[k.id] ?? []).includes(svp)).length;
+
+  return (
+    <>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">{t("Direktur")}</span>
+        <select value={dir} onChange={(e) => setDir(e.target.value as Direktur)} className="rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500">
+          {DIREKTUR.map((d) => <option key={d} value={d}>{d}</option>)}
+        </select>
+        <Badge tone="blue">{fmt(rows.length)} {t("KPI to cascade")}</Badge>
+      </div>
+
+      {rows.length === 0 ? (
+        <Card className="text-center text-[13px] text-[var(--muted)]">
+          {t("No KPI cascaded to this Direktur yet — tick the matrix in the KPI Korporat tab.")}
+        </Card>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {svps.map((s) => (
+              <Card key={s}>
+                <div className="text-[11px] text-[var(--muted)]">{s}</div>
+                <div className="mt-1 text-2xl font-bold text-royal-400">{fmt(countFor(s))}</div>
+                <div className="text-[10px] text-[var(--muted)]">{t("KPI cascaded")}</div>
+              </Card>
+            ))}
+          </div>
+
+          <Card className="mt-4">
+            <SectionTitle title="Cascade Direktur → SVP" subtitle={dir} />
+            <div className="max-h-[60vh] overflow-auto">
+              <table className="w-full min-w-[720px] text-[12px]">
+                <thead>
+                  <tr className="text-left text-[10px] uppercase tracking-wider text-[var(--muted)]">
+                    <th className="sticky top-0 z-10 border-b bg-[rgb(var(--surface))] px-2 py-2">KPI</th>
+                    {svps.map((s) => (
+                      <th key={s} className="sticky top-0 z-10 border-b bg-[rgb(var(--surface))] px-2 py-2 text-center">
+                        <div className="whitespace-nowrap">{s.replace(/^SVP\s+/, "")}</div>
+                        <button onClick={() => toggleCol(s)} className="mt-0.5 text-[9px] font-medium text-royal-400 hover:underline">{t("toggle all")}</button>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((k) => (
+                    <tr key={k.id} className="border-b last:border-0 hover:bg-black/5 dark:hover:bg-white/5">
+                      <td className="px-2 py-1.5">
+                        <div className="font-medium">{k.kpi}</div>
+                        <div className="mt-0.5 text-[10px] text-[var(--muted)]">{k.fungsi}{k.satuan ? ` · ${k.satuan}` : ""}</div>
+                      </td>
+                      {svps.map((s) => (
+                        <td key={s} className="px-2 py-1.5 text-center">
+                          <input type="checkbox" checked={on(k.id, s)} onChange={() => toggle(k.id, s)} className="accent-royal-500" />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <SvpResult rows={rows} svps={svps} svpCascade={svpCascade} />
+        </>
+      )}
+    </>
+  );
+}
+
+function SvpResult({ rows, svps, svpCascade }: { rows: MapKpi[]; svps: string[]; svpCascade: Record<string, string[]> }) {
+  const { t } = useI18n();
+  const [sel, setSel] = useState(svps[0]);
+  const cur = svps.includes(sel) ? sel : svps[0];
+  const list = rows.filter((k) => (svpCascade[k.id] ?? []).includes(cur));
+  return (
+    <Card className="mt-4">
+      <SectionTitle title="KPI SVP" subtitle="Result — the SVP's KPI form" action={
+        <select value={cur} onChange={(e) => setSel(e.target.value)} className="rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500">
+          {svps.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+      } />
+      {list.length === 0 ? (
+        <p className="py-4 text-center text-[12px] text-[var(--muted)]">{t("No KPI cascaded to this SVP yet.")}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[600px] text-[12.5px]">
+            <thead>
+              <tr className="border-b text-left text-[10px] uppercase tracking-wider text-[var(--muted)]">
+                <th className="px-2 py-2">No</th><th className="px-2 py-2">KPI</th><th className="px-2 py-2">{t("Validity")}</th><th className="px-2 py-2">{t("Unit")}</th><th className="px-2 py-2">{t("Polarity")}</th><th className="px-2 py-2">{t("Priority")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((k, i) => (
+                <tr key={k.id} className="border-b last:border-0">
+                  <td className="px-2 py-1.5 tabular-nums text-[var(--muted)]">{i + 1}</td>
+                  <td className="px-2 py-1.5 font-medium">{k.kpi}</td>
+                  <td className="px-2 py-1.5">{k.validitas}</td>
+                  <td className="px-2 py-1.5">{k.satuan}</td>
+                  <td className="px-2 py-1.5">{k.polaritas}</td>
+                  <td className="px-2 py-1.5">{k.prioritas || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </Card>
   );

@@ -14,6 +14,15 @@ export const DIREKTUR = [
 ] as const;
 export type Direktur = (typeof DIREKTUR)[number];
 
+// SVPs (+ direct VPs) under each Direktur — per the org chart (SO.png).
+// These are the cascade targets for the Direktur → SVP level.
+export const SVP_BY_DIREKTUR: Record<Direktur, string[]> = {
+  "Direktur Produksi": ["SVP Operasi 1", "SVP Operasi 2", "SVP Teknologi & K3LH", "SVP Pemeliharaan"],
+  "Direktur Pengembangan": ["SVP Teknik & Pengembangan", "SVP Manajemen Logistik", "SVP SBU Jasa Pelayanan Pabrik"],
+  "Direktur Keuangan & Umum": ["SVP Manajemen Keuangan", "SVP Mitra Bisnis & Pelabuhan", "SVP Sumber Daya Manusia", "SVP Umum"],
+  "Direktur Manajemen Risiko": ["SVP Tata Kelola & Manajemen Risiko", "VP Hukum"],
+};
+
 export type MapSource = "Korporat" | "Matrix" | "KatalogAP";
 
 export interface MapKpi {
@@ -32,9 +41,10 @@ export interface MapKpi {
 export interface MappingState {
   kpis: MapKpi[];
   cascade: Record<string, string[]>; // kpiId → Direktur[] checked
+  svpCascade: Record<string, string[]>; // kpiId → SVP[] checked (Direktur → SVP level)
 }
 
-export const emptyMapping = (): MappingState => ({ kpis: [], cascade: {} });
+export const emptyMapping = (): MappingState => ({ kpis: [], cascade: {}, svpCascade: {} });
 
 const clean = (v: unknown) => String(v ?? "").replace(/\s+/g, " ").trim();
 const idOf = (kpi: string) => clean(kpi).toLowerCase();
@@ -124,5 +134,5 @@ export function mergeMapping(state: MappingState, add: { kpis: MapKpi[]; cascade
     const set = new Set([...(cascade[id] ?? []), ...dirs]);
     cascade[id] = [...set];
   }
-  return { kpis: [...byId.values()], cascade };
+  return { kpis: [...byId.values()], cascade, svpCascade: { ...state.svpCascade } };
 }
