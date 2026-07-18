@@ -63,6 +63,25 @@ const DIREKTUR_COLS: Record<Direktur, string[]> = {
   "Direktur Manajemen Risiko": ["Direktur Manajemen Risiko"],
 };
 
+// The source column name(s) for each canonical SVP. KatalogAP labels a couple
+// differently ("SVP HSE Teknologi", "SVP SDM").
+const SVP_COLS: Record<string, string[]> = {
+  "SVP Operasi 1": ["SVP Operasi 1"],
+  "SVP Operasi 2": ["SVP Operasi 2"],
+  "SVP Teknologi & K3LH": ["SVP Teknologi & K3LH", "SVP HSE Teknologi"],
+  "SVP Pemeliharaan": ["SVP Pemeliharaan"],
+  "SVP Teknik & Pengembangan": ["SVP Teknik & Pengembangan"],
+  "SVP Manajemen Logistik": ["SVP Manajemen Logistik"],
+  "SVP SBU Jasa Pelayanan Pabrik": ["SVP SBU Jasa Pelayanan Pabrik"],
+  "SVP Manajemen Keuangan": ["SVP Manajemen Keuangan"],
+  "SVP Mitra Bisnis & Pelabuhan": ["SVP Mitra Bisnis & Pelabuhan"],
+  "SVP Sumber Daya Manusia": ["SVP Sumber Daya Manusia", "SVP SDM"],
+  "SVP Umum": ["SVP Umum"],
+  "SVP Tata Kelola & Manajemen Risiko": ["SVP Tata Kelola & Manajemen Risiko"],
+  "VP Hukum": ["VP Hukum"],
+};
+const ALL_SVP = Object.keys(SVP_COLS);
+
 // Detect which of the three sources a sheet is, by columns UNIQUE to each.
 // (All three carry the Direktur columns, so detect on distinctive fields.)
 export function detectSource(columns: string[]): MapSource | null {
@@ -92,9 +111,10 @@ function toKpi(r: Row, fungsi: string, source: MapSource): MapKpi | null {
 
 // Parse one imported sheet → { kpis, cascade } contribution. For KatalogAP the
 // per-Direktur boolean columns seed the initial cascade.
-export function parseSheet(source: MapSource, rows: Row[]): { kpis: MapKpi[]; cascade: Record<string, string[]> } {
+export function parseSheet(source: MapSource, rows: Row[]): { kpis: MapKpi[]; cascade: Record<string, string[]>; svpCascade: Record<string, string[]> } {
   const kpis: MapKpi[] = [];
   const cascade: Record<string, string[]> = {};
+  const svpCascade: Record<string, string[]> = {};
   let fungsi = source === "Korporat" ? "KPI Korporat" : "";
   for (const r of rows) {
     const f = clean(pick(r, ["Fungsi"]));
@@ -102,11 +122,14 @@ export function parseSheet(source: MapSource, rows: Row[]): { kpis: MapKpi[]; ca
     const k = toKpi(r, fungsi, source);
     if (!k) continue;
     kpis.push(k);
-    // Seed the cascade from any Direktur column present in this file.
-    const checked = DIREKTUR.filter((d) => DIREKTUR_COLS[d].some((col) => truthy(r[col])));
-    if (checked.length) cascade[k.id] = [...checked];
+    // Seed the Direktur cascade from any Direktur column present in this file.
+    const dirs = DIREKTUR.filter((d) => DIREKTUR_COLS[d].some((col) => truthy(r[col])));
+    if (dirs.length) cascade[k.id] = [...dirs];
+    // Seed the SVP cascade from any SVP column present (KatalogAP carries these).
+    const svps = ALL_SVP.filter((s) => SVP_COLS[s].some((col) => truthy(r[col])));
+    if (svps.length) svpCascade[k.id] = [...svps];
   }
-  return { kpis, cascade };
+  return { kpis, cascade, svpCascade };
 }
 
 // Count KPIs per source (a KPI may belong to several).
@@ -117,7 +140,7 @@ export function sourceCounts(kpis: MapKpi[]): Record<MapSource, number> {
 }
 
 // Merge a parsed contribution into the current state (dedupe KPIs by id).
-export function mergeMapping(state: MappingState, add: { kpis: MapKpi[]; cascade: Record<string, string[]> }): MappingState {
+export function mergeMapping(state: MappingState, add: { kpis: MapKpi[]; cascade: Record<string, string[]>; svpCascade?: Record<string, string[]> }): MappingState {
   const byId = new Map(state.kpis.map((k) => [k.id, { ...k, sources: [...k.sources] }]));
   for (const k of add.kpis) {
     const ex = byId.get(k.id);
@@ -131,8 +154,11 @@ export function mergeMapping(state: MappingState, add: { kpis: MapKpi[]; cascade
   }
   const cascade = { ...state.cascade };
   for (const [id, dirs] of Object.entries(add.cascade)) {
-    const set = new Set([...(cascade[id] ?? []), ...dirs]);
-    cascade[id] = [...set];
+    cascade[id] = [...new Set([...(cascade[id] ?? []), ...dirs])];
   }
-  return { kpis: [...byId.values()], cascade, svpCascade: { ...state.svpCascade } };
+  const svpCascade = { ...state.svpCascade };
+  for (const [id, svps] of Object.entries(add.svpCascade ?? {})) {
+    svpCascade[id] = [...new Set([...(svpCascade[id] ?? []), ...svps])];
+  }
+  return { kpis: [...byId.values()], cascade, svpCascade };
 }

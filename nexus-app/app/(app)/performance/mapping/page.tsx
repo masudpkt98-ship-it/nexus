@@ -251,11 +251,17 @@ function DireksiResult({ state }: { state: MappingState }) {
 function ManajemenTab({ state, setState }: { state: MappingState; setState: (u: (s: MappingState) => MappingState) => void }) {
   const { t } = useI18n();
   const [dir, setDir] = useState<Direktur>(DIREKTUR[0]);
+  const [src, setSrc] = useState<"direktur" | "katalog">("direktur");
   const svps = SVP_BY_DIREKTUR[dir];
   const svpCascade = state.svpCascade ?? {};
 
-  // Rows = KPIs cascaded to the selected Direktur (from the KPI Korporat tab).
-  const rows = useMemo(() => state.kpis.filter((k) => (state.cascade[k.id] ?? []).includes(dir)), [state.kpis, state.cascade, dir]);
+  // KPI SVP is cascaded from TWO sources: the selected Direktur's KPI (SO chart)
+  // or straight from the KatalogAP catalog.
+  const rows = useMemo(() => (
+    src === "katalog"
+      ? state.kpis.filter((k) => k.sources.includes("KatalogAP"))
+      : state.kpis.filter((k) => (state.cascade[k.id] ?? []).includes(dir))
+  ), [state.kpis, state.cascade, dir, src]);
 
   const on = (id: string, svp: string) => (svpCascade[id] ?? []).includes(svp);
   const toggle = (id: string, svp: string) => setState((s) => {
@@ -278,6 +284,15 @@ function ManajemenTab({ state, setState }: { state: MappingState; setState: (u: 
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-3">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">{t("Source")}</span>
+        <div className="flex gap-1">
+          {([["direktur", "From Direktur (SO)"], ["katalog", "From KatalogAP"]] as const).map(([v, label]) => (
+            <button key={v} onClick={() => setSrc(v)}
+              className={cn("rounded-lg px-3 py-1.5 text-[12px] font-medium transition", src === v ? "bg-royal-500/15 text-royal-400" : "glass hover:bg-black/5 dark:hover:bg-white/5")}>
+              {t(label)}
+            </button>
+          ))}
+        </div>
         <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">{t("Direktur")}</span>
         <select value={dir} onChange={(e) => setDir(e.target.value as Direktur)} className="rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500">
           {DIREKTUR.map((d) => <option key={d} value={d}>{d}</option>)}
@@ -287,7 +302,7 @@ function ManajemenTab({ state, setState }: { state: MappingState; setState: (u: 
 
       {rows.length === 0 ? (
         <Card className="text-center text-[13px] text-[var(--muted)]">
-          {t("No KPI cascaded to this Direktur yet — tick the matrix in the KPI Korporat tab.")}
+          {src === "katalog" ? t("No KatalogAP KPI imported — import KatalogAP.xlsx first.") : t("No KPI cascaded to this Direktur yet — tick the matrix in the KPI Korporat tab.")}
         </Card>
       ) : (
         <>
