@@ -113,26 +113,62 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               const [cPath, cQuery] = child.href.split("?");
               const cTab = cQuery ? new URLSearchParams(cQuery).get("tab") : null;
               const childActive = pathname === cPath && (cTab ? curTab === cTab : !curTab);
+              // 3rd-level items (e.g. an in-page tab) are shown only while you're
+              // on the child's page, nested a level deeper.
+              const grandkids = (child.children ?? []).filter((gc) => navAllowed(session, gc.href));
+              const showGrand = grandkids.length > 0 && pathname === cPath;
               return (
-                <Link
-                  key={child.href}
-                  href={child.href}
-                  onClick={onNavigate}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-[12.5px] transition",
-                    childActive
-                      ? "nav-active font-medium text-royal-400"
-                      : "text-[var(--text)]/70 hover:bg-black/5 dark:hover:bg-white/5"
-                  )}
-                >
-                  <span
+                <div key={child.href}>
+                  <Link
+                    href={child.href}
+                    onClick={onNavigate}
                     className={cn(
-                      "h-1.5 w-1.5 shrink-0 rounded-full",
-                      childActive ? "bg-royal-400" : "bg-[var(--muted)]/50"
+                      "flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-[12.5px] transition",
+                      childActive
+                        ? "nav-active font-medium text-royal-400"
+                        : "text-[var(--text)]/70 hover:bg-black/5 dark:hover:bg-white/5"
                     )}
-                  />
-                  <span className="flex-1 truncate">{t(child.label)}</span>
-                </Link>
+                  >
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 shrink-0 rounded-full",
+                        childActive ? "bg-royal-400" : "bg-[var(--muted)]/50"
+                      )}
+                    />
+                    <span className="flex-1 truncate">{t(child.label)}</span>
+                  </Link>
+
+                  {showGrand && (
+                    <div className="mt-0.5 space-y-0.5 border-l border-[var(--muted)]/20 pl-3 ml-[15px]">
+                      {grandkids.map((gc) => {
+                        const [gPath, gQuery] = gc.href.split("?");
+                        const gTab = gQuery ? new URLSearchParams(gQuery).get("tab") : null;
+                        const gActive = pathname === gPath && (gTab ? curTab === gTab : !curTab);
+                        return (
+                          <Link
+                            key={gc.href}
+                            href={gc.href}
+                            onClick={onNavigate}
+                            className={cn(
+                              "flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-[12px] transition",
+                              gActive
+                                ? "nav-active font-medium text-royal-400"
+                                : "text-[var(--text)]/60 hover:bg-black/5 dark:hover:bg-white/5"
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "h-1 w-1 shrink-0 rounded-full",
+                                gActive ? "bg-royal-400" : "bg-[var(--muted)]/40"
+                              )}
+                            />
+                            <span className="flex-1 truncate">{t(gc.label)}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>

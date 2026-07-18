@@ -3,6 +3,7 @@ import type { IconName } from "@/components/Icons";
 export interface NavChild {
   label: string;
   href: string;
+  children?: NavChild[]; // 3rd-level items (e.g. an in-page tab), shown only on the parent's page
 }
 
 export interface NavItem {
@@ -49,8 +50,11 @@ export const navItems: NavItem[] = [
     icon: "performance",
     section: "People & Performance",
     children: [
-      { label: "Performance Dictionary", href: "/performance/dictionary" },
-      { label: "KPI Teknis", href: "/performance/dictionary?tab=teknis" },
+      {
+        label: "Performance Dictionary",
+        href: "/performance/dictionary",
+        children: [{ label: "KPI Teknis", href: "/performance/dictionary?tab=teknis" }],
+      },
       { label: "Performance Planning", href: "/performance/planning" },
       { label: "Performance Mapping", href: "/performance/mapping" },
     ],
