@@ -23,7 +23,7 @@ export const SVP_BY_DIREKTUR: Record<Direktur, string[]> = {
   "Direktur Manajemen Risiko": ["SVP Tata Kelola & Manajemen Risiko", "VP Hukum"],
 };
 
-export type MapSource = "Korporat" | "Matrix" | "KatalogAP";
+export type MapSource = "Korporat" | "Matrix" | "KatalogAP" | "Manual";
 
 export interface MapKpi {
   id: string; // stable key = normalized KPI name
@@ -32,10 +32,16 @@ export interface MapKpi {
   satuan: string;
   esg: string;
   polaritas: string;
-  tipe: string;
-  prioritas: string;
+  tipe: string; // Jenis Cascade
+  prioritas: string; // Skala Prioritas
   fungsi: string;
   sources: MapSource[]; // which files contributed this KPI
+  // Extra fields carried by the KPI SVP form (manual entries fill these):
+  bobot?: string;
+  pengukuran?: string; // Jenis Pengukuran
+  frekuensi?: string;
+  target?: string; // Target Tahunan
+  sumberCascade?: string;
 }
 
 export interface MappingState {
@@ -134,7 +140,7 @@ export function parseSheet(source: MapSource, rows: Row[]): { kpis: MapKpi[]; ca
 
 // Count KPIs per source (a KPI may belong to several).
 export function sourceCounts(kpis: MapKpi[]): Record<MapSource, number> {
-  const c: Record<MapSource, number> = { Korporat: 0, Matrix: 0, KatalogAP: 0 };
+  const c: Record<MapSource, number> = { Korporat: 0, Matrix: 0, KatalogAP: 0, Manual: 0 };
   for (const k of kpis) for (const s of k.sources) c[s]++;
   return c;
 }
