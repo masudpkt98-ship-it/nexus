@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { LogoMark } from "@/components/Logo";
 import { Icon } from "@/components/Icons";
 import { navItems, navSections, type NavItem } from "@/lib/nav";
@@ -12,6 +12,8 @@ import { useAuth, navAllowed } from "@/lib/auth";
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const curTab = searchParams.get("tab");
   const { t } = useI18n();
   const { session } = useAuth();
   // RBAC: keep only nav the current role may open (Admin sees everything).
@@ -106,7 +108,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         {expanded && (
           <div className="mt-0.5 space-y-0.5 pl-[26px]">
             {kids.map((child) => {
-              const childActive = pathname === child.href;
+              // Children may deep-link to an in-page tab via ?tab=… — match on
+              // both the path and the tab so the right submenu highlights.
+              const [cPath, cQuery] = child.href.split("?");
+              const cTab = cQuery ? new URLSearchParams(cQuery).get("tab") : null;
+              const childActive = pathname === cPath && (cTab ? curTab === cTab : !curTab);
               return (
                 <Link
                   key={child.href}

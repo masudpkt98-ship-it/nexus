@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
@@ -23,7 +23,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden">
       {/* Desktop sidebar */}
       <div className="hidden lg:block">
-        <Sidebar />
+        <Suspense fallback={<aside className="h-full w-[264px] glass border-r" />}>
+          <Sidebar />
+        </Suspense>
       </div>
 
       {/* Mobile drawer */}
@@ -46,7 +48,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             open ? "translate-x-0" : "-translate-x-full"
           )}
         >
-          <Sidebar onNavigate={() => setOpen(false)} />
+          <Suspense fallback={<aside className="h-full w-[264px] glass border-r" />}>
+            <Sidebar onNavigate={() => setOpen(false)} />
+          </Suspense>
         </div>
       </div>
 

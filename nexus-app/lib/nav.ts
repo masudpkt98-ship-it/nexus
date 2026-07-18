@@ -50,6 +50,7 @@ export const navItems: NavItem[] = [
     section: "People & Performance",
     children: [
       { label: "Performance Dictionary", href: "/performance/dictionary" },
+      { label: "KPI Teknis", href: "/performance/dictionary?tab=teknis" },
       { label: "Performance Planning", href: "/performance/planning" },
       { label: "Performance Mapping", href: "/performance/mapping" },
     ],

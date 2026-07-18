@@ -42,7 +42,7 @@ export function scopeAllows(s: Session, directorate?: string, unit?: string): bo
   return false;
 }
 
-export const navAllowed = (s: Session, href: string) => s.role === "Admin" || PARTNER_NAV.has(href);
+export const navAllowed = (s: Session, href: string) => s.role === "Admin" || PARTNER_NAV.has(href.split(/[?#]/)[0]);
 
 // Build a scoped session from a Nexian. Scope follows the Nexian's ASSIGNED unit
 // kerja (their KPI-Partner posting), which matches the Directory's Unit Kerja.

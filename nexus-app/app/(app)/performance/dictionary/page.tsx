@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, Badge, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
@@ -54,14 +55,23 @@ const emptyK: KForm = { open: false, id: null, code: "", name: "", perspective: 
 type JForm = { open: boolean; id: string | null; role: string; level: string; unit: string; purpose: string; responsibilities: string; kpiIds: string[] };
 const emptyJ: JForm = { open: false, id: null, role: "", level: "SVP", unit: "", purpose: "", responsibilities: "", kpiIds: [] };
 
-export default function PerformanceDictionaryPage() {
+// Map the ?tab= query value (used by the sidebar deep-link) to a tab.
+const tabFromQuery: Record<string, Tab> = { teknis: "KPI Teknis" };
+
+function PerformanceDictionaryPage() {
   const { t } = useI18n();
+  const searchParams = useSearchParams();
   // Shared reference stores — consumable by any module that needs them.
   const [kpis, setKpis] = useLocalState<CorporateKpi[]>("corporate-kpis", seedKpis);
   const [profiles, setProfiles] = useLocalState<JobProfile[]>("job-profiles", seedProfiles);
   const [goals] = useLocalState<StrategicGoal[]>("strategy-goals-2026", seedGoals); // pulled from Strategic Planning
   const [teknis, setTeknis] = useLocalState<KpiTeknis[]>(KPI_TEKNIS_KEY, []);
   const [tab, setTab] = useState<Tab>("Corporate KPI");
+  // Open the tab requested by a sidebar deep-link (e.g. ?tab=teknis → KPI Teknis).
+  useEffect(() => {
+    const q = searchParams.get("tab");
+    if (q && tabFromQuery[q]) setTab(tabFromQuery[q]);
+  }, [searchParams]);
   const [kForm, setKForm] = useState<KForm>(emptyK);
   const [jForm, setJForm] = useState<JForm>(emptyJ);
   // KPI Teknis (per Job Profile)
@@ -458,5 +468,13 @@ export default function PerformanceDictionaryPage() {
         </Modal>
       )}
     </>
+  );
+}
+
+export default function PerformanceDictionaryPageWrapper() {
+  return (
+    <Suspense fallback={null}>
+      <PerformanceDictionaryPage />
+    </Suspense>
   );
 }
