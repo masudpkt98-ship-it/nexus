@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, SectionTitle, Badge, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
@@ -56,6 +56,25 @@ export default function MappingPage() {
   const [teknisRaw] = useLocalState<KpiTeknis[]>(KPI_TEKNIS_KEY, []);
   const [profiles] = useLocalState<JobProfile[]>("job-profiles", seedProfiles);
   const teknisKpis = useMemo(() => teknisToMapKpi(teknisRaw, profiles), [teknisRaw, profiles]);
+
+  // Self-heal: the corporate/kolegial scorecard belongs to the Direktur Utama.
+  // Data imported before Direktur Utama existed didn't seed this, so link any
+  // Korporat KPI not yet cascaded to Direktur Utama — once, in place. Keeps the
+  // KPI Korporat matrix and the KPI Manajemen (SVP) tab consistent.
+  useEffect(() => {
+    setState((s) => {
+      let changed = false;
+      const cascade = { ...s.cascade };
+      for (const k of s.kpis) {
+        if (!k.sources.includes("Korporat")) continue;
+        const cur = cascade[k.id] ?? [];
+        if (!cur.includes("Direktur Utama")) { cascade[k.id] = ["Direktur Utama", ...cur]; changed = true; }
+      }
+      return changed ? { ...s, cascade } : s;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.kpis.length]);
+
   const [tab, setTab] = useState(0);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);

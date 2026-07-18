@@ -217,6 +217,10 @@ export function parseSheet(source: MapSource, rows: Row[]): { kpis: MapKpi[]; ca
     kpis.push(k);
     // Seed the Direktur cascade from any Direktur column present in this file.
     const dirs = DIREKTUR.filter((d) => DIREKTUR_COLS[d].some((col) => truthy(r[col])));
+    // The corporate/kolegial scorecard (KPI Korporat.xlsx "Direktur Utama" sheet)
+    // belongs to the Direktur Utama — seed it so those KPIs are available to
+    // cascade down to Sekretaris Perusahaan & SPI in the KPI Manajemen (SVP) tab.
+    if (source === "Korporat" && !dirs.includes("Direktur Utama")) dirs.unshift("Direktur Utama");
     if (dirs.length) cascade[k.id] = [...dirs];
     // Seed the SVP cascade from any SVP column present (KatalogAP carries these).
     const svps = ALL_SVP.filter((s) => SVP_COLS[s].some((col) => truthy(r[col])));
