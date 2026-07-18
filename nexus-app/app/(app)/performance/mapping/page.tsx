@@ -10,9 +10,34 @@ import {
   MAPPING_KEY, DIREKTUR, SVP_BY_DIREKTUR, VP_BY_SVP, AVP_BY_VP, type Direktur, type MapSource, type MapKpi, type MappingState,
   emptyMapping, detectSource, parseSheet, mergeMapping, sourceCounts,
 } from "@/lib/perfMapping";
+import { KPI_TEKNIS_KEY, type KpiTeknis } from "@/lib/kpiTeknis";
+import { jobProfiles as seedProfiles, type JobProfile } from "@/lib/data";
 
 const SOURCES: MapSource[] = ["Korporat", "Matrix", "KatalogAP"];
-const sourceTone: Record<MapSource, "green" | "amber" | "blue" | "purple"> = { Korporat: "green", Matrix: "amber", KatalogAP: "blue", Manual: "purple" };
+const sourceTone: Record<MapSource, "green" | "amber" | "blue" | "purple" | "red"> = { Korporat: "green", Matrix: "amber", KatalogAP: "blue", Manual: "purple", Teknis: "red" };
+
+// KPI Teknis (defined per Job Profile in the Performance Dictionary) → MapKpi,
+// so they can feed the cascade as the "KPI Teknis" source.
+const teknisToMapKpi = (list: KpiTeknis[], profiles: JobProfile[]): MapKpi[] =>
+  list.filter((x) => x.kpi.trim()).map((x) => {
+    const p = profiles.find((pr) => pr.id === x.jobProfileId);
+    return {
+      id: `teknis-${x.id}`,
+      kpi: x.kpi,
+      validitas: x.validitas,
+      satuan: x.satuan,
+      esg: "",
+      polaritas: x.polaritas,
+      tipe: x.tipe,
+      prioritas: x.prioritas,
+      fungsi: p ? p.role : "",
+      sources: ["Teknis"] as MapSource[],
+      bobot: x.bobot,
+      pengukuran: x.pengukuran,
+      frekuensi: x.frekuensi,
+      target: x.target,
+    };
+  });
 const inputCls = "mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500";
 const labelCls = "block text-[11px] font-medium text-[var(--muted)]";
 const ALL_VP = Object.keys(AVP_BY_VP);
@@ -26,6 +51,11 @@ const shortDir = (d: string) => d.replace(/^Direktur\s+/, "");
 export default function MappingPage() {
   const { t } = useI18n();
   const [state, setState] = useLocalState<MappingState>(MAPPING_KEY, emptyMapping());
+  // KPI Teknis are defined per Job Profile in the Performance Dictionary; here we
+  // only read them so they can feed the SVP→VP and VP→AVP cascades as a source.
+  const [teknisRaw] = useLocalState<KpiTeknis[]>(KPI_TEKNIS_KEY, []);
+  const [profiles] = useLocalState<JobProfile[]>("job-profiles", seedProfiles);
+  const teknisKpis = useMemo(() => teknisToMapKpi(teknisRaw, profiles), [teknisRaw, profiles]);
   const [tab, setTab] = useState(0);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -220,9 +250,9 @@ export default function MappingPage() {
       {/* ---- Tab 1: KPI Manajemen (SVP) — cascade Direktur → SVP ---- */}
       {tab === 1 && (hasData ? <ManajemenTab state={state} setState={setState} /> : <Staged t={t} title="KPI Manajemen (SVP)" note="Import & cascade to the Direktur first (KPI Korporat tab)." />)}
       {/* ---- Tab 2: KPI VP — cascade SVP → VP ---- */}
-      {tab === 2 && (hasData ? <IndividuTab state={state} setState={setState} /> : <Staged t={t} title="KPI VP" note="Cascade to the SVP first (KPI Manajemen tab)." />)}
+      {tab === 2 && (hasData ? <IndividuTab state={state} setState={setState} teknisKpis={teknisKpis} /> : <Staged t={t} title="KPI VP" note="Cascade to the SVP first (KPI Manajemen tab)." />)}
       {/* ---- Tab 3: KPI AVP — cascade VP → AVP (VP → Staf if no AVP) ---- */}
-      {tab === 3 && (hasData ? <AvpTab state={state} setState={setState} /> : <Staged t={t} title="KPI AVP" note="Cascade to a VP first (KPI VP tab)." />)}
+      {tab === 3 && (hasData ? <AvpTab state={state} setState={setState} teknisKpis={teknisKpis} /> : <Staged t={t} title="KPI AVP" note="Cascade to a VP first (KPI VP tab)." />)}
       {/* ---- Tab 4: KPI Individu — the AVP's KPI, inherited by all staff/pelaksana ---- */}
       {tab === 4 && (hasData ? <IndividuFinalTab state={state} setState={setState} /> : <Staged t={t} title="KPI Individu" note="Cascade to an AVP first (KPI AVP tab)." />)}
     </>
@@ -391,23 +421,23 @@ function ManajemenTab({ state, setState }: { state: MappingState; setState: (u: 
 }
 
 // ---- KPI Individu (VP): cascade an SVP's KPI down to their VPs ---------------
-function IndividuTab({ state, setState }: { state: MappingState; setState: (u: (s: MappingState) => MappingState) => void }) {
+function IndividuTab({ state, setState, teknisKpis }: { state: MappingState; setState: (u: (s: MappingState) => MappingState) => void; teknisKpis: MapKpi[] }) {
   const { t } = useI18n();
   const [dir, setDir] = useState<Direktur>(DIREKTUR[0]);
   const svpsOfDir = SVP_BY_DIREKTUR[dir];
   const [svp, setSvp] = useState(svpsOfDir[0]);
   const curSvp = svpsOfDir.includes(svp) ? svp : svpsOfDir[0];
-  const [src, setSrc] = useState<"svp" | "history">("svp");
+  const [src, setSrc] = useState<"svp" | "teknis">("svp");
   const [showForm, setShowForm] = useState(false);
   const vps = VP_BY_SVP[curSvp] ?? [];
   const vpCascade = state.vpCascade ?? {};
 
-  // Source of VP KPI: cascade from the SVP, or the whole KPI history (previous KPIs).
+  // Source of VP KPI: cascade from the SVP, or the KPI Teknis (per Job Profile, from the Dictionary).
   const rows = useMemo(() => (
-    src === "history"
-      ? state.kpis
+    src === "teknis"
+      ? teknisKpis
       : state.kpis.filter((k) => (state.svpCascade?.[k.id] ?? []).includes(curSvp))
-  ), [state.kpis, state.svpCascade, curSvp, src]);
+  ), [state.kpis, state.svpCascade, curSvp, src, teknisKpis]);
 
   const on = (id: string, vp: string) => (vpCascade[id] ?? []).includes(vp);
   const toggle = (id: string, vp: string) => setState((s) => {
@@ -439,7 +469,7 @@ function IndividuTab({ state, setState }: { state: MappingState; setState: (u: (
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">{t("Source")}</span>
         <div className="flex gap-1">
-          {([["svp", "From SVP"], ["history", "Performance History"]] as const).map(([v, label]) => (
+          {([["svp", "From SVP"], ["teknis", "KPI Teknis"]] as const).map(([v, label]) => (
             <button key={v} onClick={() => setSrc(v)}
               className={cn("rounded-lg px-3 py-1.5 text-[12px] font-medium transition", src === v ? "bg-royal-500/15 text-royal-400" : "glass hover:bg-black/5 dark:hover:bg-white/5")}>
               {t(label)}
@@ -462,7 +492,7 @@ function IndividuTab({ state, setState }: { state: MappingState; setState: (u: (
         <Card className="text-center text-[13px] text-[var(--muted)]">{t("This SVP has no VP under it in the org chart.")}</Card>
       ) : rows.length === 0 ? (
         <Card className="text-center text-[13px] text-[var(--muted)]">
-          {src === "svp" ? t("No KPI cascaded to this SVP yet — use the KPI Manajemen tab.") : t("No KPI in history yet.")}
+          {src === "svp" ? t("No KPI cascaded to this SVP yet — use the KPI Manajemen tab.") : t("No KPI Teknis defined yet — add them in the Performance Dictionary (KPI Teknis tab).")}
         </Card>
       ) : (
         <>
@@ -509,17 +539,17 @@ function IndividuTab({ state, setState }: { state: MappingState; setState: (u: (
 }
 
 // ---- KPI AVP: cascade a VP's KPI down to their AVPs (or "Staf" if none) ------
-function AvpTab({ state, setState }: { state: MappingState; setState: (u: (s: MappingState) => MappingState) => void }) {
+function AvpTab({ state, setState, teknisKpis }: { state: MappingState; setState: (u: (s: MappingState) => MappingState) => void; teknisKpis: MapKpi[] }) {
   const { t } = useI18n();
   const [vp, setVp] = useState(ALL_VP[0]);
-  const [src, setSrc] = useState<"vp" | "history">("vp");
+  const [src, setSrc] = useState<"vp" | "teknis">("vp");
   const [showForm, setShowForm] = useState(false);
   const avps = targetsForVp(vp); // VP → Staf when no AVP (unique per VP)
   const avpCascade = state.avpCascade ?? {};
 
   const rows = useMemo(() => (
-    src === "history" ? state.kpis : state.kpis.filter((k) => (state.vpCascade?.[k.id] ?? []).includes(vp))
-  ), [state.kpis, state.vpCascade, vp, src]);
+    src === "teknis" ? teknisKpis : state.kpis.filter((k) => (state.vpCascade?.[k.id] ?? []).includes(vp))
+  ), [state.kpis, state.vpCascade, vp, src, teknisKpis]);
 
   const on = (id: string, avp: string) => (avpCascade[id] ?? []).includes(avp);
   const toggle = (id: string, avp: string) => setState((s) => {
@@ -551,7 +581,7 @@ function AvpTab({ state, setState }: { state: MappingState; setState: (u: (s: Ma
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">{t("Source")}</span>
         <div className="flex gap-1">
-          {([["vp", "From VP"], ["history", "Performance History"]] as const).map(([v, label]) => (
+          {([["vp", "From VP"], ["teknis", "KPI Teknis"]] as const).map(([v, label]) => (
             <button key={v} onClick={() => setSrc(v)} className={cn("rounded-lg px-3 py-1.5 text-[12px] font-medium transition", src === v ? "bg-royal-500/15 text-royal-400" : "glass hover:bg-black/5 dark:hover:bg-white/5")}>{t(label)}</button>
           ))}
         </div>
@@ -568,7 +598,7 @@ function AvpTab({ state, setState }: { state: MappingState; setState: (u: (s: Ma
 
       {rows.length === 0 ? (
         <Card className="text-center text-[13px] text-[var(--muted)]">
-          {src === "vp" ? t("No KPI cascaded to this VP yet — use the KPI VP tab.") : t("No KPI in history yet.")}
+          {src === "vp" ? t("No KPI cascaded to this VP yet — use the KPI VP tab.") : t("No KPI Teknis defined yet — add them in the Performance Dictionary (KPI Teknis tab).")}
         </Card>
       ) : (
         <>

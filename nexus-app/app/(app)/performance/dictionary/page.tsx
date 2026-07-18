@@ -17,6 +17,7 @@ import {
 } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
+import { KPI_TEKNIS_KEY, emptyKpiTeknis, type KpiTeknis } from "@/lib/kpiTeknis";
 
 const inputCls = "mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500";
 const labelCls = "block text-[11px] font-medium text-[var(--muted)]";
@@ -45,7 +46,7 @@ function Modal({ title, onClose, onSave, saveLabel, children, wide }: { title: s
   );
 }
 
-const TABS = ["Corporate KPI", "Strategic Goal", "Alignment & Cascading", "Job Profile"] as const;
+const TABS = ["Corporate KPI", "Strategic Goal", "Alignment & Cascading", "Job Profile", "KPI Teknis"] as const;
 type Tab = (typeof TABS)[number];
 
 type KForm = { open: boolean; id: string | null; code: string; name: string; perspective: string; unit: string; target: string; strategicGoalId: string; cascadableTo: string[] };
@@ -59,9 +60,28 @@ export default function PerformanceDictionaryPage() {
   const [kpis, setKpis] = useLocalState<CorporateKpi[]>("corporate-kpis", seedKpis);
   const [profiles, setProfiles] = useLocalState<JobProfile[]>("job-profiles", seedProfiles);
   const [goals] = useLocalState<StrategicGoal[]>("strategy-goals-2026", seedGoals); // pulled from Strategic Planning
+  const [teknis, setTeknis] = useLocalState<KpiTeknis[]>(KPI_TEKNIS_KEY, []);
   const [tab, setTab] = useState<Tab>("Corporate KPI");
   const [kForm, setKForm] = useState<KForm>(emptyK);
   const [jForm, setJForm] = useState<JForm>(emptyJ);
+  // KPI Teknis (per Job Profile)
+  const [tProfileId, setTProfileId] = useState<string>("");
+  const [tForm, setTForm] = useState<{ open: boolean; id: string | null; data: Omit<KpiTeknis, "id"> }>({ open: false, id: null, data: emptyKpiTeknis("") });
+  const curProfileId = profiles.some((p) => p.id === tProfileId) ? tProfileId : (profiles[0]?.id ?? "");
+  const teknisFor = (pid: string) => teknis.filter((x) => x.jobProfileId === pid);
+  const openTCreate = () => setTForm({ open: true, id: null, data: emptyKpiTeknis(curProfileId) });
+  const openTEdit = (x: KpiTeknis) => setTForm({ open: true, id: x.id, data: { ...x } });
+  const closeT = () => setTForm({ open: false, id: null, data: emptyKpiTeknis(curProfileId) });
+  const setTField = (k: keyof Omit<KpiTeknis, "id">, v: string) => setTForm((f) => ({ ...f, data: { ...f.data, [k]: v } }));
+  const saveT = () => {
+    const kpi = tForm.data.kpi.trim();
+    if (!kpi || !tForm.data.jobProfileId) return;
+    const data = { ...tForm.data, kpi };
+    if (tForm.id == null) setTeknis((l) => [...l, { id: newId("kt"), ...data }]);
+    else setTeknis((l) => l.map((x) => (x.id === tForm.id ? { ...x, ...data } : x)));
+    closeT();
+  };
+  const removeT = (x: KpiTeknis) => { if (confirm(`${t("Delete")} “${x.kpi}”?`)) setTeknis((l) => l.filter((y) => y.id !== x.id)); };
 
   const goalTitle = (id?: string) => goals.find((g) => g.id === id)?.title;
   const kpiName = (id: string) => kpis.find((k) => k.id === id)?.name ?? id;
@@ -107,6 +127,7 @@ export default function PerformanceDictionaryPage() {
         actions={
           tab === "Corporate KPI" ? <Btn variant="primary" onClick={openKCreate}><Icon.plus className="h-4 w-4" /> {t("New KPI")}</Btn>
           : tab === "Job Profile" ? <Btn variant="primary" onClick={openJCreate}><Icon.plus className="h-4 w-4" /> {t("New Profile")}</Btn>
+          : tab === "KPI Teknis" ? <Btn variant="primary" onClick={openTCreate}><Icon.plus className="h-4 w-4" /> {t("New KPI Teknis")}</Btn>
           : undefined
         }
       />
@@ -114,7 +135,7 @@ export default function PerformanceDictionaryPage() {
       <div className="mb-4 flex flex-wrap rounded-xl glass p-0.5">
         {TABS.map((v) => (
           <button key={v} onClick={() => setTab(v)} className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition", tab === v ? "bg-royal-500 text-white" : "text-[var(--muted)] hover:text-[var(--text)]")}>
-            {v === "Corporate KPI" ? t("Corporate KPI") : v === "Strategic Goal" ? t("Strategic Goal") : v === "Alignment & Cascading" ? t("Alignment & Cascading") : t("Job Profile")}
+            {v === "Corporate KPI" ? t("Corporate KPI") : v === "Strategic Goal" ? t("Strategic Goal") : v === "Alignment & Cascading" ? t("Alignment & Cascading") : v === "Job Profile" ? t("Job Profile") : t("KPI Teknis")}
           </button>
         ))}
       </div>
@@ -276,6 +297,103 @@ export default function PerformanceDictionaryPage() {
           ))}
           {profiles.length === 0 && <Card className="text-center text-[13px] text-[var(--muted)]">{t("No job profiles yet. Add one.")}</Card>}
         </div>
+      )}
+
+      {tab === "KPI Teknis" && (
+        <div className="space-y-3">
+          {profiles.length === 0 ? (
+            <Card className="text-center text-[13px] text-[var(--muted)]">{t("Add a Job Profile first — KPI Teknis are defined per Job Profile.")}</Card>
+          ) : (
+            <>
+              <Card className="flex flex-wrap items-center gap-3">
+                <label className={cn(labelCls, "flex-1 min-w-[200px]")}>{t("Job Profile")}
+                  <select value={curProfileId} onChange={(e) => setTProfileId(e.target.value)} className={`${inputCls} text-[var(--text)]`}>
+                    {profiles.map((p) => <option key={p.id} value={p.id}>{p.role}{p.unit ? ` — ${p.unit}` : ""}</option>)}
+                  </select>
+                </label>
+                <div className="text-[12px] text-[var(--muted)]">{teknisFor(curProfileId).length} {t("KPI Teknis")}</div>
+              </Card>
+
+              <Card className="overflow-x-auto p-0">
+                <table className="w-full min-w-[900px] text-[12px]">
+                  <thead>
+                    <tr className="border-b text-left text-[10px] uppercase tracking-wide text-[var(--muted)]">
+                      <th className="px-3 py-2">KPI</th>
+                      <th className="px-3 py-2">{t("Validity")}</th>
+                      <th className="px-3 py-2">{t("Unit")}</th>
+                      <th className="px-3 py-2">{t("Polarity")}</th>
+                      <th className="px-3 py-2">{t("Cascade Type")}</th>
+                      <th className="px-3 py-2">{t("Priority")}</th>
+                      <th className="px-3 py-2">{t("Weight")}</th>
+                      <th className="px-3 py-2">{t("Measurement")}</th>
+                      <th className="px-3 py-2">{t("Frequency")}</th>
+                      <th className="px-3 py-2">{t("Annual Target")}</th>
+                      <th className="px-3 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teknisFor(curProfileId).map((x) => (
+                      <tr key={x.id} className="group border-b last:border-0 hover:bg-[var(--hover)]">
+                        <td className="px-3 py-2 font-medium">{x.kpi}</td>
+                        <td className="px-3 py-2 text-[var(--muted)]">{x.validitas || "—"}</td>
+                        <td className="px-3 py-2 text-[var(--muted)]">{x.satuan || "—"}</td>
+                        <td className="px-3 py-2 text-[var(--muted)]">{x.polaritas || "—"}</td>
+                        <td className="px-3 py-2 text-[var(--muted)]">{x.tipe || "—"}</td>
+                        <td className="px-3 py-2 text-[var(--muted)]">{x.prioritas || "—"}</td>
+                        <td className="px-3 py-2 text-[var(--muted)]">{x.bobot || "—"}</td>
+                        <td className="px-3 py-2 text-[var(--muted)]">{x.pengukuran || "—"}</td>
+                        <td className="px-3 py-2 text-[var(--muted)]">{x.frekuensi || "—"}</td>
+                        <td className="px-3 py-2 text-[var(--muted)]">{x.target || "—"}</td>
+                        <td className="px-3 py-2 text-right whitespace-nowrap">
+                          <span className="opacity-0 transition group-hover:opacity-100">
+                            <button onClick={() => openTEdit(x)} className="mr-2 font-medium text-[var(--muted)] hover:text-royal-400">{t("Edit")}</button>
+                            <button onClick={() => removeT(x)} className="text-[var(--muted)] hover:text-rose-400">✕</button>
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {teknisFor(curProfileId).length === 0 && (
+                      <tr><td colSpan={11} className="px-3 py-6 text-center text-[var(--muted)]">{t("No KPI Teknis yet for this Job Profile. Add one.")}</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* KPI Teknis modal */}
+      {tForm.open && (
+        <Modal wide title={tForm.id == null ? t("New KPI Teknis") : t("Edit KPI Teknis")} onClose={closeT} onSave={saveT} saveLabel={tForm.id == null ? t("Create") : t("Save")}>
+          <label className={labelCls}>{t("Job Profile")}
+            <select value={tForm.data.jobProfileId} onChange={(e) => setTField("jobProfileId", e.target.value)} className={`${inputCls} text-[var(--text)]`}>
+              {profiles.map((p) => <option key={p.id} value={p.id}>{p.role}{p.unit ? ` — ${p.unit}` : ""}</option>)}
+            </select>
+          </label>
+          <label className={labelCls}>KPI<input value={tForm.data.kpi} onChange={(e) => setTField("kpi", e.target.value)} placeholder={t("e.g. Ketersediaan Sistem Aplikasi")} className={inputCls} /></label>
+          <div className="grid grid-cols-3 gap-3">
+            <label className={labelCls}>{t("Validity")}<input value={tForm.data.validitas} onChange={(e) => setTField("validitas", e.target.value)} className={inputCls} /></label>
+            <label className={labelCls}>{t("Unit")}<input value={tForm.data.satuan} onChange={(e) => setTField("satuan", e.target.value)} placeholder="%" className={inputCls} /></label>
+            <label className={labelCls}>{t("Polarity")}
+              <select value={tForm.data.polaritas} onChange={(e) => setTField("polaritas", e.target.value)} className={`${inputCls} text-[var(--text)]`}>
+                <option value="Maximize">Maximize</option>
+                <option value="Minimize">Minimize</option>
+                <option value="Stabilize">Stabilize</option>
+              </select>
+            </label>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <label className={labelCls}>{t("Cascade Type")}<input value={tForm.data.tipe} onChange={(e) => setTField("tipe", e.target.value)} className={inputCls} /></label>
+            <label className={labelCls}>{t("Priority")}<input value={tForm.data.prioritas} onChange={(e) => setTField("prioritas", e.target.value)} className={inputCls} /></label>
+            <label className={labelCls}>{t("Weight")}<input value={tForm.data.bobot} onChange={(e) => setTField("bobot", e.target.value)} placeholder="%" className={inputCls} /></label>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <label className={labelCls}>{t("Measurement")}<input value={tForm.data.pengukuran} onChange={(e) => setTField("pengukuran", e.target.value)} className={inputCls} /></label>
+            <label className={labelCls}>{t("Frequency")}<input value={tForm.data.frekuensi} onChange={(e) => setTField("frekuensi", e.target.value)} placeholder={t("e.g. Monthly")} className={inputCls} /></label>
+            <label className={labelCls}>{t("Annual Target")}<input value={tForm.data.target} onChange={(e) => setTField("target", e.target.value)} className={inputCls} /></label>
+          </div>
+        </Modal>
       )}
 
       {/* KPI modal */}

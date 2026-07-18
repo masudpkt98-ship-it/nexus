@@ -100,7 +100,7 @@ export const AVP_BY_VP: Record<string, string[]> = {
   "VP Hukum": ["Hukum Korporasi", "Hukum Advokasi & Litigasi", "Hukum Bisnis & Pengembangan Usaha"],
 };
 
-export type MapSource = "Korporat" | "Matrix" | "KatalogAP" | "Manual";
+export type MapSource = "Korporat" | "Matrix" | "KatalogAP" | "Manual" | "Teknis";
 
 export interface MapKpi {
   id: string; // stable key = normalized KPI name
@@ -219,7 +219,7 @@ export function parseSheet(source: MapSource, rows: Row[]): { kpis: MapKpi[]; ca
 
 // Count KPIs per source (a KPI may belong to several).
 export function sourceCounts(kpis: MapKpi[]): Record<MapSource, number> {
-  const c: Record<MapSource, number> = { Korporat: 0, Matrix: 0, KatalogAP: 0, Manual: 0 };
+  const c: Record<MapSource, number> = { Korporat: 0, Matrix: 0, KatalogAP: 0, Manual: 0, Teknis: 0 };
   for (const k of kpis) for (const s of k.sources) c[s]++;
   return c;
 }
