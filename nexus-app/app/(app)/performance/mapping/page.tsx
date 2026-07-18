@@ -7,7 +7,7 @@ import { Icon } from "@/components/Icons";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import {
-  MAPPING_KEY, DIREKTUR, SVP_BY_DIREKTUR, VP_BY_SVP, type Direktur, type MapSource, type MapKpi, type MappingState,
+  MAPPING_KEY, DIREKTUR, SVP_BY_DIREKTUR, VP_BY_SVP, AVP_BY_VP, type Direktur, type MapSource, type MapKpi, type MappingState,
   emptyMapping, detectSource, parseSheet, mergeMapping, sourceCounts,
 } from "@/lib/perfMapping";
 
@@ -15,9 +15,10 @@ const SOURCES: MapSource[] = ["Korporat", "Matrix", "KatalogAP"];
 const sourceTone: Record<MapSource, "green" | "amber" | "blue" | "purple"> = { Korporat: "green", Matrix: "amber", KatalogAP: "blue", Manual: "purple" };
 const inputCls = "mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500";
 const labelCls = "block text-[11px] font-medium text-[var(--muted)]";
+const ALL_VP = Object.keys(AVP_BY_VP);
 
 const fmt = (n: number) => n.toLocaleString("id-ID");
-const TABS = ["KPI Korporat", "KPI Manajemen (SVP)", "KPI Individu"] as const;
+const TABS = ["KPI Korporat", "KPI Manajemen (SVP)", "KPI VP", "KPI AVP"] as const;
 const shortDir = (d: string) => d.replace(/^Direktur\s+/, "");
 
 export default function MappingPage() {
@@ -216,8 +217,10 @@ export default function MappingPage() {
 
       {/* ---- Tab 1: KPI Manajemen (SVP) — cascade Direktur → SVP ---- */}
       {tab === 1 && (hasData ? <ManajemenTab state={state} setState={setState} /> : <Staged t={t} title="KPI Manajemen (SVP)" note="Import & cascade to the Direktur first (KPI Korporat tab)." />)}
-      {/* ---- Tab 2: KPI Individu (VP) — cascade SVP → VP ---- */}
-      {tab === 2 && (hasData ? <IndividuTab state={state} setState={setState} /> : <Staged t={t} title="KPI Individu" note="Cascade to the SVP first (KPI Manajemen tab)." />)}
+      {/* ---- Tab 2: KPI VP — cascade SVP → VP ---- */}
+      {tab === 2 && (hasData ? <IndividuTab state={state} setState={setState} /> : <Staged t={t} title="KPI VP" note="Cascade to the SVP first (KPI Manajemen tab)." />)}
+      {/* ---- Tab 3: KPI AVP — cascade VP → AVP (VP → Staf if no AVP) ---- */}
+      {tab === 3 && (hasData ? <AvpTab state={state} setState={setState} /> : <Staged t={t} title="KPI AVP" note="Cascade to a VP first (KPI VP tab)." />)}
     </>
   );
 }
@@ -495,6 +498,112 @@ function IndividuTab({ state, setState }: { state: MappingState; setState: (u: (
           </Card>
 
           <CascadeResult title="KPI VP" rows={rows} targets={vps} cascadeMap={vpCascade} onRemove={removeKpi} />
+        </>
+      )}
+    </>
+  );
+}
+
+// ---- KPI AVP: cascade a VP's KPI down to their AVPs (or "Staf" if none) ------
+function AvpTab({ state, setState }: { state: MappingState; setState: (u: (s: MappingState) => MappingState) => void }) {
+  const { t } = useI18n();
+  const [vp, setVp] = useState(ALL_VP[0]);
+  const [src, setSrc] = useState<"vp" | "history">("vp");
+  const [showForm, setShowForm] = useState(false);
+  const avps = (AVP_BY_VP[vp] ?? []).length ? AVP_BY_VP[vp] : ["Staf"]; // VP → Staf when no AVP
+  const avpCascade = state.avpCascade ?? {};
+
+  const rows = useMemo(() => (
+    src === "history" ? state.kpis : state.kpis.filter((k) => (state.vpCascade?.[k.id] ?? []).includes(vp))
+  ), [state.kpis, state.vpCascade, vp, src]);
+
+  const on = (id: string, avp: string) => (avpCascade[id] ?? []).includes(avp);
+  const toggle = (id: string, avp: string) => setState((s) => {
+    const set = new Set(s.avpCascade?.[id] ?? []);
+    set.has(avp) ? set.delete(avp) : set.add(avp);
+    return { ...s, avpCascade: { ...(s.avpCascade ?? {}), [id]: [...set] } };
+  });
+  const toggleCol = (avp: string) => setState((s) => {
+    const allOn = rows.every((k) => (s.avpCascade?.[k.id] ?? []).includes(avp));
+    const c = { ...(s.avpCascade ?? {}) };
+    for (const k of rows) { const set = new Set(c[k.id] ?? []); allOn ? set.delete(avp) : set.add(avp); c[k.id] = [...set]; }
+    return { ...s, avpCascade: c };
+  });
+  const countFor = (avp: string) => rows.filter((k) => (avpCascade[k.id] ?? []).includes(avp)).length;
+
+  const addManual = (f: Omit<MapKpi, "id" | "esg" | "fungsi" | "sources">, avp: string) => setState((s) => {
+    let id = ""; try { id = `manual-${crypto.randomUUID().slice(0, 8)}`; } catch { id = `manual-${Date.now()}`; }
+    const k: MapKpi = { ...f, id, esg: "", fungsi: "Manual", sources: ["Manual"] };
+    return { ...s, kpis: [...s.kpis, k], vpCascade: { ...s.vpCascade, [id]: [vp] }, avpCascade: { ...(s.avpCascade ?? {}), [id]: [avp] } };
+  });
+  const removeKpi = (id: string) => setState((s) => {
+    const vpc = { ...(s.vpCascade ?? {}) }; delete vpc[id];
+    const avc = { ...(s.avpCascade ?? {}) }; delete avc[id];
+    return { ...s, kpis: s.kpis.filter((k) => k.id !== id), vpCascade: vpc, avpCascade: avc };
+  });
+
+  return (
+    <>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">{t("Source")}</span>
+        <div className="flex gap-1">
+          {([["vp", "From VP"], ["history", "Performance History"]] as const).map(([v, label]) => (
+            <button key={v} onClick={() => setSrc(v)} className={cn("rounded-lg px-3 py-1.5 text-[12px] font-medium transition", src === v ? "bg-royal-500/15 text-royal-400" : "glass hover:bg-black/5 dark:hover:bg-white/5")}>{t(label)}</button>
+          ))}
+        </div>
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">VP</span>
+        <select value={vp} onChange={(e) => setVp(e.target.value)} className="max-w-[280px] rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500">
+          {ALL_VP.map((v) => <option key={v} value={v}>{v}</option>)}
+        </select>
+        <Badge tone="blue">{fmt(rows.length)} {t("KPI to cascade")}</Badge>
+        {AVP_BY_VP[vp]?.length === 0 && <Badge tone="amber">{t("No AVP → Staf")}</Badge>}
+        <div className="ml-auto"><Btn variant="primary" onClick={() => setShowForm(true)}><Icon.plus className="h-4 w-4" /> {t("Add KPI")}</Btn></div>
+      </div>
+
+      {showForm && <AddManualKpiForm title={t("Add KPI AVP")} targetLabel={AVP_BY_VP[vp]?.length ? "AVP" : "Staf"} targets={avps} contextLabel={vp} onClose={() => setShowForm(false)} onSave={(f, avp) => { addManual(f, avp); setShowForm(false); }} />}
+
+      {rows.length === 0 ? (
+        <Card className="text-center text-[13px] text-[var(--muted)]">
+          {src === "vp" ? t("No KPI cascaded to this VP yet — use the KPI VP tab.") : t("No KPI in history yet.")}
+        </Card>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {avps.map((a) => (
+              <Card key={a}><div className="text-[11px] text-[var(--muted)]">{a}</div><div className="mt-1 text-2xl font-bold text-royal-400">{fmt(countFor(a))}</div><div className="text-[10px] text-[var(--muted)]">{t("KPI cascaded")}</div></Card>
+            ))}
+          </div>
+
+          <Card className="mt-4">
+            <SectionTitle title={AVP_BY_VP[vp]?.length ? "Cascade VP → AVP" : "Cascade VP → Staf"} subtitle={vp} />
+            <div className="max-h-[60vh] overflow-auto">
+              <table className="w-full min-w-[720px] text-[12px]">
+                <thead>
+                  <tr className="text-left text-[10px] uppercase tracking-wider text-[var(--muted)]">
+                    <th className="sticky top-0 z-10 border-b bg-[rgb(var(--surface))] px-2 py-2">KPI</th>
+                    {avps.map((a) => (
+                      <th key={a} className="sticky top-0 z-10 border-b bg-[rgb(var(--surface))] px-2 py-2 text-center">
+                        <div className="whitespace-nowrap">{a}</div>
+                        <button onClick={() => toggleCol(a)} className="mt-0.5 text-[9px] font-medium text-royal-400 hover:underline">{t("toggle all")}</button>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((k) => (
+                    <tr key={k.id} className="border-b last:border-0 hover:bg-black/5 dark:hover:bg-white/5">
+                      <td className="px-2 py-1.5"><div className="font-medium">{k.kpi}</div><div className="mt-0.5 text-[10px] text-[var(--muted)]">{k.fungsi}{k.satuan ? ` · ${k.satuan}` : ""}</div></td>
+                      {avps.map((a) => (
+                        <td key={a} className="px-2 py-1.5 text-center"><input type="checkbox" checked={on(k.id, a)} onChange={() => toggle(k.id, a)} className="accent-royal-500" /></td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <CascadeResult title={AVP_BY_VP[vp]?.length ? "KPI AVP" : "KPI Staf"} rows={rows} targets={avps} cascadeMap={avpCascade} onRemove={removeKpi} />
         </>
       )}
     </>

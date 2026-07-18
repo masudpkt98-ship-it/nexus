@@ -40,6 +40,66 @@ export const VP_BY_SVP: Record<string, string[]> = {
   "VP Hukum": [],
 };
 
+// AVPs under each VP — per the per-VP org charts (01.png–55.png). VPs with an
+// empty list cascade straight to "Staf" (VP → Staf). SVP → VP → AVP.
+export const AVP_BY_VP: Record<string, string[]> = {
+  "VP Audit Bisnis & Keuangan": [],
+  "VP Konsultasi & Jaminan Kualitas": [],
+  "VP Perencanaan & Monitoring": ["Monitoring & Pelaporan", "Perencanaan & Counterpart"],
+  "VP Administrasi Korporat": ["Kearsipan & Administrasi", "Perizinan Korporat"],
+  "VP Komunikasi Korporat": ["Hubungan Media", "Komunikasi Internal", "Komunikasi Eksternal"],
+  "VP Tanggung Jawab Sosial & Lingkungan": ["Pembangunan Sosial & Lingkungan", "Pembangunan Ekonomi", "Administrasi & Keuangan"],
+  "VP Board Office": ["Kantor Perwakilan Jakarta", "Protokoler BoD"],
+  "VP Operasi Pabrik 2": ["Utility P2", "Ammonia P2", "Urea P2"],
+  "VP Operasi Pabrik 5": ["Utility P5", "Ammonia P5", "Urea P5"],
+  "VP Operasi Pabrik 6 / EX P1": ["Penanganan Produk", "Boiler Batubara", "Utility & Ammonia Storage"],
+  "VP Operasi Pabrik 1A": ["Ammonia P1A", "Urea P1A"],
+  "VP Operasi Pabrik 3": ["Utility P3", "Ammonia P3", "Urea P3"],
+  "VP Operasi Pabrik 4": ["Utility P4", "Ammonia P4", "Urea P4"],
+  "VP Operasi Pabrik 7": ["NPK Fusion", "Rendal Produksi NPK & Organik", "NPK Blending, Organik & Gudang Produk NPK"],
+  "VP Proses & Pengelolaan Energi": ["Proses & Pengelolaan Energi P2 & P6 / Ex P1", "Proses & Pengelolaan Energi P3 & P1A", "Proses & Pengelolaan Energi P4 & P7", "Proses & Pengelolaan Energi P5", "Perhitungan Hasil Produksi", "Perhitungan Utilisasi Aset, JVC & Produk Lain"],
+  "VP Laboratorium": ["Laboratorium Kontrol 1", "Laboratorium Kontrol 2", "Laboratorium Mutu", "Laboratorium Lingkungan", "Laboratorium Kalibrasi, Inventory & Sarana"],
+  "VP Keselamatan & Kesehatan Kerja": ["Safety 1", "Safety 2", "Pembinaan & Perizinan K3", "Hyperkes", "Fire & Rescue"],
+  "VP Lingkungan Hidup": ["Pemantauan & Pelaporan", "Pengelolaan & Perizinan Lingkungan Hidup"],
+  "VP Inspeksi Teknik 1": ["Inspeksi P1A", "Inspeksi P2", "Inspeksi P3", "Inspeksi P4", "Inspeksi P5", "Inspeksi P6 / Ex P1"],
+  "VP Inspeksi Teknik 2": ["Inspeksi Rotating 1", "Inspeksi Rotating 2", "Inspeksi Bengkel", "Inspeksi Metalurgi", "Inspeksi Pelabuhan Pengapalan, Handling Storage & OSBL"],
+  "VP Perencanaan & Pengendalian Pemeliharaan": ["Perencanaan Pemeliharaan P2 & P5", "Perencanaan Pemeliharaan P3 & P4", "Perencanaan Pemeliharaan P1A & Produk Lain", "Perencanaan Pemeliharaan Boiler Batubara & OSBL", "Perencanaan Pemeliharaan Fasilitas Handling & Penyimpanan Produk"],
+  "VP Perencanaan & Pengendalian Turn Around": ["Jasa Pemeliharaan", "Cost Control & Administrasi"],
+  "VP Keandalan": ["Risk Based Inspection", "Maintenance Strategy", "Reliability Data", "Reliability Improvement"],
+  "VP Pemeliharaan Mekanik": ["Pemeliharaan Mekanik Lapangan P1A", "Pemeliharaan Mekanik Lapangan P2", "Pemeliharaan Mekanik Lapangan P3", "Pemeliharaan Mekanik Lapangan P4", "Pemeliharaan Mekanik Lapangan P5", "Pemeliharaan Mekanik Lapangan Boiler Batubara & OSBL", "Pemeliharaan Mekanik Lap. Ex P1 & Pelabuhan Pengapalan, Handling, Storage"],
+  "VP Pemeliharaan Instrumen": ["Pemeliharaan Instrumen P2 & P5", "Pemeliharaan Instrumen P3 & P4", "Pemeliharaan Instrumen P1A & Produk Lain", "Pemeliharaan Instrumen P6 / Ex P1 Pelabuhan & Pengapalan"],
+  "VP Pemeliharaan Listrik": ["Pemeliharaan Listrik P2 & P5", "Pemeliharaan Listrik P3 & P4", "Pemeliharaan Listrik P1A & Produk Lain", "Pemeliharaan Listrik P6 / Ex P1 Pelabuhan & Pengapalan"],
+  "VP Bengkel": ["Pekerjaan Umum", "Alat Berat & Bantu", "Pengelasan & Perpipaan 1", "Pengelasan & Perpipaan 2", "Permesinan", "Perawatan & Sarana Shop"],
+  "VP Perencanaan Strategis": ["Perencanaan Korporat", "Strategi Bisnis"],
+  "VP Pengembangan Bisnis": ["Perencanaan & Persiapan Project", "Monitoring & Kinerja Project"],
+  "VP Portofolio Bisnis": ["Kerja Sama Usaha & Kinerja Anak Perusahaan", "Investasi Portofolio Strategis"],
+  "VP Riset": ["Manajemen Riset"],
+  "VP Teknologi Informasi": ["IT Service", "IT Infrastructure", "IT Business Partner"],
+  "VP Perencanaan Penerimaan & Pergudangan": ["Perencanaan Spareparts", "Perencanaan Non Spareparts & Jasa", "Receiving", "Pergudangan Spareparts", "Pergudangan Bahan Baku & Bahan Penolong"],
+  "VP Pengadaan Barang": ["Expediting & Pelaporan", "Pengadaan Spareparts", "Pengadaan Material Lain", "Pengadaan Bahan Penolong & Batubara"],
+  "VP Pengadaan Jasa": ["Pengadaan Jasa Pabrik", "Pengadaan Jasa Non Pabrik", "Kontrak Jasa & Administrasi"],
+  "VP Bisnis & Administrasi": ["Keuangan & Umum", "Pengadaan Material & Jasa", "Sales & Marketing"],
+  "VP Teknik & Kontrol Kualitas": ["Project Planning & Inventory Control", "Rancang Bangun", "QA / QC", "Pemeliharaan Fasilitas Manufakturing"],
+  "VP Manufacturing": ["Pengecoran Logam", "Machine Shop", "Welding Shop", "Site Services"],
+  "VP Rancang Bangun": ["Mechanical & Piping", "Civil & Architecture", "Electrical & Instrument", "Process", "Project Control & Technical Service"],
+  "VP Anggaran": ["Perencanaan Anggaran", "Pengendalian Anggaran"],
+  "VP Keuangan": ["Perbendaharaan", "Pajak & Asuransi", "Penagihan"],
+  "VP Akuntansi": ["Akuntansi Biaya", "Verifikasi", "Akuntansi Umum"],
+  "VP Pelaporan Manajemen": ["Administrasi Kinerja Perusahaan", "Optimalisasi Kinerja Bisnis"],
+  "VP Pengelolaan Pelanggan": ["Agrospek Sumatera", "Agrospek Jawa & Nusa Tenggara", "Agrospek Kalimantan", "Agrospek Sulawesi, Maluku & Papua", "Perencanaan, Pengendalian & Administrasi", "Customer Care"],
+  "VP Operasional Penjualan": ["Perencanaan & Evaluasi Penjualan", "Kontrak & Operasional Sarana Prasarana", "Stok & Jaminan Kualitas", "Pengendalian Biaya"],
+  "VP Administrasi Penjualan": ["Evaluasi & Penagihan Subsidi", "Administrasi Penjualan Pupuk Dalam Negeri", "Administrasi Penjualan Ritel", "Administrasi Penjualan Pupuk Luar Negeri", "Administrasi Penjualan Non Pupuk", "Administrasi Pendukung Penjualan"],
+  "VP Pelayanan Pelabuhan & Pengapalan": ["Pelabuhan", "Terminal"],
+  "VP Sistem Manajemen Terpadu & Inovasi": ["Sistem Manajemen Terpadu", "Pengembangan Manajemen", "Manajemen Inovasi"],
+  "VP Manajemen & Pengembangan SDM": ["Manajemen Kompetensi & Kinerja", "Manajemen Talenta", "Manajemen Organisasi & Pengetahuan", "Manajemen Budaya & Pembelajaran", "Lembaga Sertifikasi Profesi"],
+  "VP Operasional SDM": ["Remunerasi", "Hubungan Industrial", "Manajemen Kepegawaian"],
+  "VP Pelayanan Umum": ["Rumah Tangga & Perawatan", "Transportasi & Travel", "Pengelolaan Kawasan", "Perwakilan Kalimantan"],
+  "VP Keamanan": ["Perencanaan & Perawatan", "Pengamanan, Penyelidikan & Penggalangan", "Administrasi & Perizinan"],
+  "VP Manajemen Aset": ["Water Treatment Process", "Perencanaan & Pengendalian", "Pemeliharaan Bangunan & Sarana", "Pemeliharaan Sistem Kelistrikan & Pendingin", "Utilisasi Aset"],
+  "VP Manajemen Risiko Korporasi": [],
+  "VP Hukum": ["Hukum Korporasi", "Hukum Advokasi & Litigasi", "Hukum Bisnis & Pengembangan Usaha"],
+};
+
 export type MapSource = "Korporat" | "Matrix" | "KatalogAP" | "Manual";
 
 export interface MapKpi {
@@ -66,9 +126,10 @@ export interface MappingState {
   cascade: Record<string, string[]>; // kpiId → Direktur[] checked
   svpCascade: Record<string, string[]>; // kpiId → SVP[] checked (Direktur → SVP level)
   vpCascade: Record<string, string[]>; // kpiId → VP[] checked (SVP → VP level)
+  avpCascade: Record<string, string[]>; // kpiId → AVP[] checked (VP → AVP level; AVP names are globally unique)
 }
 
-export const emptyMapping = (): MappingState => ({ kpis: [], cascade: {}, svpCascade: {}, vpCascade: {} });
+export const emptyMapping = (): MappingState => ({ kpis: [], cascade: {}, svpCascade: {}, vpCascade: {}, avpCascade: {} });
 
 const clean = (v: unknown) => String(v ?? "").replace(/\s+/g, " ").trim();
 const idOf = (kpi: string) => clean(kpi).toLowerCase();
@@ -184,5 +245,5 @@ export function mergeMapping(state: MappingState, add: { kpis: MapKpi[]; cascade
   for (const [id, svps] of Object.entries(add.svpCascade ?? {})) {
     svpCascade[id] = [...new Set([...(svpCascade[id] ?? []), ...svps])];
   }
-  return { kpis: [...byId.values()], cascade, svpCascade, vpCascade: { ...state.vpCascade } };
+  return { kpis: [...byId.values()], cascade, svpCascade, vpCascade: { ...state.vpCascade }, avpCascade: { ...state.avpCascade } };
 }
