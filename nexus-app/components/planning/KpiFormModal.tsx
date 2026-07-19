@@ -87,6 +87,7 @@ export function KpiFormModal({
   const addFD = () => setForm((f) => ({ ...f, formulaDetails: [...(f.formulaDetails ?? []), { symbol: "", definition: "", formula: "", bobot: "" }] }));
   const setFD = (i: number, key: keyof FormulaDetail, v: string) => setForm((f) => ({ ...f, formulaDetails: (f.formulaDetails ?? []).map((d, j) => (j === i ? { ...d, [key]: v } : d)) }));
   const removeFD = (i: number) => setForm((f) => ({ ...f, formulaDetails: (f.formulaDetails ?? []).filter((_, j) => j !== i) }));
+  const fdTotal = (form.formulaDetails ?? []).reduce((s, d) => s + (Number(d.bobot) || 0), 0);
 
   const save = () => {
     const name = form.name.trim();
@@ -202,7 +203,14 @@ export function KpiFormModal({
                     <button onClick={() => removeFD(i)} className="w-4 shrink-0 text-[var(--muted)] hover:text-rose-400" title={t("Delete")}>✕</button>
                   </div>
                 ))}
-                <Btn variant="ghost" onClick={addFD}><Icon.plus className="h-3.5 w-3.5" /> {t("Add row")}</Btn>
+                <div className="flex items-center gap-2">
+                  <Btn variant="ghost" onClick={addFD}><Icon.plus className="h-3.5 w-3.5" /> {t("Add row")}</Btn>
+                  {(form.formulaDetails ?? []).length > 0 && (
+                    <span className={cn("ml-auto rounded-lg px-2.5 py-1 text-[11px] font-semibold", fdTotal === 100 ? "bg-emerald-500/12 text-emerald-500" : "bg-gold-500/12 text-gold-600 dark:text-gold-300")}>
+                      Total Bobot: {fdTotal} / 100{fdTotal !== 100 && " — harus 100"}
+                    </span>
+                  )}
+                </div>
               </div>
             )}
           </div>
