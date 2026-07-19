@@ -1281,7 +1281,14 @@ export const kpiPolarities = ["Maximize", "Minimize", "Stabilize"] as const;
 export const kpiFrequencies = ["Monthly", "Quarterly", "Half Yearly", "Yearly"] as const;
 export const kpiCascadeTypes = ["Fully Cascade A", "Fully Cascade B", "Partially Cascade", "Contributory Cascade", "Non Cascade"] as const;
 export const kpiConsolidations = ["Take Last Known", "Average", "Sum"] as const;
-export const kpiUnits = ["Persen", "Rp Miliar", "Rate", "BBTUD", "Index", "Hari", "Unit", "Skor"] as const;
+export const kpiUnits = [
+  "Persen", "Rp Miliar", "Rp Juta", "Rupiah per ton", "Rp per Ton", "Rp per Kwh",
+  "Rp Juta per orang", "Rp Juta per Voyage", "Rp Miliar per FTE", "Rp Miliar per Voyage",
+  "USD", "USD/MMBTU", "MMBTU per Ton", "MMSCFD", "BBTUD",
+  "Ton", "Ton CO2", "Ton CO2 e", "Ton per Orang",
+  "Unit", "Kunjungan", "Jumlah Kios", "Jumlah", "Jumlah Orang", "Layanan", "Hektar",
+  "Hari", "Hari Kerja", "Kali", "Indeks", "Poin", "Skor", "Rate",
+] as const;
 export const kpiValidities = ["Exact", "Proxy"] as const;
 export const esgCriteriaOptions = ["Environment", "Social", "Governance"] as const;
 export const kpiMonths = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"] as const;
