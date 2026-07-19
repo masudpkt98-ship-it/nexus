@@ -27,13 +27,14 @@ export const navItems: NavItem[] = [
       { label: "KPI Eligibility", href: "/dashboard/eligibility" },
     ],
   },
+  // Directory of employees — grouped under Overview, next to the dashboards.
+  { label: "Employee Directory", href: "/people", icon: "users", section: "Overview" },
 
   { label: "Strategic Planning", href: "/strategy", icon: "strategy", section: "Plan & Execute" },
   { label: "Program Management", href: "/programs", icon: "program", section: "Plan & Execute" },
   { label: "Task Management", href: "/tasks", icon: "task", section: "Plan & Execute", badge: "8" },
   { label: "Cascade", href: "/cascade", icon: "target", section: "Plan & Execute" },
 
-  { label: "Employee Directory", href: "/people", icon: "users", section: "People & Performance" },
   {
     label: "Competency Management",
     href: "/competency",
