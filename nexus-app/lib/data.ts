@@ -1275,10 +1275,10 @@ export const corporateKpis: CorporateKpi[] = [
 
 // ---- Performance Planning (Add KPI form + recap) ----
 export const kpiGroups = ["KPI Bersama", "KPI Direktorat", "KPI Individu"] as const;
-export const kpiTypes = ["Spesifik", "Mandatory"] as const;
+export const kpiTypes = ["Strategis", "Teknis", "Generik", "Project"] as const;
 export const kpiMeasurements = ["Exact", "Proxy", "Activity"] as const;
 export const kpiPolarities = ["Maximize", "Minimize", "Stabilize"] as const;
-export const kpiFrequencies = ["Monthly", "Quarterly", "Yearly"] as const;
+export const kpiFrequencies = ["Monthly", "Quarterly", "Half Yearly", "Yearly"] as const;
 export const kpiCascadeTypes = ["Fully Cascade A", "Fully Cascade B", "Partially Cascade", "Contributory Cascade", "Non Cascade"] as const;
 export const kpiConsolidations = ["Take Last Known", "Average", "Sum"] as const;
 export const kpiUnits = ["Persen", "Rp Miliar", "Rate", "BBTUD", "Index", "Hari", "Unit", "Skor"] as const;

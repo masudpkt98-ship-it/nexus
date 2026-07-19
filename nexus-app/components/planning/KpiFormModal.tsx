@@ -26,7 +26,7 @@ export const newKpiId = () => { try { return `pk-${crypto.randomUUID().slice(0, 
 type Form = Omit<PlanningKpi, "id"> & { id: string | null };
 const emptyForm = (period: string, group: string): Form => ({
   id: null, group, perspective: "Financial", strategicGoalId: "", strategicGoalText: undefined, name: "", definition: "", purpose: "",
-  type: "Spesifik", weight: 0, formula: "", hasConversion: false, conversions: [], measurement: "Exact", polarity: "Maximize",
+  type: "Strategis", weight: 0, formula: "", hasConversion: false, conversions: [], measurement: "Exact", polarity: "Maximize",
   frequency: "Monthly", cascadeType: "Fully Cascade A", consolidation: "Take Last Known", monthlyTargets: {}, annualTarget: 0,
   dataSource: "", unit: "Persen", esgCriteria: [], validity: "Exact", proxyMax: undefined, supportingFile: "", pic: "", dataManager: "", period,
 });

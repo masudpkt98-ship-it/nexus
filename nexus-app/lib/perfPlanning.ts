@@ -28,7 +28,7 @@ export function planningKpiFromMap(m: MapKpi, period: string): PlanningKpi {
     name: m.kpi,
     definition: "",
     purpose: "",
-    type: "Spesifik",
+    type: "Strategis",
     weight: numish(m.bobot),
     formula: "",
     hasConversion: false,
