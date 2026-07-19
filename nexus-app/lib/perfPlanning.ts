@@ -8,8 +8,48 @@
 //   VP/Departemen (VP_BY_SVP) → AVP/Staf (AVP_BY_VP, else "Staf …").
 // -----------------------------------------------------------------------------
 
-import { DIREKTUR, SVP_BY_DIREKTUR, VP_BY_SVP, AVP_BY_VP } from "./perfMapping";
+import { DIREKTUR, SVP_BY_DIREKTUR, VP_BY_SVP, AVP_BY_VP, type MapKpi } from "./perfMapping";
 import type { PlanningKpi } from "./data";
+
+export const KORPORAT_UNIT_KEY = "korporat";
+export const KORPORAT_OWNER = "Pejabat Direktur Utama";
+
+const numish = (v?: string) => Number(String(v ?? "").replace(/[^0-9.\-]/g, "")) || 0;
+
+// Bridge a Performance Mapping corporate KPI (MapKpi) into an editable planning
+// KPI. Deterministic id `korp-<mapId>` so re-syncing never duplicates. Brings the
+// fields Mapping carries; the rest default and are completed via the Add-KPI form.
+export function planningKpiFromMap(m: MapKpi, period: string): PlanningKpi {
+  return {
+    id: `korp-${m.id}`,
+    group: "KPI Bersama",
+    perspective: "Financial",
+    strategicGoalId: undefined,
+    name: m.kpi,
+    definition: "",
+    purpose: "",
+    type: "Spesifik",
+    weight: numish(m.bobot),
+    formula: "",
+    hasConversion: false,
+    conversions: [],
+    measurement: m.pengukuran || "Exact",
+    polarity: m.polaritas || "Maximize",
+    frequency: m.frekuensi || "Monthly",
+    cascadeType: "Fully Cascade A",
+    consolidation: "Take Last Known",
+    monthlyTargets: {},
+    annualTarget: numish(m.target),
+    dataSource: "",
+    unit: m.satuan || "Persen",
+    esgCriteria: m.esg ? [m.esg] : [],
+    validity: "Exact",
+    supportingFile: "",
+    pic: KORPORAT_OWNER,
+    dataManager: "",
+    period,
+  };
+}
 
 export type PlanLevel = "korporat" | "direktorat" | "manajemen" | "unit-kerja" | "individu";
 

@@ -1,3 +1,3 @@
 "use client";
-import { PlanningLevel } from "@/components/planning/PlanningLevel";
-export default function Page() { return <PlanningLevel level="korporat" />; }
+import { PlanningKorporat } from "@/components/planning/PlanningKorporat";
+export default function Page() { return <PlanningKorporat />; }
