@@ -1295,7 +1295,7 @@ export const kpiMonths = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt"
 
 export interface KpiConversion { from: string; to: string; value: string }
 // Formula component (used at KPI realization): symbol · definition · formula · weight.
-export interface FormulaDetail { symbol: string; definition: string; formula: string; bobot: string }
+export interface FormulaDetail { symbol: string; definition: string; formula: string }
 export interface PlanningKpi {
   id: string;
   group: string; // KPI Bersama / Direktorat / Individu (recap grouping)

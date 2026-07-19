@@ -84,10 +84,9 @@ export function KpiFormModal({
   const addConv = () => setForm((f) => ({ ...f, conversions: [...f.conversions, { from: "", to: "", value: "" }] }));
   const setConv = (i: number, key: keyof KpiConversion, v: string) => setForm((f) => ({ ...f, conversions: f.conversions.map((c, j) => (j === i ? { ...c, [key]: v } : c)) }));
   const removeConv = (i: number) => setForm((f) => ({ ...f, conversions: f.conversions.filter((_, j) => j !== i) }));
-  const addFD = () => setForm((f) => ({ ...f, formulaDetails: [...(f.formulaDetails ?? []), { symbol: "", definition: "", formula: "", bobot: "" }] }));
+  const addFD = () => setForm((f) => ({ ...f, formulaDetails: [...(f.formulaDetails ?? []), { symbol: "", definition: "", formula: "" }] }));
   const setFD = (i: number, key: keyof FormulaDetail, v: string) => setForm((f) => ({ ...f, formulaDetails: (f.formulaDetails ?? []).map((d, j) => (j === i ? { ...d, [key]: v } : d)) }));
   const removeFD = (i: number) => setForm((f) => ({ ...f, formulaDetails: (f.formulaDetails ?? []).filter((_, j) => j !== i) }));
-  const fdTotal = (form.formulaDetails ?? []).reduce((s, d) => s + (Number(d.bobot) || 0), 0);
 
   const save = () => {
     const name = form.name.trim();
@@ -184,14 +183,13 @@ export function KpiFormModal({
           {/* Detail Formula — expandable formula components (used at KPI realization). */}
           <div className="border-t pt-3">
             <label className="flex items-center gap-2 text-[12px] font-medium"><input type="checkbox" checked={!!form.hasFormulaDetail} onChange={(e) => setF("hasFormulaDetail", e.target.checked)} className="accent-royal-500" /> Detail Formula</label>
-            <span className="mt-0.5 block text-[10px] text-[var(--muted)]">Komponen rumus (Simbol · Definisi · Formula · Bobot) — dipakai saat Realisasi KPI.</span>
+            <span className="mt-0.5 block text-[10px] text-[var(--muted)]">Komponen rumus (Simbol · Definisi · Formula) — dipakai saat Realisasi KPI.</span>
             {form.hasFormulaDetail && (
               <div className="mt-2 space-y-2">
                 <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                   <span className="w-14 shrink-0 text-center">Simbol</span>
                   <span className="flex-1">Definisi</span>
                   <span className="flex-1">Formula</span>
-                  <span className="w-20 shrink-0">Bobot</span>
                   <span className="w-4 shrink-0" />
                 </div>
                 {(form.formulaDetails ?? []).map((d, i) => (
@@ -199,18 +197,10 @@ export function KpiFormModal({
                     <input value={d.symbol} onChange={(e) => setFD(i, "symbol", e.target.value)} placeholder="a" className="w-14 shrink-0 rounded-lg border bg-[rgb(var(--surface))] px-2 py-1.5 text-center text-[13px] font-semibold text-royal-400 outline-none focus:border-royal-500" />
                     <input value={d.definition} onChange={(e) => setFD(i, "definition", e.target.value)} placeholder="Definisi" className="flex-1 rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500" />
                     <input value={d.formula} onChange={(e) => setFD(i, "formula", e.target.value)} placeholder="Formula" className="flex-1 rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500" />
-                    <input value={d.bobot} onChange={(e) => setFD(i, "bobot", e.target.value)} placeholder="%" className="w-20 shrink-0 rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500" />
                     <button onClick={() => removeFD(i)} className="w-4 shrink-0 text-[var(--muted)] hover:text-rose-400" title={t("Delete")}>✕</button>
                   </div>
                 ))}
-                <div className="flex items-center gap-2">
-                  <Btn variant="ghost" onClick={addFD}><Icon.plus className="h-3.5 w-3.5" /> {t("Add row")}</Btn>
-                  {(form.formulaDetails ?? []).length > 0 && (
-                    <span className={cn("ml-auto rounded-lg px-2.5 py-1 text-[11px] font-semibold", fdTotal === 100 ? "bg-emerald-500/12 text-emerald-500" : "bg-gold-500/12 text-gold-600 dark:text-gold-300")}>
-                      Total Bobot: {fdTotal} / 100{fdTotal !== 100 && " — harus 100"}
-                    </span>
-                  )}
-                </div>
+                <Btn variant="ghost" onClick={addFD}><Icon.plus className="h-3.5 w-3.5" /> {t("Add row")}</Btn>
               </div>
             )}
           </div>
