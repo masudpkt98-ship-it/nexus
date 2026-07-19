@@ -22,11 +22,11 @@ export interface User {
 
 export const currentUser: User = {
   id: "u-001",
-  name: "Arif Wibowo",
-  role: "VP",
-  title: "VP Competency & Performance",
-  avatar: "AW",
-  email: "arif.wibowo@nexus.co",
+  name: "Masud Barbarossa",
+  role: "Administrator",
+  title: "Plt. AVP Manajemen Kompetensi & Kinerja",
+  avatar: "MB",
+  email: "masud@nexus.co",
 };
 
 export const demoUsers: User[] = [
