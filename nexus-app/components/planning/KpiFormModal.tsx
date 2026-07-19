@@ -6,6 +6,7 @@ import { Btn } from "@/components/PageHeader";
 import { Badge, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { UnitPicker } from "@/components/UnitPicker";
+import { StrategicPicker } from "@/components/planning/StrategicPicker";
 import {
   kpiPerspectives, kpiGroups, kpiTypes, kpiPolarities, kpiFrequencies,
   kpiCascadeTypes, kpiConsolidations, kpiUnits, kpiValidities, esgCriteriaOptions, kpiMonths,
@@ -130,30 +131,16 @@ export function KpiFormModal({
             </label>
           </div>
           <label className={labelCls}>{t("Strategic Objective")}
-            <select
-              value={form.strategicGoalText !== undefined ? "__manual__" : form.strategicGoalId}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "__manual__") setForm((f) => ({ ...f, strategicGoalId: "", strategicGoalText: f.strategicGoalText ?? "" }));
-                else setForm((f) => ({ ...f, strategicGoalId: v, strategicGoalText: undefined }));
-              }}
-              className={selCls}
-            >
-              <option value="">{t("— pick a Strategic Goal")}</option>
-              <option value="__manual__">✎ Isi manual (tidak ada yang sesuai)</option>
-              {goals.map((g) => <option key={g.id} value={g.id}>{g.code ? `${g.code} — ${g.title}` : g.title}</option>)}
-            </select>
-            {form.strategicGoalText !== undefined ? (
-              <input
-                value={form.strategicGoalText}
-                onChange={(e) => setF("strategicGoalText", e.target.value)}
-                placeholder="Ketik Sasaran Strategis…"
-                autoFocus
-                className={cn(inputCls, "mt-1.5")}
-              />
-            ) : (
-              <span className="mt-1 block text-[10px] text-[var(--muted)]">{t("Pulled from Strategic Planning.")} — pilih “Isi manual” bila tak ada yang sesuai.</span>
-            )}
+            <StrategicPicker
+              goals={goals}
+              goalId={form.strategicGoalId ?? ""}
+              manualText={form.strategicGoalText}
+              onPick={(id) => setForm((f) => ({ ...f, strategicGoalId: id, strategicGoalText: undefined }))}
+              onManual={(text) => setForm((f) => ({ ...f, strategicGoalId: "", strategicGoalText: text }))}
+              onClear={() => setForm((f) => ({ ...f, strategicGoalId: "", strategicGoalText: undefined }))}
+              className={inputCls}
+            />
+            <span className="mt-1 block text-[10px] text-[var(--muted)]">Ketik untuk cari cepat; bila tak ada yang cocok, langsung isi manual.</span>
           </label>
           <label className={labelCls}>{t("KPI Name")}
             <input
