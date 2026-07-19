@@ -12,7 +12,8 @@ import { strategicGoals as seedGoals, type PlanningKpi, type StrategicGoal } fro
 import { MAPPING_KEY, emptyMapping, type MappingState } from "@/lib/perfMapping";
 import {
   PLAN_UNIT_KPIS_KEY, PLAN_OWNERS_KEY, type UnitKpiMap, type OwnerMap,
-  planningKpiFromMap, KORPORAT_UNIT_KEY as UNIT, KORPORAT_OWNER,
+  planningKpiFromMap, KORPORAT_UNIT_KEY as UNIT,
+  KORPORAT_OWNER_JABATAN, KORPORAT_OWNER_NAME, KORPORAT_OWNER_NPK, ownerLabel,
 } from "@/lib/perfPlanning";
 
 // Planning · Korporat — the KPI list mirrors Performance Mapping's KPI Korporat
@@ -29,7 +30,9 @@ export function PlanningKorporat() {
 
   // Owner is fixed to the Direktur Utama official.
   useEffect(() => {
-    if (owners[UNIT]?.name !== KORPORAT_OWNER) setOwners((o) => ({ ...o, [UNIT]: { name: KORPORAT_OWNER, npk: "" } }));
+    const cur = owners[UNIT];
+    if (cur?.jabatan !== KORPORAT_OWNER_JABATAN || cur?.name !== KORPORAT_OWNER_NAME)
+      setOwners((o) => ({ ...o, [UNIT]: { jabatan: KORPORAT_OWNER_JABATAN, name: KORPORAT_OWNER_NAME, npk: KORPORAT_OWNER_NPK } }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -94,8 +97,10 @@ export function PlanningKorporat() {
       {/* Owner banner */}
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-royal-500/25 bg-royal-500/5 px-4 py-2.5 text-[13px]">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-royal-500/15 text-royal-400"><Icon.users className="h-4 w-4" /></span>
-        <span className="text-[var(--muted)]">KPI Owner:</span>
-        <span className="font-semibold">{KORPORAT_OWNER}</span>
+        <div className="leading-tight">
+          <div className="text-[var(--muted)]">KPI Owner: <span className="font-semibold text-[var(--text)]">{KORPORAT_OWNER_JABATAN}</span></div>
+          <div className="text-[12px] font-medium">{ownerLabel({ name: KORPORAT_OWNER_NAME, npk: KORPORAT_OWNER_NPK })}</div>
+        </div>
         <span className="ml-auto text-[11px] text-[var(--muted)]">{doneCount}/{kpis.length} KPI lengkap · sumber: <Link href="/performance/mapping" className="font-medium text-royal-400 hover:underline">Performance Mapping</Link></span>
       </div>
 

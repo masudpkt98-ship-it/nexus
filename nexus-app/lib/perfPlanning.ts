@@ -12,7 +12,9 @@ import { DIREKTUR, SVP_BY_DIREKTUR, VP_BY_SVP, AVP_BY_VP, type MapKpi } from "./
 import type { PlanningKpi } from "./data";
 
 export const KORPORAT_UNIT_KEY = "korporat";
-export const KORPORAT_OWNER = "Pejabat Direktur Utama";
+export const KORPORAT_OWNER_JABATAN = "Direktur Utama";
+export const KORPORAT_OWNER_NAME = "Rafli Yandra";
+export const KORPORAT_OWNER_NPK = "";
 
 const numish = (v?: string) => Number(String(v ?? "").replace(/[^0-9.\-]/g, "")) || 0;
 
@@ -45,7 +47,7 @@ export function planningKpiFromMap(m: MapKpi, period: string): PlanningKpi {
     esgCriteria: m.esg ? [m.esg] : [],
     validity: "Exact",
     supportingFile: "",
-    pic: KORPORAT_OWNER,
+    pic: "",
     dataManager: "",
     period,
   };
@@ -126,7 +128,7 @@ export function unitsByDirektorat(level: PlanLevel): { directorate: string; unit
 export const PLAN_OWNERS_KEY = "planning-owners";
 export const PLAN_UNIT_KPIS_KEY = "planning-unit-kpis";
 
-export interface KpiOwner { name: string; npk: string }
+export interface KpiOwner { jabatan?: string; name: string; npk: string }
 export type OwnerMap = Record<string, KpiOwner>; // unitKey → owner
 export type UnitKpiMap = Record<string, PlanningKpi[]>; // unitKey → its KPIs
 

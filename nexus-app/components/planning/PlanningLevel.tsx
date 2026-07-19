@@ -34,7 +34,7 @@ export function PlanningLevel({ level }: { level: PlanLevel }) {
   );
   const [openUnit, setOpenUnit] = useState<string | null>(null);
   const [editOwner, setEditOwner] = useState<string | null>(null);
-  const [ownerDraft, setOwnerDraft] = useState<KpiOwner>({ name: "", npk: "" });
+  const [ownerDraft, setOwnerDraft] = useState<KpiOwner>({ jabatan: "", name: "", npk: "" });
   const [modal, setModal] = useState<{ unitKey: string; kpi: PlanningKpi | null } | null>(null);
 
   const periods = useMemo(() => {
@@ -54,9 +54,14 @@ export function PlanningLevel({ level }: { level: PlanLevel }) {
     setKpiMap((m) => ({ ...m, [unitKey]: (m[unitKey] ?? []).filter((k) => k.id !== id) }));
   };
 
-  const startOwner = (key: string) => { setEditOwner(key); setOwnerDraft(owners[key] ?? { name: "", npk: "" }); };
+  // jabatanDefault = the unit's leader title (Direktur/SVP/VP/AVP) for this level.
+  const startOwner = (key: string, jabatanDefault: string) => {
+    setEditOwner(key);
+    const ex = owners[key];
+    setOwnerDraft(ex ? { jabatan: ex.jabatan ?? jabatanDefault, name: ex.name, npk: ex.npk } : { jabatan: jabatanDefault, name: "", npk: "" });
+  };
   const saveOwner = (key: string) => {
-    setOwners((o) => ({ ...o, [key]: { name: ownerDraft.name.trim(), npk: ownerDraft.npk.trim() } }));
+    setOwners((o) => ({ ...o, [key]: { jabatan: ownerDraft.jabatan?.trim() || undefined, name: ownerDraft.name.trim(), npk: ownerDraft.npk.trim() } }));
     setEditOwner(null);
   };
 
@@ -117,11 +122,17 @@ export function PlanningLevel({ level }: { level: PlanLevel }) {
                             {u.parent && <div className="text-[10px] text-[var(--muted)]">{u.parent}</div>}
                             {editOwner === u.key ? (
                               <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                                <div className="w-56">
+                                <input
+                                  value={ownerDraft.jabatan ?? ""}
+                                  onChange={(e) => setOwnerDraft((d) => ({ ...d, jabatan: e.target.value }))}
+                                  placeholder="Jabatan"
+                                  className="w-44 rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1 text-[12px] outline-none focus:border-royal-500"
+                                />
+                                <div className="w-52">
                                   <EmployeePicker
                                     value={ownerDraft.name}
                                     onChange={(name) => setOwnerDraft((d) => ({ ...d, name }))}
-                                    onPick={(e: Employee) => setOwnerDraft({ name: e.name, npk: String(e.npk ?? "") })}
+                                    onPick={(e: Employee) => setOwnerDraft((d) => ({ ...d, name: e.name, npk: String(e.npk ?? "") }))}
                                     className="w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1 text-[12px] outline-none focus:border-royal-500"
                                   />
                                 </div>
@@ -135,11 +146,12 @@ export function PlanningLevel({ level }: { level: PlanLevel }) {
                                 <button onClick={() => setEditOwner(null)} className="text-[12px] text-[var(--muted)] hover:text-rose-400">{t("Cancel")}</button>
                               </div>
                             ) : owner?.name ? (
-                              <button onClick={() => startOwner(u.key)} className="mt-0.5 text-left text-[12px] text-[var(--muted)] hover:text-royal-400">
-                                KPI Owner: <span className="font-medium text-[var(--text)]">{ownerLabel(owner)}</span>
+                              <button onClick={() => startOwner(u.key, u.name)} className="mt-0.5 block text-left leading-tight">
+                                <span className="text-[12px] text-[var(--muted)]">KPI Owner: <span className="font-medium text-[var(--text)]">{owner.jabatan || u.name}</span></span>
+                                <span className="block text-[12px] font-medium text-[var(--text)] hover:text-royal-400">{ownerLabel(owner)}</span>
                               </button>
                             ) : (
-                              <button onClick={() => startOwner(u.key)} className="mt-0.5 inline-flex items-center gap-1 text-[12px] font-medium text-royal-400 hover:underline">
+                              <button onClick={() => startOwner(u.key, u.name)} className="mt-0.5 inline-flex items-center gap-1 text-[12px] font-medium text-royal-400 hover:underline">
                                 <Icon.plus className="h-3 w-3" /> Tetapkan KPI Owner
                               </button>
                             )}
