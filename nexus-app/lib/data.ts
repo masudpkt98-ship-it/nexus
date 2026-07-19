@@ -1324,7 +1324,8 @@ export interface PlanningKpi {
   esgCriteria: string[];
   validity: string;
   proxyMax?: number;
-  supportingFile: string; // link or file name
+  supportingFile: string; // share link (URL) or an uploaded file's data URL
+  supportingFileName?: string; // original filename when a file was uploaded
   pic: string; // Penanggung Jawab KPI
   dataManager: string; // Pengelola Data KPI
   period: string; // Periode KPI (year)

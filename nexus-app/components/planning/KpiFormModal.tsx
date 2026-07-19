@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Btn } from "@/components/PageHeader";
 import { Badge, cn } from "@/components/ui";
@@ -71,6 +71,17 @@ export function KpiFormModal({
   // KPI names submitted from Performance Mapping (KPI Direksi) — recallable here.
   const [submitted] = useLocalState<SubmittedMap>(MAPPING_SUBMIT_KEY, {});
   const kpiNameOptions = useMemo(() => submittedKpiNames(submitted), [submitted]);
+
+  // Supporting File: Share Link (URL) or Upload File (stored as a data URL).
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [fileMode, setFileMode] = useState<"link" | "upload">(() => ((initial?.supportingFile ?? "").startsWith("data:") ? "upload" : "link"));
+  const switchFileMode = (m: "link" | "upload") => { setFileMode(m); setForm((f) => ({ ...f, supportingFile: "", supportingFileName: undefined })); };
+  const onFile = (file: File) => {
+    if (file.size > 2 * 1024 * 1024) { alert("File terlalu besar (maks 2MB). Untuk file besar gunakan Share Link."); return; }
+    const reader = new FileReader();
+    reader.onload = () => setForm((f) => ({ ...f, supportingFile: String(reader.result), supportingFileName: file.name }));
+    reader.readAsDataURL(file);
+  };
 
   // Annual target auto-fills from the Monthly Targets + Consolidation (read-only).
   useEffect(() => {
@@ -271,7 +282,31 @@ export function KpiFormModal({
             <label className={labelCls}>{t("Data source")}<input value={form.dataSource} onChange={(e) => setF("dataSource", e.target.value)} className={inputCls} /></label>
             <label className={labelCls}>{t("Validity")}<select value={form.validity} onChange={(e) => setF("validity", e.target.value)} className={selCls}>{kpiValidities.map((x) => <option key={x}>{x}</option>)}</select></label>
             {form.validity === "Proxy" && <label className={labelCls}>{t("Proxy max (100–105)")}<input type="number" value={form.proxyMax ?? ""} onChange={(e) => setF("proxyMax", Number(e.target.value))} placeholder="105" className={inputCls} /></label>}
-            <label className={labelCls}>{t("Supporting file / link")}<input value={form.supportingFile} onChange={(e) => setF("supportingFile", e.target.value)} placeholder="https://…" className={inputCls} /></label>
+            <div className="sm:col-span-2">
+              <div className={labelCls}>Supporting File</div>
+              <div className="mt-1 flex items-center gap-1">
+                {(["link", "upload"] as const).map((m) => (
+                  <button key={m} type="button" onClick={() => switchFileMode(m)}
+                    className={cn("rounded-lg px-3 py-1 text-[12px] font-medium transition", fileMode === m ? "bg-royal-500/15 text-royal-400" : "glass hover:bg-black/5 dark:hover:bg-white/5")}>
+                    {m === "link" ? "Share Link" : "Upload File"}
+                  </button>
+                ))}
+              </div>
+              {fileMode === "link" ? (
+                <input value={form.supportingFile.startsWith("data:") ? "" : form.supportingFile} onChange={(e) => setF("supportingFile", e.target.value)} placeholder="https://…" className={cn(inputCls, "mt-1.5")} />
+              ) : (
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <input ref={fileRef} type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); if (fileRef.current) fileRef.current.value = ""; }} />
+                  <Btn variant="ghost" onClick={() => fileRef.current?.click()}><Icon.document className="h-4 w-4" /> Pilih file</Btn>
+                  {form.supportingFileName ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[12px]">
+                      <Icon.document className="h-3.5 w-3.5 text-royal-400" /> {form.supportingFileName}
+                      <button type="button" onClick={() => setForm((f) => ({ ...f, supportingFile: "", supportingFileName: undefined }))} className="text-[var(--muted)] hover:text-rose-400" aria-label="Hapus file">✕</button>
+                    </span>
+                  ) : <span className="text-[11px] text-[var(--muted)]">Belum ada file (maks 2MB). File besar → pakai Share Link.</span>}
+                </div>
+              )}
+            </div>
           </div>
           <div>
             <div className={labelCls}>{t("ESG criteria")}</div>
