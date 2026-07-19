@@ -4,8 +4,9 @@ import React, { useState } from "react";
 import { Card, DonutChart, Gauge, ProgressBar, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import {
-  METRICS, AVAILABLE_METRICS, PLAN_BUCKETS, BUCKET_COLOR, BUCKET_TONE,
-  type ProgressModel, type DirectorateProgress, type MetricKey, type MetricAgg,
+  METRICS, PLAN_BUCKETS, BUCKET_COLOR, BUCKET_TONE,
+  type ProgressModel, type DirectorateProgress, type KompartemenProgress,
+  type UnitProgress, type PlanBucket, type MetricKey, type MetricAgg,
 } from "@/lib/perfProgress";
 
 const fmt = (n: number) => n.toLocaleString("id-ID");
@@ -18,34 +19,64 @@ const bucketText: Record<string, string> = {
 export function ProgressUnitView({ model, periodText }: { model: ProgressModel; periodText: string }) {
   return (
     <div className="space-y-5">
-      <OverallBoard model={model} periodText={periodText} />
+      <Card className="overflow-hidden">
+        <AchievementBoard
+          variant="hero"
+          title="Realisasi Tahunan — All Direktorat"
+          subtitle={periodText}
+          total={model.totalKaryawan}
+          buckets={model.buckets}
+          metrics={model.metrics}
+        />
+      </Card>
       <RankingCard model={model} />
       {model.directorates.map((d) => <DirectorateSection key={d.directorate} d={d} />)}
     </div>
   );
 }
 
-// ---- All-Direktorat funnel + overall gauges -----------------------------------
-function OverallBoard({ model, periodText }: { model: ProgressModel; periodText: string }) {
-  const segments = PLAN_BUCKETS.map((b) => ({ value: model.buckets[b], color: BUCKET_COLOR[b], label: b }));
+// ---- Reusable "All Direktorat"-style board: donut + funnel cards + gauges ------
+function AchievementBoard({
+  variant = "section",
+  title,
+  subtitle,
+  total,
+  buckets,
+  metrics,
+  donutSize = 168,
+}: {
+  variant?: "hero" | "section" | "compact";
+  title: string;
+  subtitle?: string;
+  total: number;
+  buckets: Record<PlanBucket, number>;
+  metrics: Partial<Record<MetricKey, MetricAgg>>;
+  donutSize?: number;
+}) {
+  const segments = PLAN_BUCKETS.map((b) => ({ value: buckets[b], color: BUCKET_COLOR[b], label: b }));
+  const gaugeSize = variant === "compact" ? 92 : 104;
   return (
-    <Card className="overflow-hidden">
-      <div className="mb-4 flex items-center gap-2">
-        <span className="rounded-lg bg-gradient-to-r from-royal-500 to-gold-500 px-3 py-1 text-[12px] font-bold uppercase tracking-[0.15em] text-white">
-          Realisasi Tahunan — All Direktorat
-        </span>
-        <span className="text-[11px] text-[var(--muted)]">· {periodText}</span>
+    <>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {variant === "hero" ? (
+          <span className="rounded-lg bg-gradient-to-r from-royal-500 to-gold-500 px-3 py-1 text-[12px] font-bold uppercase tracking-[0.15em] text-white">
+            {title}
+          </span>
+        ) : (
+          <span className={cn("font-bold", variant === "compact" ? "text-[13px]" : "text-[14px]")}>{title}</span>
+        )}
+        {subtitle && <span className="text-[11px] text-[var(--muted)]">· {subtitle}</span>}
       </div>
       <div className="grid gap-5 lg:grid-cols-[auto_1fr]">
         <div className="flex flex-col items-center justify-center">
           <DonutChart
             segments={segments}
-            size={168}
-            thickness={20}
+            size={donutSize}
+            thickness={variant === "compact" ? 16 : 20}
             center={
               <div className="text-center">
                 <div className="text-[10px] uppercase tracking-wider text-[var(--muted)]">Jumlah Karyawan</div>
-                <div className="text-3xl font-bold brand-gradient">{fmt(model.totalKaryawan)}</div>
+                <div className={cn("font-bold brand-gradient", variant === "compact" ? "text-2xl" : "text-3xl")}>{fmt(total)}</div>
               </div>
             }
           />
@@ -59,8 +90,8 @@ function OverallBoard({ model, periodText }: { model: ProgressModel; periodText:
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           {PLAN_BUCKETS.map((b) => {
-            const v = model.buckets[b];
-            const share = model.totalKaryawan ? (v / model.totalKaryawan) * 100 : 0;
+            const v = buckets[b];
+            const share = total ? (v / total) * 100 : 0;
             return (
               <div key={b} className="rounded-xl border bg-[rgb(var(--surface))] p-3">
                 <div className="text-[11px] font-medium text-[var(--muted)]">{b}</div>
@@ -74,21 +105,20 @@ function OverallBoard({ model, periodText }: { model: ProgressModel; periodText:
           })}
         </div>
       </div>
-      {/* overall gauges per metric */}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {METRICS.map((m) => <MetricGauge key={m.key} label={m.label} agg={model.metrics[m.key]} available={m.available} />)}
+        {METRICS.map((m) => <MetricGauge key={m.key} label={m.label} agg={metrics[m.key]} available={m.available} size={gaugeSize} />)}
       </div>
-    </Card>
+    </>
   );
 }
 
-function MetricGauge({ label, agg, available }: { label: string; agg?: MetricAgg; available: boolean }) {
+function MetricGauge({ label, agg, available, size = 104 }: { label: string; agg?: MetricAgg; available: boolean; size?: number }) {
   return (
     <div className="flex flex-col items-center rounded-xl border bg-[rgb(var(--surface))] p-2.5 text-center">
       <div className="mb-1 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--muted)]">{label}</div>
       {available && agg ? (
         <>
-          <Gauge value={Math.round(agg.pct)} size={104} />
+          <Gauge value={Math.round(agg.pct)} size={size} />
           <div className="text-[10px] text-[var(--muted)]">{fmt(agg.done)}/{fmt(agg.total)}</div>
         </>
       ) : (
@@ -101,7 +131,7 @@ function MetricGauge({ label, agg, available }: { label: string; agg?: MetricAgg
   );
 }
 
-// ---- Ranking: fastest & most complete unit kerja ------------------------------
+// ---- Ranking: most complete unit kerja ----------------------------------------
 function RankingCard({ model }: { model: ProgressModel }) {
   const [showAll, setShowAll] = useState(false);
   const list = showAll ? model.ranking.slice(0, 30) : model.ranking.slice(0, 10);
@@ -145,9 +175,10 @@ function RankingCard({ model }: { model: ProgressModel }) {
   );
 }
 
-// ---- One Direktorat: gauges + unit table --------------------------------------
+// ---- One Direktorat: full board + unit table + per-Kompartemen boards ----------
 function DirectorateSection({ d }: { d: DirectorateProgress }) {
   const [open, setOpen] = useState(true);
+  const [showKomp, setShowKomp] = useState(false);
   return (
     <Card>
       <button onClick={() => setOpen((v) => !v)} className="mb-3 flex w-full items-center gap-3 text-left">
@@ -156,40 +187,86 @@ function DirectorateSection({ d }: { d: DirectorateProgress }) {
         </span>
         <div className="flex-1">
           <div className="text-[14px] font-bold">{d.directorate}</div>
-          <div className="text-[11px] text-[var(--muted)]">{fmt(d.jumlah)} karyawan · {d.units.length} unit kerja · kelengkapan {pct(d.completeness)}</div>
+          <div className="text-[11px] text-[var(--muted)]">{fmt(d.jumlah)} karyawan · {d.kompartemens.length} kompartemen · {d.units.length} unit kerja · kelengkapan {pct(d.completeness)}</div>
         </div>
         <Icon.chevron className={cn("h-4 w-4 text-[var(--muted)] transition-transform", open && "rotate-90")} />
       </button>
 
       {open && (
         <>
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
-            {METRICS.map((m) => <MetricGauge key={m.key} label={m.label} agg={d.metrics[m.key]} available={m.available} />)}
-          </div>
+          {/* Direktorat board — same layout as All Direktorat */}
+          <AchievementBoard
+            variant="section"
+            title={`Capaian ${d.directorate}`}
+            subtitle={`${fmt(d.jumlah)} karyawan`}
+            total={d.jumlah}
+            buckets={d.buckets}
+            metrics={d.metrics}
+          />
 
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[820px] text-[12px]">
-              <thead>
-                <tr className="border-b text-left text-[10px] uppercase tracking-wider text-[var(--muted)]">
-                  <th className="py-2 pr-2">Unit Kerja</th>
-                  <th className="px-2 text-right">Jumlah</th>
-                  {METRICS.map((m) => <th key={m.key} className="px-2 text-center">{m.short}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {d.units.map((u) => (
-                  <tr key={u.unit} className="border-b last:border-0 hover:bg-black/5 dark:hover:bg-white/5">
-                    <td className="py-2 pr-2 font-medium">{u.unit}</td>
-                    <td className="px-2 text-right tabular-nums text-[var(--muted)]">{fmt(u.jumlah)}</td>
-                    {METRICS.map((m) => <MetricCell key={m.key} agg={u.metrics[m.key]} available={m.available} />)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <div className="mt-4"><UnitTable units={d.units} /></div>
+
+          {/* Per-Kompartemen boards (collapsible) */}
+          {d.kompartemens.length > 0 && (
+            <div className="mt-4 rounded-xl border border-[var(--muted)]/20">
+              <button onClick={() => setShowKomp((v) => !v)} className="flex w-full items-center gap-2 px-3 py-2.5 text-left">
+                <Icon.dashboard className="h-4 w-4 text-royal-400" />
+                <span className="flex-1 text-[13px] font-semibold">Capaian per Kompartemen ({d.kompartemens.length})</span>
+                <Icon.chevron className={cn("h-4 w-4 text-[var(--muted)] transition-transform", showKomp && "rotate-90")} />
+              </button>
+              {showKomp && (
+                <div className="space-y-4 border-t px-3 py-4">
+                  {d.kompartemens.map((k) => <KompartemenBlock key={k.kompartemen} k={k} />)}
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </Card>
+  );
+}
+
+function KompartemenBlock({ k }: { k: KompartemenProgress }) {
+  return (
+    <div className="rounded-xl border bg-black/[0.02] p-3 dark:bg-white/[0.02]">
+      <AchievementBoard
+        variant="compact"
+        title={k.kompartemen}
+        subtitle={`${fmt(k.jumlah)} karyawan · kelengkapan ${pct(k.completeness)}`}
+        total={k.jumlah}
+        buckets={k.buckets}
+        metrics={k.metrics}
+        donutSize={140}
+      />
+      <div className="mt-3"><UnitTable units={k.units} /></div>
+    </div>
+  );
+}
+
+// ---- Unit-kerja table (shared by Direktorat & Kompartemen) ---------------------
+function UnitTable({ units }: { units: UnitProgress[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[820px] text-[12px]">
+        <thead>
+          <tr className="border-b text-left text-[10px] uppercase tracking-wider text-[var(--muted)]">
+            <th className="py-2 pr-2">Unit Kerja</th>
+            <th className="px-2 text-right">Jumlah</th>
+            {METRICS.map((m) => <th key={m.key} className="px-2 text-center">{m.short}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {units.map((u) => (
+            <tr key={u.unit} className="border-b last:border-0 hover:bg-black/5 dark:hover:bg-white/5">
+              <td className="py-2 pr-2 font-medium">{u.unit}</td>
+              <td className="px-2 text-right tabular-nums text-[var(--muted)]">{fmt(u.jumlah)}</td>
+              {METRICS.map((m) => <MetricCell key={m.key} agg={u.metrics[m.key]} available={m.available} />)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
