@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LogoMark } from "@/components/Logo";
 import { cn } from "@/components/ui";
@@ -28,7 +28,11 @@ function ProgressPortal() {
   const [statuses, setStatuses] = useState<Record<MetricKey, MetricStatus> | null>(null);
   const [periodText, setPeriodText] = useState("");
 
-  useEffect(() => { const q = params.get("npk"); if (q) setNpk(q); }, [params]);
+  // Prefill from a scanned QR / shared link (?npk=…&pin=…).
+  useEffect(() => {
+    const qn = params.get("npk"); if (qn) setNpk(qn);
+    const qp = params.get("pin"); if (qp) setPin(qp);
+  }, [params]);
 
   // Local fallback: most recent snapshot carrying Planning/Appraisal data.
   useEffect(() => {
@@ -49,15 +53,15 @@ function ProgressPortal() {
   const pIdx = useMemo(() => (snap?.planning ? buildIndex("planning", cleanRows("planning", snap.planning)) : new Map()), [snap]);
   const aIdx = useMemo(() => (snap?.appraisal ? buildIndex("appraisal", cleanRows("appraisal", snap.appraisal)) : new Map()), [snap]);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const runLookup = useCallback(async (npk0: string, pin0: string) => {
     setError(null);
-    const n = npk.trim();
-    if (!n || !pin.trim()) { setError("Isi NPK dan PIN."); return; }
+    const n = npk0.trim();
+    const pn = pin0.trim();
+    if (!n || !pn) { setError("Isi NPK dan PIN."); return; }
 
     setLoading(true);
     // 1) Backend first — works from any device once admin has published.
-    const remote = await apiLookupProgress(n, pin);
+    const remote = await apiLookupProgress(n, pn);
     if (remote.ok) {
       setLoading(false);
       setPeriodText(remote.data.period);
@@ -71,7 +75,7 @@ function ProgressPortal() {
 
     // 2) Local fallback (same browser/deployment where data was imported).
     const src = (snap?.directory ?? directory).find((x) => String(x.npk ?? "").trim() === n);
-    if (verifyPin(pins, n, pin) && src) {
+    if (verifyPin(pins, n, pn) && src) {
       setLoading(false);
       setPeriodText(`${snap?.year ?? ""} · ${periodLabel(localPeriod)}`);
       setStatuses(metricStatuses(pIdx.get(n), aIdx.get(n), localPeriod));
@@ -84,7 +88,18 @@ function ProgressPortal() {
 
     setLoading(false);
     setError(remote.status === 403 ? remote.message : "NPK atau PIN salah, atau akses belum diaktifkan admin.");
-  };
+  }, [snap, pIdx, aIdx, directory, pins, localPeriod]);
+
+  const submit = (e: React.FormEvent) => { e.preventDefault(); runLookup(npk, pin); };
+
+  // Scanned a QR with ?npk=&pin= → look up automatically (once).
+  const autoRef = useRef(false);
+  useEffect(() => {
+    if (autoRef.current) return;
+    const qn = params.get("npk");
+    const qp = params.get("pin");
+    if (qn && qp) { autoRef.current = true; runLookup(qn, qp); }
+  }, [params, runLookup]);
 
   const reset = () => { setAuthed(null); setStatuses(null); setPin(""); setError(null); };
 

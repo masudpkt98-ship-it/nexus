@@ -621,6 +621,23 @@ function PinManager({ people, pins, setPins, statusFor, period }: {
 
   const provision = () => setPins((prev) => provisionAll(prev, people.map((p) => p.npk)));
 
+  // Full self-service link WITH the PIN embedded (for the QR / bulk export).
+  const linkFor = (npk: string) => `${origin}/progress?npk=${encodeURIComponent(npk)}&pin=${encodeURIComponent(getPin(pins, npk) ?? "")}`;
+
+  // Export NPK · Nama · Unit · Direktorat · PIN · Link to Excel for bulk hand-out.
+  const exportList = async () => {
+    const XLSX = await import("xlsx");
+    const rows = people.map((p) => ({
+      NPK: p.npk, Nama: p.name, "Unit Kerja": p.unit, Direktorat: p.directorate,
+      PIN: getPin(pins, p.npk) ?? "", "Link Akses (berisi PIN)": getPin(pins, p.npk) ? linkFor(p.npk) : "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [{ wch: 12 }, { wch: 28 }, { wch: 30 }, { wch: 24 }, { wch: 8 }, { wch: 60 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Akses Progress");
+    XLSX.writeFile(wb, "Akses-Progress-Karyawan.xlsx");
+  };
+
   // Push this period's per-employee progress + PINs to the Laravel backend so
   // employees can open /progress from any device (not just this browser).
   const publish = async () => {
@@ -643,8 +660,7 @@ function PinManager({ people, pins, setPins, statusFor, period }: {
     }
   };
   const copyLink = (npk: string) => {
-    const link = `${origin}/progress?npk=${encodeURIComponent(npk)}`;
-    navigator.clipboard?.writeText(link).then(() => { setCopied(npk); setTimeout(() => setCopied(""), 1500); }).catch(() => {});
+    navigator.clipboard?.writeText(linkFor(npk)).then(() => { setCopied(npk); setTimeout(() => setCopied(""), 1500); }).catch(() => {});
   };
 
   return (
@@ -654,6 +670,7 @@ function PinManager({ people, pins, setPins, statusFor, period }: {
         <Btn variant="primary" onClick={provision}><Icon.spark className="h-4 w-4" /> Generate PIN untuk semua</Btn>
         <Badge tone="green">{fmt(provisioned)} / {fmt(people.length)} ter-provision</Badge>
         <Btn variant="ghost" onClick={publish}><Icon.check className="h-4 w-4" /> {publishing ? "Mempublikasikan…" : "Publish ke server (lintas perangkat)"}</Btn>
+        <Btn variant="ghost" onClick={exportList}><Icon.document className="h-4 w-4" /> Export daftar (Excel)</Btn>
       </div>
       {pubMsg && <div className="mt-2 rounded-lg border border-royal-500/30 bg-royal-500/5 px-3 py-2 text-[12px]">{pubMsg}</div>}
       <div className="relative mt-3">
@@ -661,23 +678,41 @@ function PinManager({ people, pins, setPins, statusFor, period }: {
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari karyawan untuk melihat PIN & link akses…" className="w-full rounded-xl border bg-[rgb(var(--surface))] py-2 pl-10 pr-3 text-[13px] outline-none focus:border-royal-500" />
       </div>
       {match && (
-        <div className="mt-2 flex flex-wrap items-center gap-3 rounded-xl border bg-[rgb(var(--surface))] px-3 py-2.5">
+        <div className="mt-2 flex flex-wrap items-center gap-4 rounded-xl border bg-[rgb(var(--surface))] px-3 py-3">
+          {getPin(pins, match.npk) && <QrImage text={linkFor(match.npk)} size={128} />}
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[13px] font-semibold">{match.name}</div>
+            <div className="truncate text-[14px] font-semibold">{match.name}</div>
             <div className="truncate text-[11px] text-[var(--muted)]">{match.npk} · {match.unit}</div>
+            <div className="mt-2 flex items-center gap-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-[var(--muted)]">PIN</div>
+                <div className="font-mono text-[20px] font-bold tabular-nums gold-gradient">{getPin(pins, match.npk) ?? "— (generate dulu)"}</div>
+              </div>
+              <Btn variant="ghost" onClick={() => copyLink(match.npk)}>
+                <Icon.check className={cn("h-4 w-4", copied === match.npk ? "text-emerald-500" : "")} /> {copied === match.npk ? "Tersalin" : "Salin link (+PIN)"}
+              </Btn>
+            </div>
+            <div className="mt-1.5 text-[10px] text-[var(--muted)]">Karyawan cukup scan QR — NPK &amp; PIN terisi otomatis di HP.</div>
           </div>
-          <div className="text-center">
-            <div className="text-[10px] uppercase tracking-wider text-[var(--muted)]">PIN</div>
-            <div className="font-mono text-[18px] font-bold tabular-nums gold-gradient">{getPin(pins, match.npk) ?? "— (generate dulu)"}</div>
-          </div>
-          <Btn variant="ghost" onClick={() => copyLink(match.npk)}>
-            <Icon.check className={cn("h-4 w-4", copied === match.npk ? "text-emerald-500" : "")} /> {copied === match.npk ? "Tersalin" : "Salin link"}
-          </Btn>
         </div>
       )}
-      <p className="mt-2 text-[11px] text-[var(--muted)]">Data PIN tersimpan lokal di perangkat ini (client-side). Karyawan mengakses di perangkat/deployment yang sama.</p>
+      <p className="mt-2 text-[11px] text-[var(--muted)]">Link &amp; QR memuat PIN. Untuk akses lintas perangkat (HP), klik <span className="font-medium text-[var(--text)]">Publish ke server</span> dulu. Export/QR hanya dibuat lokal (tidak diunggah).</p>
     </Card>
   );
+}
+
+// ---- QR image (self-contained; qrcode lib loaded on demand) -------------------
+function QrImage({ text, size = 128 }: { text: string; size?: number }) {
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    let live = true;
+    import("qrcode").then((Q) => Q.toDataURL(text, { margin: 1, width: size * 2, errorCorrectionLevel: "M" }))
+      .then((u) => { if (live) setUrl(u); }).catch(() => {});
+    return () => { live = false; };
+  }, [text, size]);
+  return url
+    ? <img src={url} width={size} height={size} alt="QR akses" className="shrink-0 rounded-lg bg-white p-1.5" />
+    : <div style={{ width: size, height: size }} className="shrink-0 animate-pulse rounded-lg bg-black/10 dark:bg-white/10" />;
 }
 
 // ---- Audit table — every counted row, all raw columns, searchable + paginated --
