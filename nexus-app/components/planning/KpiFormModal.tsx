@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Btn } from "@/components/PageHeader";
 import { Badge, cn } from "@/components/ui";
@@ -12,6 +12,8 @@ import {
   type PlanningKpi, type KpiConversion, type StrategicGoal,
 } from "@/lib/data";
 import { useI18n } from "@/lib/i18n";
+import { useLocalState } from "@/lib/useLocalState";
+import { MAPPING_SUBMIT_KEY, type SubmittedMap, submittedKpiNames, findSubmittedKpi } from "@/lib/mappingSubmit";
 
 const inputCls = "mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500";
 const selCls = `${inputCls} text-[var(--text)]`;
@@ -63,6 +65,10 @@ export function KpiFormModal({
   // which mis-placed the modal and made its body impossible to scroll.
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
+
+  // KPI names submitted from Performance Mapping (KPI Direksi) — recallable here.
+  const [submitted] = useLocalState<SubmittedMap>(MAPPING_SUBMIT_KEY, {});
+  const kpiNameOptions = useMemo(() => submittedKpiNames(submitted), [submitted]);
 
   // Annual target auto-fills from the Monthly Targets + Consolidation (read-only).
   useEffect(() => {
@@ -133,7 +139,26 @@ export function KpiFormModal({
               <span className="mt-1 block text-[10px] text-[var(--muted)]">{t("Pulled from Strategic Planning.")} — pilih “Isi manual” bila tak ada yang sesuai.</span>
             )}
           </label>
-          <label className={labelCls}>{t("KPI Name")}<input value={form.name} onChange={(e) => setF("name", e.target.value)} placeholder="% Excess of ROIC - WACC" className={inputCls} /></label>
+          <label className={labelCls}>{t("KPI Name")}
+            <input
+              value={form.name}
+              onChange={(e) => {
+                const v = e.target.value;
+                const hit = findSubmittedKpi(submitted, v);
+                setForm((f) => ({ ...f, name: v, ...(hit ? { unit: hit.satuan || f.unit, polarity: hit.polaritas || f.polarity, frequency: hit.frekuensi || f.frequency } : {}) }));
+              }}
+              placeholder="% Excess of ROIC - WACC"
+              list={kpiNameOptions.length ? "kpi-name-recall" : undefined}
+              autoComplete="off"
+              className={inputCls}
+            />
+            {kpiNameOptions.length > 0 && (
+              <>
+                <datalist id="kpi-name-recall">{kpiNameOptions.map((n) => <option key={n} value={n} />)}</datalist>
+                <span className="mt-1 block text-[10px] text-[var(--muted)]">{kpiNameOptions.length} nama KPI dari Performance Mapping (KPI Direksi) — pilih untuk memanggil kembali.</span>
+              </>
+            )}
+          </label>
           <label className={labelCls}>{t("Definition")}<textarea value={form.definition} onChange={(e) => setF("definition", e.target.value)} rows={2} className={inputCls} /></label>
           <label className={labelCls}>{t("KPI Purpose")}<input value={form.purpose} onChange={(e) => setF("purpose", e.target.value)} className={inputCls} /></label>
 

@@ -27,10 +27,14 @@ export function Btn({
   children,
   variant = "ghost",
   onClick,
+  disabled,
+  className,
 }: {
   children: React.ReactNode;
   variant?: "primary" | "ghost" | "gold";
   onClick?: () => void;
+  disabled?: boolean;
+  className?: string;
 }) {
   const styles =
     variant === "primary"
@@ -41,7 +45,8 @@ export function Btn({
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-medium transition ${styles}`}
+      disabled={disabled}
+      className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-medium transition disabled:pointer-events-none disabled:opacity-40 ${styles} ${className ?? ""}`}
     >
       {children}
     </button>

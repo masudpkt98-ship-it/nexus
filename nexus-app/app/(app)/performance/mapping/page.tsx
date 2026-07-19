@@ -12,6 +12,7 @@ import {
 } from "@/lib/perfMapping";
 import { KPI_TEKNIS_KEY, type KpiTeknis } from "@/lib/kpiTeknis";
 import { jobProfiles as seedProfiles, type JobProfile } from "@/lib/data";
+import { MAPPING_SUBMIT_KEY, type SubmittedMap, toSubmittedKpi, exportSubmitted } from "@/lib/mappingSubmit";
 
 const SOURCES: MapSource[] = ["Korporat", "Matrix", "KatalogAP"];
 const sourceTone: Record<MapSource, "green" | "amber" | "blue" | "purple" | "red"> = { Korporat: "green", Matrix: "amber", KatalogAP: "blue", Manual: "purple", Teknis: "red" };
@@ -281,14 +282,46 @@ export default function MappingPage() {
 function DireksiResult({ state }: { state: MappingState }) {
   const { t } = useI18n();
   const [sel, setSel] = useState<Direktur>(DIREKTUR[0]);
+  const [submitted, setSubmitted] = useLocalState<SubmittedMap>(MAPPING_SUBMIT_KEY, {});
+  const [note, setNote] = useState<string | null>(null);
   const list = state.kpis.filter((k) => (state.cascade[k.id] ?? []).includes(sel));
+  const sub = submitted[sel];
+  // Has the current cascade for this Direktur diverged from what was submitted?
+  const dirty = !sub || sub.kpis.length !== list.length || sub.kpis.some((k, i) => k.kpi !== list[i]?.kpi);
+  const totalSubmitted = Object.values(submitted).reduce((s, d) => s + d.kpis.length, 0);
+
+  const submit = () => {
+    setSubmitted((m) => ({ ...m, [sel]: { direktorat: sel, submittedAt: new Date().toISOString(), kpis: list.map(toSubmittedKpi) } }));
+    setNote(`Tersimpan: ${list.length} KPI untuk ${sel}.`);
+    setTimeout(() => setNote(null), 2500);
+  };
+
   return (
     <Card className="mt-4">
-      <SectionTitle title="KPI Direksi" subtitle="Result of the cascade — per Direktur" action={
-        <select value={sel} onChange={(e) => setSel(e.target.value as Direktur)} className="rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500">
-          {DIREKTUR.map((d) => <option key={d} value={d}>{d}</option>)}
-        </select>
+      <SectionTitle title="KPI Direksi" subtitle="Result of the cascade — per Direktur · Submit untuk menyimpan per Direktorat" action={
+        <div className="flex flex-wrap items-center gap-2">
+          <select value={sel} onChange={(e) => setSel(e.target.value as Direktur)} className="rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500">
+            {DIREKTUR.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+          <Btn variant="primary" disabled={list.length === 0} onClick={submit}>
+            <Icon.check className="h-4 w-4" /> {sub ? (dirty ? "Submit ulang" : "Tersubmit") : "Submit"}
+          </Btn>
+          <Btn variant="ghost" disabled={totalSubmitted === 0} onClick={() => exportSubmitted(submitted)}>
+            <Icon.document className="h-4 w-4" /> Export Excel
+          </Btn>
+        </div>
       } />
+
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px]">
+        {sub ? (
+          <Badge tone={dirty ? "amber" : "green"}>{dirty ? "Ada perubahan belum di-submit" : "Tersubmit"} · {sub.kpis.length} KPI · {new Date(sub.submittedAt).toLocaleDateString("id-ID")}</Badge>
+        ) : (
+          <Badge tone="gray">Belum di-submit</Badge>
+        )}
+        {totalSubmitted > 0 && <span className="text-[var(--muted)]">Total tersimpan (semua Direktorat): {fmt(totalSubmitted)} KPI</span>}
+        {note && <span className="font-medium text-emerald-500">{note}</span>}
+      </div>
+
       {list.length === 0 ? (
         <p className="py-4 text-center text-[12px] text-[var(--muted)]">{t("No KPI cascaded to this Direktur yet — tick the matrix above.")}</p>
       ) : (
