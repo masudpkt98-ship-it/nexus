@@ -28,7 +28,11 @@ return [
         env('FRONTEND_URL'),
     ])),
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        // Private-LAN addresses on the dev ports — lets phones/tablets on the same
+        // Wi-Fi reach the API (e.g. the /progress portal). Dev convenience only.
+        '#^http://(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)[0-9.]+:(3000|3999)$#',
+    ],
 
     'allowed_headers' => ['*'],
 
