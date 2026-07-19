@@ -63,7 +63,17 @@ export const navItems: NavItem[] = [
         children: [{ label: "KPI Teknis", href: "/performance/dictionary?tab=teknis" }],
       },
       { label: "Performance Mapping", href: "/performance/mapping" },
-      { label: "Performance Planning", href: "/performance/planning" },
+      {
+        label: "Performance Planning",
+        href: "/performance/planning",
+        children: [
+          { label: "Korporat", href: "/performance/planning/korporat" },
+          { label: "Direktorat", href: "/performance/planning/direktorat" },
+          { label: "Manajemen", href: "/performance/planning/manajemen" },
+          { label: "Unit Kerja", href: "/performance/planning/unit-kerja" },
+          { label: "Individu (AVP & Staf)", href: "/performance/planning/individu" },
+        ],
+      },
     ],
   },
   { label: "Development", href: "/development", icon: "development", section: "People & Performance" },

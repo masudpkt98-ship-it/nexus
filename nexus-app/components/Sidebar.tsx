@@ -116,7 +116,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               // 3rd-level items (e.g. an in-page tab) are shown only while you're
               // on the child's page, nested a level deeper.
               const grandkids = (child.children ?? []).filter((gc) => navAllowed(session, gc.href));
-              const showGrand = grandkids.length > 0 && pathname === cPath;
+              // Show the 3rd level while on the child's page OR any of its sub-routes.
+              const showGrand = grandkids.length > 0 && (pathname === cPath || pathname.startsWith(cPath + "/"));
               return (
                 <div key={child.href}>
                   <Link

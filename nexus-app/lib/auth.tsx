@@ -42,6 +42,8 @@ export const PARTNER_NAV = new Set<string>([
   "/dashboard", "/dashboard/performance", "/dashboard/competency", "/dashboard/eligibility",
   "/people", "/competency", "/competency/dictionary", "/competency/matrix",
   "/performance", "/performance/dictionary", "/performance/planning",
+  "/performance/planning/korporat", "/performance/planning/direktorat", "/performance/planning/manajemen",
+  "/performance/planning/unit-kerja", "/performance/planning/individu",
   "/development", "/notifications",
 ]);
 
