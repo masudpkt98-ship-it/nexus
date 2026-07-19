@@ -129,8 +129,8 @@ export function KpiFormModal({
               className={selCls}
             >
               <option value="">{t("— pick a Strategic Goal")}</option>
-              {goals.map((g) => <option key={g.id} value={g.id}>{g.code ? `${g.code} — ${g.title}` : g.title}</option>)}
               <option value="__manual__">✎ Isi manual (tidak ada yang sesuai)</option>
+              {goals.map((g) => <option key={g.id} value={g.id}>{g.code ? `${g.code} — ${g.title}` : g.title}</option>)}
             </select>
             {form.strategicGoalText !== undefined ? (
               <input
