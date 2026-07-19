@@ -9,6 +9,7 @@ import { EmployeePicker } from "@/components/EmployeePicker";
 import { performanceKpis as mockPerformanceKpis, kpiTrend, topPerformers as mockTop, corporateKpis as seedCorporateKpis, type CorporateKpi } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { apiGet, apiSend, apiDownload, getToken } from "@/lib/api";
+import { useApiAuthed } from "@/lib/auth";
 import { LiveBadge } from "@/components/LiveBadge";
 import { useI18n } from "@/lib/i18n";
 
@@ -68,6 +69,7 @@ const emptyPerf = { open: false, id: null as string | null, name: "", role: "", 
 
 export default function PerformancePage() {
   const { t } = useI18n();
+  const authed = useApiAuthed();
   const [rows, setRows] = useLocalState<Kpi[]>("performance-kpis", mockPerformanceKpis.map((k, i) => ({ ...k, id: String(k.id ?? i + 1) })));
   const [corporateKpis] = useLocalState<CorporateKpi[]>("corporate-kpis", seedCorporateKpis);
   const [perfs, setPerfs] = useLocalState<Perf[]>("appraisals", mockTop.map((p, i) => ({ id: `ap-${i + 1}`, ...p })));
@@ -152,7 +154,7 @@ export default function PerformancePage() {
         actions={
           <>
             <LiveBadge live={live} />
-            {getToken() && (
+            {authed && (
               <>
                 <Btn onClick={() => apiDownload("/exports/kpis", undefined, "nexus-kpis.xlsx", "GET")}>
                   <Icon.document className="h-4 w-4" /> {t("Excel")}

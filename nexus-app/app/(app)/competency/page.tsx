@@ -9,6 +9,7 @@ import { EmployeePicker } from "@/components/EmployeePicker";
 import { competencies as mockCompetencies, developmentPlans as mockDevelopmentPlans } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { apiGet, apiSend, apiDownload, getToken } from "@/lib/api";
+import { useApiAuthed } from "@/lib/auth";
 import { LiveBadge } from "@/components/LiveBadge";
 import { useI18n } from "@/lib/i18n";
 
@@ -62,6 +63,7 @@ const emptyDp = { open: false, id: null as string | null, employee: "", role: ""
 
 export default function CompetencyPage() {
   const { t } = useI18n();
+  const authed = useApiAuthed();
   const [rows, setRows] = useLocalState<Comp[]>("competencies", mockCompetencies.map((c, i) => ({ id: i + 1, ...c })));
   const [plans, setPlans] = useLocalState<DevPlan[]>("development-plans", mockDevelopmentPlans.map((d, i) => ({ id: `dp-${i + 1}`, ...d })));
   const [live, setLive] = useState(false);
@@ -137,7 +139,7 @@ export default function CompetencyPage() {
         actions={
           <>
             <LiveBadge live={live} />
-            {getToken() && (
+            {authed && (
               <Btn onClick={() => apiDownload("/exports/competencies", undefined, "nexus-competencies.xlsx", "GET")}>
                 <Icon.document className="h-4 w-4" /> {t("Excel")}
               </Btn>

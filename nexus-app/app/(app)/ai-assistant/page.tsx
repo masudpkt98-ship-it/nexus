@@ -9,6 +9,7 @@ import { LiveBadge } from "@/components/LiveBadge";
 import { useApiData } from "@/lib/useApi";
 import { useI18n } from "@/lib/i18n";
 import { apiGet, apiSend, apiStream, apiDownload, getToken } from "@/lib/api";
+import { useApiAuthed } from "@/lib/auth";
 import { useLocalState } from "@/lib/useLocalState";
 import {
   aiInsights as mockAiInsights,
@@ -73,6 +74,7 @@ const GREETING: Msg = {
 
 export default function AiAssistantPage() {
   const { t } = useI18n();
+  const authed = useApiAuthed();
   // Live stores (read-only) shared with the rest of the app — power offline generation.
   const [kpiStore] = useLocalState<any[]>("performance-kpis", mockKpis as any[]);
   const [planStore] = useLocalState<any[]>("development-plans", mockPlans.map((d, i) => ({ id: `dp-${i + 1}`, ...d })));
@@ -636,7 +638,7 @@ export default function AiAssistantPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Chat */}
         <Card className="flex h-[560px] overflow-hidden p-0 lg:col-span-2">
-          {getToken() && (
+          {authed && (
             <aside className="hidden w-56 shrink-0 flex-col border-r sm:flex">
               <div className="flex items-center justify-between border-b px-3 py-3">
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
@@ -741,7 +743,7 @@ export default function AiAssistantPage() {
               </div>
             </div>
             <div className="ml-auto flex items-center gap-1.5">
-              {getToken() ? (
+              {authed ? (
                 <button
                   onClick={newChat}
                   disabled={busy}
@@ -841,7 +843,7 @@ export default function AiAssistantPage() {
               disabled={busy}
               className="flex-1 bg-transparent text-sm outline-none disabled:opacity-60"
             />
-            {busy && getToken() ? (
+            {busy && authed ? (
               <button
                 type="button"
                 onClick={stop}
@@ -1059,7 +1061,7 @@ export default function AiAssistantPage() {
               )}
             </div>
             <div className="flex items-center justify-end gap-2 border-t p-3">
-              {gen.markdown && !gen.streaming && getToken() && (
+              {gen.markdown && !gen.streaming && authed && (
                 genSaved ? (
                   <span className="mr-auto flex items-center gap-1 px-1 text-[12px] font-medium text-emerald-500">
                     ✓ {t("Saved to history")}
@@ -1078,7 +1080,7 @@ export default function AiAssistantPage() {
                   <Btn variant="ghost" onClick={downloadArtifact}>
                     <Icon.document className="h-4 w-4" /> {t("Download .md")}
                   </Btn>
-                  {getToken() && (
+                  {authed && (
                     <Btn variant="ghost" onClick={exportPdf}>
                       <Icon.document className="h-4 w-4" /> {t("Export PDF")}
                     </Btn>

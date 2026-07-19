@@ -7,6 +7,16 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import type { Employee } from "./data";
 import type { Nexian } from "./nexian";
+import { getToken } from "./api";
+
+// Hydration-safe API-auth flag. Returns false on the server AND the first client
+// render, then reflects the stored token after mount. Use this (never a bare
+// getToken()) to gate rendered UI, so SSR and client HTML always match.
+export function useApiAuthed(): boolean {
+  const [authed, setAuthed] = useState(false);
+  useEffect(() => { setAuthed(!!getToken()); }, []);
+  return authed;
+}
 
 export type AccessRole = "Admin" | "KPI Partner Manajemen" | "KPI Partner";
 
