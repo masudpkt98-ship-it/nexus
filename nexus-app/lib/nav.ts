@@ -24,12 +24,17 @@ export const navItems: NavItem[] = [
     children: [
       { label: "Performance Dashboard", href: "/dashboard/performance" },
       { label: "Competency Dashboard", href: "/dashboard/competency" },
-      { label: "KPI Eligibility", href: "/dashboard/eligibility" },
     ],
   },
   // Grouped under Overview, next to the dashboards (order: Nexian, then Directory).
   { label: "Nexian", href: "/nexian", icon: "spark", section: "Overview" },
-  { label: "Employee Directory", href: "/people", icon: "users", section: "Overview" },
+  {
+    label: "Employee Directory",
+    href: "/people",
+    icon: "users",
+    section: "Overview",
+    children: [{ label: "KPI Eligibility", href: "/dashboard/eligibility" }],
+  },
 
   { label: "Strategic Planning", href: "/strategy", icon: "strategy", section: "Plan & Execute" },
   { label: "Program Management", href: "/programs", icon: "program", section: "Plan & Execute" },
