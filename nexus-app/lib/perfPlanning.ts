@@ -36,7 +36,7 @@ export function planningKpiFromMap(m: MapKpi, period: string): PlanningKpi {
     measurement: m.pengukuran || "Exact",
     polarity: m.polaritas || "Maximize",
     frequency: m.frekuensi || "Monthly",
-    cascadeType: "Fully Cascade A",
+    cascadeType: "Fully A",
     consolidation: "Take Last Known",
     monthlyTargets: {},
     annualTarget: numish(m.target),

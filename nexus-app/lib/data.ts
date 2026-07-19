@@ -1279,7 +1279,7 @@ export const kpiTypes = ["Strategis", "Teknis", "Generik", "Project"] as const;
 export const kpiMeasurements = ["Exact", "Proxy", "Activity"] as const;
 export const kpiPolarities = ["Maximize", "Minimize", "Stabilize"] as const;
 export const kpiFrequencies = ["Monthly", "Quarterly", "Half Yearly", "Yearly"] as const;
-export const kpiCascadeTypes = ["Fully Cascade A", "Fully Cascade B", "Partially Cascade", "Contributory Cascade", "Non Cascade"] as const;
+export const kpiCascadeTypes = ["Fully A", "Fully B", "Partially A", "Partially B", "Contributory"] as const;
 export const kpiConsolidations = ["Take Last Known", "Average", "Sum"] as const;
 export const kpiUnits = [
   "Persen", "Rp Miliar", "Rp Juta", "Rupiah per ton", "Rp per Ton", "Rp per Kwh",
