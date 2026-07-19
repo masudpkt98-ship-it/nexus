@@ -117,7 +117,7 @@ function ProgressPortal() {
         {!authed || !statuses ? (
           <div className="mx-auto max-w-md rounded-2xl border border-white/20 bg-white/95 p-6 shadow-glow dark:bg-[rgb(var(--surface))]">
             <h1 className="text-[18px] font-bold">Cek Progress KPI Anda</h1>
-            <p className="mt-1 text-[12px] text-[var(--muted)]">Masukkan NPK dan PIN akses (tanpa perlu login). PIN disediakan oleh admin Bagian Manajemen Kinerja.</p>
+            <p className="mt-1 text-[12px] text-[var(--muted)]">Masukkan NPK dan PIN akses (tanpa perlu login). PIN disediakan oleh admin Bagian Manajemen Kompetensi &amp; Kinerja Dept. MPSDM.</p>
             <form onSubmit={submit} className="mt-4 space-y-3">
               <div>
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">NPK</label>

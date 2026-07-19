@@ -289,7 +289,7 @@ export default function PerformanceDashboardPage() {
         <Rosette className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 opacity-15" />
         <Rosette className="pointer-events-none absolute -bottom-16 right-24 h-40 w-40 opacity-10" />
         <div className="relative">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/70">Bagian Manajemen Kinerja</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/70">Bagian Manajemen Kompetensi &amp; Kinerja Dept. MPSDM</div>
           <h1 className="mt-1 text-2xl font-bold leading-tight sm:text-3xl">Performance Management</h1>
           <div className="text-[13px] font-medium text-white/80">Monitoring Board</div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
