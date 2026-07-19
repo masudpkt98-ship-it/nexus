@@ -29,6 +29,21 @@ const emptyForm = (period: string, group: string): Form => ({
   dataSource: "", unit: "Persen", esgCriteria: [], validity: "Exact", proxyMax: undefined, supportingFile: "", pic: "", dataManager: "", period,
 });
 
+// Annual target derived from the Monthly Targets per the Consolidation rule:
+//   Sum → Σ months · Average → mean · Take Last Known → last filled month.
+function computeAnnual(monthly: Record<string, number>, consolidation: string, months: readonly string[]): number {
+  const nums = months
+    .map((m) => monthly[m])
+    .filter((v) => v !== undefined && v !== null && String(v) !== "" && !Number.isNaN(Number(v)))
+    .map((v) => Number(v) || 0);
+  if (!nums.length) return 0;
+  let out: number;
+  if (consolidation === "Sum") out = nums.reduce((s, n) => s + n, 0);
+  else if (consolidation === "Average") out = nums.reduce((s, n) => s + n, 0) / nums.length;
+  else out = nums[nums.length - 1]; // Take Last Known
+  return Math.round(out * 100) / 100;
+}
+
 // Extracted from the Performance Planning page so both the global recap and the
 // per-unit level panels share one KPI editor.
 export function KpiFormModal({
@@ -49,9 +64,14 @@ export function KpiFormModal({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
+  // Annual target auto-fills from the Monthly Targets + Consolidation (read-only).
+  useEffect(() => {
+    const auto = computeAnnual(form.monthlyTargets, form.consolidation, kpiMonths);
+    setForm((f) => (f.annualTarget === auto ? f : { ...f, annualTarget: auto }));
+  }, [form.monthlyTargets, form.consolidation]);
+
   const setF = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
   const setMonthly = (m: string, v: number) => setForm((f) => ({ ...f, monthlyTargets: { ...f.monthlyTargets, [m]: v } }));
-  const sumMonthly = () => Object.values(form.monthlyTargets).reduce((s, n) => s + (Number(n) || 0), 0);
   const toggleEsg = (c: string) => setForm((f) => ({ ...f, esgCriteria: f.esgCriteria.includes(c) ? f.esgCriteria.filter((x) => x !== c) : [...f.esgCriteria, c] }));
   const addConv = () => setForm((f) => ({ ...f, conversions: [...f.conversions, { from: "", to: "", value: "" }] }));
   const setConv = (i: number, key: keyof KpiConversion, v: string) => setForm((f) => ({ ...f, conversions: f.conversions.map((c, j) => (j === i ? { ...c, [key]: v } : c)) }));
@@ -157,9 +177,16 @@ export function KpiFormModal({
               );
             })}
           </div>
-          <div className="flex items-end gap-2">
-            <label className={cn(labelCls, "flex-1")}>{t("Annual target")}<input type="number" value={form.annualTarget} onChange={(e) => setF("annualTarget", Number(e.target.value))} className={inputCls} /></label>
-            <Btn variant="ghost" onClick={() => setF("annualTarget", sumMonthly())}>{t("Sum months")} = {sumMonthly().toLocaleString("id")}</Btn>
+          <div>
+            <div className={labelCls}>{t("Annual target")}</div>
+            <div className="mt-1 flex items-center gap-2">
+              <input type="number" value={form.annualTarget} readOnly tabIndex={-1} aria-readonly
+                className="w-full cursor-not-allowed rounded-lg border border-dashed bg-black/5 px-2.5 py-1.5 text-[14px] font-bold text-[var(--text)] outline-none dark:bg-white/5" />
+              <span className="shrink-0 rounded-lg bg-royal-500/12 px-2.5 py-1.5 text-[11px] font-semibold text-royal-400">otomatis · {form.consolidation}</span>
+            </div>
+            <span className="mt-1 block text-[10px] text-[var(--muted)]">
+              {form.consolidation === "Sum" ? "Penjumlahan Monthly Target." : form.consolidation === "Average" ? "Rata-rata Monthly Target." : "Nilai bulan terakhir yang terisi (Take Last Known)."} Terisi otomatis — tak perlu diisi manual.
+            </span>
           </div>
 
           <div className="border-t pt-3"><div className={sectionCls}>{t("Data & validity")}</div></div>
