@@ -1249,7 +1249,7 @@ export const strategicGoals: StrategicGoal[] = [
 
 // ---- Performance Dictionary ----
 // Balanced-scorecard perspectives a Corporate KPI can belong to.
-export const kpiPerspectives = ["Financial", "Customer", "Internal Process", "Learning & Growth"] as const;
+export const kpiPerspectives = ["Financial", "Customer", "Internal Business Process", "Learning & Growth"] as const;
 // Subordinate org levels a Corporate KPI can cascade down to (SVP, SPM, Dirut Anper, …).
 export const subordinateLevels = ["Direktur", "SVP", "VP", "SPM", "GM", "Manager", "Dirut Anper", "Ketua Yayasan"] as const;
 
@@ -1268,7 +1268,7 @@ export const corporateKpis: CorporateKpi[] = [
   { id: "ck-01", code: "CK-01", name: "Corporate Revenue Growth", perspective: "Financial", unit: "%", target: "12", strategicGoalId: "sg-inv-03", cascadableTo: ["Direktur", "SVP", "Dirut Anper"] },
   { id: "ck-02", code: "CK-02", name: "EBITDA Margin", perspective: "Financial", unit: "%", target: "28", strategicGoalId: "sg-keu-01", cascadableTo: ["Direktur", "SVP", "VP"] },
   { id: "ck-03", code: "CK-03", name: "Internal Customer Satisfaction (NPS)", perspective: "Customer", unit: "index", target: "60", strategicGoalId: "sg-sek-09", cascadableTo: ["SVP", "VP", "SPM", "Manager"] },
-  { id: "ck-04", code: "CK-04", name: "Digital Process Adoption", perspective: "Internal Process", unit: "%", target: "90", strategicGoalId: "sg-trb-01", cascadableTo: ["VP", "SPM", "Manager"] },
+  { id: "ck-04", code: "CK-04", name: "Digital Process Adoption", perspective: "Internal Business Process", unit: "%", target: "90", strategicGoalId: "sg-trb-01", cascadableTo: ["VP", "SPM", "Manager"] },
   { id: "ck-05", code: "CK-05", name: "Competency Index", perspective: "Learning & Growth", unit: "%", target: "85", strategicGoalId: "sg-sdm-05", cascadableTo: ["SVP", "VP", "SPM", "GM", "Manager"] },
   { id: "ck-06", code: "CK-06", name: "Foundation Program Realization", perspective: "Customer", unit: "%", target: "95", strategicGoalId: "sg-sek-10", cascadableTo: ["Ketua Yayasan"] },
 ];
@@ -1333,7 +1333,7 @@ export interface PlanningKpi {
 export const planningKpis: PlanningKpi[] = [
   { id: "pk-01", group: "KPI Bersama", perspective: "Financial", strategicGoalId: "sg-keu-01", name: "% Excess of ROIC - WACC", definition: "Selisih ROIC terhadap WACC.", purpose: "Memastikan penciptaan nilai di atas biaya modal.", type: "Spesifik", weight: 11, formula: "ROIC - WACC", hasConversion: false, conversions: [], measurement: "Exact", polarity: "Maximize", frequency: "Yearly", cascadeType: "Fully Cascade A", consolidation: "Take Last Known", monthlyTargets: {}, annualTarget: 9.63, dataSource: "Laporan Keuangan", unit: "Persen", esgCriteria: [], validity: "Exact", supportingFile: "", pic: "Purwanto", dataManager: "", period: "2026" },
   { id: "pk-02", group: "KPI Bersama", perspective: "Financial", strategicGoalId: "sg-keu-01", name: "$ Net Income", definition: "Laba bersih perusahaan.", purpose: "Mencapai target profitabilitas.", type: "Mandatory", weight: 11, formula: "Total Revenue - Total Cost", hasConversion: false, conversions: [], measurement: "Exact", polarity: "Maximize", frequency: "Monthly", cascadeType: "Fully Cascade A", consolidation: "Take Last Known", monthlyTargets: {}, annualTarget: 5681.35, dataSource: "Laporan Keuangan", unit: "Rp Miliar", esgCriteria: [], validity: "Exact", supportingFile: "", pic: "Purwanto", dataManager: "", period: "2026" },
-  { id: "pk-03", group: "KPI Direktorat", perspective: "Internal Process", strategicGoalId: "sg-prd-10", name: "% Penghematan Biaya OH COGM", definition: "Efisiensi biaya overhead pada COGM.", purpose: "Menurunkan biaya produksi.", type: "Spesifik", weight: 15, formula: "(Baseline - Aktual) / Baseline", hasConversion: false, conversions: [], measurement: "Exact", polarity: "Maximize", frequency: "Monthly", cascadeType: "Fully Cascade A", consolidation: "Take Last Known", monthlyTargets: {}, annualTarget: 100, dataSource: "SAP", unit: "Persen", esgCriteria: [], validity: "Exact", supportingFile: "", pic: "Purwanto", dataManager: "", period: "2026" },
+  { id: "pk-03", group: "KPI Direktorat", perspective: "Internal Business Process", strategicGoalId: "sg-prd-10", name: "% Penghematan Biaya OH COGM", definition: "Efisiensi biaya overhead pada COGM.", purpose: "Menurunkan biaya produksi.", type: "Spesifik", weight: 15, formula: "(Baseline - Aktual) / Baseline", hasConversion: false, conversions: [], measurement: "Exact", polarity: "Maximize", frequency: "Monthly", cascadeType: "Fully Cascade A", consolidation: "Take Last Known", monthlyTargets: {}, annualTarget: 100, dataSource: "SAP", unit: "Persen", esgCriteria: [], validity: "Exact", supportingFile: "", pic: "Purwanto", dataManager: "", period: "2026" },
 ];
 
 export interface JobProfile {

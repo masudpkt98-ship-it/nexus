@@ -24,7 +24,7 @@ const inputCls = "mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 
 const labelCls = "block text-[11px] font-medium text-[var(--muted)]";
 let seq = 0;
 const newId = (p: string) => { try { return `${p}-${crypto.randomUUID().slice(0, 5)}`; } catch { return `${p}-${++seq}${Math.round(performance.now())}`; } };
-const perspectiveTone: Record<string, "green" | "blue" | "amber" | "purple" | "gray"> = { Financial: "green", Customer: "blue", "Internal Process": "amber", "Learning & Growth": "purple" };
+const perspectiveTone: Record<string, "green" | "blue" | "amber" | "purple" | "gray"> = { Financial: "green", Customer: "blue", "Internal Business Process": "amber", "Learning & Growth": "purple" };
 
 function Modal({ title, onClose, onSave, saveLabel, children, wide }: { title: string; onClose: () => void; onSave: () => void; saveLabel: string; children: React.ReactNode; wide?: boolean }) {
   const { t } = useI18n();
