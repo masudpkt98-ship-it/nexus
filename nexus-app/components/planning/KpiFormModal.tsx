@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Btn } from "@/components/PageHeader";
 import { Badge, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
@@ -42,6 +43,11 @@ export function KpiFormModal({
 }) {
   const { t } = useI18n();
   const [form, setForm] = useState<Form>(initial ? { ...initial } : emptyForm(period, defaultGroup));
+  // Render through a portal to <body> so an ancestor's transform (e.g. the page's
+  // animate-fade-up wrapper) can't become the fixed-positioning containing block —
+  // which mis-placed the modal and made its body impossible to scroll.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const setF = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
   const setMonthly = (m: string, v: number) => setForm((f) => ({ ...f, monthlyTargets: { ...f.monthlyTargets, [m]: v } }));
@@ -58,7 +64,7 @@ export function KpiFormModal({
     onSave({ id: id ?? newKpiId(), ...rest, name, strategicGoalId: form.strategicGoalId || undefined });
   };
 
-  return (
+  const node = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative z-10 flex max-h-[88vh] w-full max-w-3xl flex-col glass card shadow-glass animate-fade-up">
@@ -161,4 +167,5 @@ export function KpiFormModal({
       </div>
     </div>
   );
+  return mounted ? createPortal(node, document.body) : null;
 }
