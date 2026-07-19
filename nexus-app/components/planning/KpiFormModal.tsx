@@ -23,7 +23,7 @@ export const newKpiId = () => { try { return `pk-${crypto.randomUUID().slice(0, 
 
 type Form = Omit<PlanningKpi, "id"> & { id: string | null };
 const emptyForm = (period: string, group: string): Form => ({
-  id: null, group, perspective: "Financial", strategicGoalId: "", name: "", definition: "", purpose: "",
+  id: null, group, perspective: "Financial", strategicGoalId: "", strategicGoalText: undefined, name: "", definition: "", purpose: "",
   type: "Spesifik", weight: 0, formula: "", hasConversion: false, conversions: [], measurement: "Exact", polarity: "Maximize",
   frequency: "Monthly", cascadeType: "Fully Cascade A", consolidation: "Take Last Known", monthlyTargets: {}, annualTarget: 0,
   dataSource: "", unit: "Persen", esgCriteria: [], validity: "Exact", proxyMax: undefined, supportingFile: "", pic: "", dataManager: "", period,
@@ -81,7 +81,11 @@ export function KpiFormModal({
     const name = form.name.trim();
     if (!name) return;
     const { id, ...rest } = form;
-    onSave({ id: id ?? newKpiId(), ...rest, name, strategicGoalId: form.strategicGoalId || undefined });
+    onSave({
+      id: id ?? newKpiId(), ...rest, name,
+      strategicGoalId: form.strategicGoalId || undefined,
+      strategicGoalText: form.strategicGoalText?.trim() || undefined,
+    });
   };
 
   const node = (
@@ -104,11 +108,30 @@ export function KpiFormModal({
             </label>
           </div>
           <label className={labelCls}>{t("Strategic Objective")}
-            <select value={form.strategicGoalId} onChange={(e) => setF("strategicGoalId", e.target.value)} className={selCls}>
+            <select
+              value={form.strategicGoalText !== undefined ? "__manual__" : form.strategicGoalId}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "__manual__") setForm((f) => ({ ...f, strategicGoalId: "", strategicGoalText: f.strategicGoalText ?? "" }));
+                else setForm((f) => ({ ...f, strategicGoalId: v, strategicGoalText: undefined }));
+              }}
+              className={selCls}
+            >
               <option value="">{t("— pick a Strategic Goal")}</option>
               {goals.map((g) => <option key={g.id} value={g.id}>{g.code ? `${g.code} — ${g.title}` : g.title}</option>)}
+              <option value="__manual__">✎ Isi manual (tidak ada yang sesuai)</option>
             </select>
-            <span className="mt-1 block text-[10px] text-[var(--muted)]">{t("Pulled from Strategic Planning.")}</span>
+            {form.strategicGoalText !== undefined ? (
+              <input
+                value={form.strategicGoalText}
+                onChange={(e) => setF("strategicGoalText", e.target.value)}
+                placeholder="Ketik Sasaran Strategis…"
+                autoFocus
+                className={cn(inputCls, "mt-1.5")}
+              />
+            ) : (
+              <span className="mt-1 block text-[10px] text-[var(--muted)]">{t("Pulled from Strategic Planning.")} — pilih “Isi manual” bila tak ada yang sesuai.</span>
+            )}
           </label>
           <label className={labelCls}>{t("KPI Name")}<input value={form.name} onChange={(e) => setF("name", e.target.value)} placeholder="% Excess of ROIC - WACC" className={inputCls} /></label>
           <label className={labelCls}>{t("Definition")}<textarea value={form.definition} onChange={(e) => setF("definition", e.target.value)} rows={2} className={inputCls} /></label>

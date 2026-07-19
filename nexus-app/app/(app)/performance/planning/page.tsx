@@ -23,12 +23,12 @@ export default function PerformancePlanningPage() {
   // undefined = closed · null = create · kpi = edit
   const [editing, setEditing] = useState<PlanningKpi | null | undefined>(undefined);
 
-  const goalTitle = (id?: string) => goals.find((g) => g.id === id)?.title;
+  const objectiveOf = (k: PlanningKpi) => goals.find((g) => g.id === k.strategicGoalId)?.title || k.strategicGoalText;
   const periods = useMemo(() => Array.from(new Set([period, "2026", "2027", ...kpis.map((k) => k.period)])).sort().reverse(), [kpis, period]);
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return kpis.filter((k) => k.period === period && (!q || `${k.name} ${k.unit} ${goalTitle(k.strategicGoalId) ?? ""}`.toLowerCase().includes(q)));
+    return kpis.filter((k) => k.period === period && (!q || `${k.name} ${k.unit} ${objectiveOf(k) ?? ""}`.toLowerCase().includes(q)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kpis, period, search]);
   const totalWeight = rows.reduce((s, k) => s + (k.weight || 0), 0);
@@ -39,7 +39,7 @@ export default function PerformancePlanningPage() {
   const onExport = async () => {
     const XLSX = await import("xlsx");
     const aoa: (string | number)[][] = [[t("Group"), t("Perspective"), t("Strategic Goal"), "KPI", t("Unit"), t("Target"), t("Weight (%)"), t("Measurement"), t("Polarity"), t("Frequency"), t("Cascade type"), "PIC"]];
-    kpis.filter((k) => k.period === period).forEach((k) => aoa.push([k.group, k.perspective, goalTitle(k.strategicGoalId) ?? "", k.name, k.unit, k.annualTarget, k.weight, k.measurement, k.polarity, k.frequency, k.cascadeType, k.pic]));
+    kpis.filter((k) => k.period === period).forEach((k) => aoa.push([k.group, k.perspective, objectiveOf(k) ?? "", k.name, k.unit, k.annualTarget, k.weight, k.measurement, k.polarity, k.frequency, k.cascadeType, k.pic]));
     aoa.push([]); aoa.push(["", "", "", "", "", "", totalWeight, "", "", "", "", ""]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), "KPI");
@@ -111,7 +111,7 @@ export default function PerformancePlanningPage() {
                         <td className="px-4 py-3 align-top text-xs text-[var(--muted)]">{i + 1}</td>
                         <td className="px-4 py-3">
                           <div className="font-medium">{k.name}</div>
-                          {goalTitle(k.strategicGoalId) && <div className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-violet-400"><Icon.strategy className="h-2.5 w-2.5" /> {goalTitle(k.strategicGoalId)}</div>}
+                          {objectiveOf(k) && <div className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-violet-400"><Icon.strategy className="h-2.5 w-2.5" /> {objectiveOf(k)}</div>}
                           <div className="mt-1 flex flex-wrap gap-1">
                             {chips(k).map((c, j) => <span key={j} className="rounded bg-royal-500/10 px-1.5 py-0.5 text-[10px] text-royal-400">{c}</span>)}
                           </div>

@@ -56,7 +56,7 @@ export function PlanningKorporat() {
 
   const kpis = (kpiMap[UNIT] ?? []).filter((k) => k.period === period);
   const totalWeight = kpis.reduce((s, k) => s + (k.weight || 0), 0);
-  const isComplete = (k: PlanningKpi) => (k.weight || 0) > 0 && (k.annualTarget || 0) !== 0 && !!k.strategicGoalId;
+  const isComplete = (k: PlanningKpi) => (k.weight || 0) > 0 && (k.annualTarget || 0) !== 0 && (!!k.strategicGoalId || !!k.strategicGoalText);
   const doneCount = kpis.filter(isComplete).length;
 
   const saveKpi = (k: PlanningKpi) => {
@@ -68,7 +68,7 @@ export function PlanningKorporat() {
   };
   const remove = (k: PlanningKpi) => { if (confirm(`${t("Delete")} “${k.name}”?`)) setKpiMap((m) => ({ ...m, [UNIT]: (m[UNIT] ?? []).filter((x) => x.id !== k.id) })); };
 
-  const goalTitle = (id?: string) => goals.find((g) => g.id === id)?.title;
+  const objectiveOf = (k: PlanningKpi) => goals.find((g) => g.id === k.strategicGoalId)?.title || k.strategicGoalText;
 
   return (
     <>
@@ -128,7 +128,7 @@ export function PlanningKorporat() {
                     <td className="px-4 py-3 align-top text-xs text-[var(--muted)]">{i + 1}</td>
                     <td className="px-4 py-3">
                       <div className="font-medium">{k.name}</div>
-                      {goalTitle(k.strategicGoalId) && <div className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-violet-400"><Icon.strategy className="h-2.5 w-2.5" /> {goalTitle(k.strategicGoalId)}</div>}
+                      {objectiveOf(k) && <div className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-violet-400"><Icon.strategy className="h-2.5 w-2.5" /> {objectiveOf(k)}</div>}
                       <div className="mt-1 flex flex-wrap gap-1">
                         {[k.group, k.perspective, k.measurement, k.polarity, k.frequency].filter(Boolean).map((c, j) => <span key={j} className="rounded bg-royal-500/10 px-1.5 py-0.5 text-[10px] text-royal-400">{c}</span>)}
                       </div>

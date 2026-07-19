@@ -1292,6 +1292,7 @@ export interface PlanningKpi {
   group: string; // KPI Bersama / Direktorat / Individu (recap grouping)
   perspective: string; // Perspektif Balanced Scorecard
   strategicGoalId?: string; // Sasaran Strategis — picked from strategic goals
+  strategicGoalText?: string; // manual Sasaran Strategis when none of the goals fit
   name: string;
   definition: string;
   purpose: string;
