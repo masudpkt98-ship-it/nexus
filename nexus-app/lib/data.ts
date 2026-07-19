@@ -1294,8 +1294,8 @@ export const esgCriteriaOptions = ["Environment", "Social", "Governance"] as con
 export const kpiMonths = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"] as const;
 
 export interface KpiConversion { from: string; to: string; value: string }
-// Formula component (used at KPI realization): symbol · definition · formula · weight.
-export interface FormulaDetail { symbol: string; definition: string; formula: string }
+// Formula component (used at KPI realization): symbol · definition · value.
+export interface FormulaDetail { symbol: string; definition: string; value?: string }
 export interface PlanningKpi {
   id: string;
   group: string; // KPI Bersama / Direktorat / Individu (recap grouping)
@@ -1312,6 +1312,7 @@ export interface PlanningKpi {
   conversions: KpiConversion[];
   hasFormulaDetail?: boolean; // "Detail Formula" — expanded formula components
   formulaDetails?: FormulaDetail[];
+  computationFormula?: string; // Rumus Perhitungan — mengeksekusi simbol Detail Formula saat Realisasi
   measurement: string; // Jenis Pengukuran
   polarity: string;
   frequency: string;

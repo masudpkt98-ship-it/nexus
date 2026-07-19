@@ -11,6 +11,7 @@ import {
   jobProfiles as seedProfiles,
   strategicGoals as seedGoals,
   kpiPerspectives,
+  kpiUnits, kpiFrequencies, kpiValidities, kpiCascadeTypes,
   subordinateLevels,
   type CorporateKpi,
   type JobProfile,
@@ -335,7 +336,6 @@ function PerformanceDictionaryPage() {
                       <th className="px-3 py-2">{t("Cascade Type")}</th>
                       <th className="px-3 py-2">{t("Priority")}</th>
                       <th className="px-3 py-2">{t("Weight")}</th>
-                      <th className="px-3 py-2">{t("Measurement")}</th>
                       <th className="px-3 py-2">{t("Frequency")}</th>
                       <th className="px-3 py-2">{t("Annual Target")}</th>
                       <th className="px-3 py-2"></th>
@@ -351,7 +351,6 @@ function PerformanceDictionaryPage() {
                         <td className="px-3 py-2 text-[var(--muted)]">{x.tipe || "—"}</td>
                         <td className="px-3 py-2 text-[var(--muted)]">{x.prioritas || "—"}</td>
                         <td className="px-3 py-2 text-[var(--muted)]">{x.bobot || "—"}</td>
-                        <td className="px-3 py-2 text-[var(--muted)]">{x.pengukuran || "—"}</td>
                         <td className="px-3 py-2 text-[var(--muted)]">{x.frekuensi || "—"}</td>
                         <td className="px-3 py-2 text-[var(--muted)]">{x.target || "—"}</td>
                         <td className="px-3 py-2 text-right whitespace-nowrap">
@@ -363,7 +362,7 @@ function PerformanceDictionaryPage() {
                       </tr>
                     ))}
                     {teknisFor(curProfileId).length === 0 && (
-                      <tr><td colSpan={11} className="px-3 py-6 text-center text-[var(--muted)]">{t("No KPI Teknis yet for this Job Profile. Add one.")}</td></tr>
+                      <tr><td colSpan={10} className="px-3 py-6 text-center text-[var(--muted)]">{t("No KPI Teknis yet for this Job Profile. Add one.")}</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -383,8 +382,16 @@ function PerformanceDictionaryPage() {
           </label>
           <label className={labelCls}>KPI<input value={tForm.data.kpi} onChange={(e) => setTField("kpi", e.target.value)} placeholder={t("e.g. Ketersediaan Sistem Aplikasi")} className={inputCls} /></label>
           <div className="grid grid-cols-3 gap-3">
-            <label className={labelCls}>{t("Validity")}<input value={tForm.data.validitas} onChange={(e) => setTField("validitas", e.target.value)} className={inputCls} /></label>
-            <label className={labelCls}>{t("Unit")}<input value={tForm.data.satuan} onChange={(e) => setTField("satuan", e.target.value)} placeholder="%" className={inputCls} /></label>
+            <label className={labelCls}>{t("Validity")}
+              <select value={tForm.data.validitas || "Exact"} onChange={(e) => setTField("validitas", e.target.value)} className={`${inputCls} text-[var(--text)]`}>
+                {kpiValidities.map((x) => <option key={x} value={x}>{x}</option>)}
+              </select>
+            </label>
+            <label className={labelCls}>{t("Unit")}
+              <select value={tForm.data.satuan || "Persen"} onChange={(e) => setTField("satuan", e.target.value)} className={`${inputCls} text-[var(--text)]`}>
+                {kpiUnits.map((x) => <option key={x} value={x}>{x}</option>)}
+              </select>
+            </label>
             <label className={labelCls}>{t("Polarity")}
               <select value={tForm.data.polaritas} onChange={(e) => setTField("polaritas", e.target.value)} className={`${inputCls} text-[var(--text)]`}>
                 <option value="Maximize">Maximize</option>
@@ -394,13 +401,20 @@ function PerformanceDictionaryPage() {
             </label>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <label className={labelCls}>{t("Cascade Type")}<input value={tForm.data.tipe} onChange={(e) => setTField("tipe", e.target.value)} className={inputCls} /></label>
+            <label className={labelCls}>{t("Cascade Type")}
+              <select value={tForm.data.tipe || "Fully A"} onChange={(e) => setTField("tipe", e.target.value)} className={`${inputCls} text-[var(--text)]`}>
+                {kpiCascadeTypes.map((x) => <option key={x} value={x}>{x}</option>)}
+              </select>
+            </label>
             <label className={labelCls}>{t("Priority")}<input value={tForm.data.prioritas} onChange={(e) => setTField("prioritas", e.target.value)} className={inputCls} /></label>
             <label className={labelCls}>{t("Weight")}<input value={tForm.data.bobot} onChange={(e) => setTField("bobot", e.target.value)} placeholder="%" className={inputCls} /></label>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <label className={labelCls}>{t("Measurement")}<input value={tForm.data.pengukuran} onChange={(e) => setTField("pengukuran", e.target.value)} className={inputCls} /></label>
-            <label className={labelCls}>{t("Frequency")}<input value={tForm.data.frekuensi} onChange={(e) => setTField("frekuensi", e.target.value)} placeholder={t("e.g. Monthly")} className={inputCls} /></label>
+            <label className={labelCls}>{t("Frequency")}
+              <select value={tForm.data.frekuensi || "Monthly"} onChange={(e) => setTField("frekuensi", e.target.value)} className={`${inputCls} text-[var(--text)]`}>
+                {kpiFrequencies.map((x) => <option key={x} value={x}>{x}</option>)}
+              </select>
+            </label>
             <label className={labelCls}>{t("Annual Target")}<input value={tForm.data.target} onChange={(e) => setTField("target", e.target.value)} className={inputCls} /></label>
           </div>
         </Modal>

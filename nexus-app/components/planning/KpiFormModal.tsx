@@ -27,7 +27,7 @@ export const newKpiId = () => { try { return `pk-${crypto.randomUUID().slice(0, 
 type Form = Omit<PlanningKpi, "id"> & { id: string | null };
 const emptyForm = (period: string, group: string): Form => ({
   id: null, group, perspective: "Financial", strategicGoalId: "", strategicGoalText: undefined, name: "", definition: "", purpose: "",
-  type: "Strategis", weight: 0, formula: "", hasConversion: false, conversions: [], hasFormulaDetail: false, formulaDetails: [], measurement: "Exact", polarity: "Maximize",
+  type: "Strategis", weight: 0, formula: "", hasConversion: false, conversions: [], hasFormulaDetail: false, formulaDetails: [], computationFormula: "", measurement: "Exact", polarity: "Maximize",
   frequency: "Monthly", cascadeType: "Fully A", consolidation: "Take Last Known", monthlyTargets: {}, annualTarget: 0,
   dataSource: "", unit: "Persen", esgCriteria: [], validity: "Exact", proxyMax: undefined, supportingFile: "", pic: "", dataManager: "", period,
 });
@@ -45,6 +45,31 @@ function computeAnnual(monthly: Record<string, number>, consolidation: string, m
   else if (consolidation === "Average") out = nums.reduce((s, n) => s + n, 0) / nums.length;
   else out = nums[nums.length - 1]; // Take Last Known
   return Math.round(out * 100) / 100;
+}
+
+// Evaluate "Rumus Perhitungan" by substituting each symbol with its numeric
+// Value. Returns null if any referenced symbol lacks a value or the expression
+// isn't pure arithmetic (safe: no eval on raw input — only sanitized arithmetic).
+function evalComputation(expr: string, details: FormulaDetail[]): number | null {
+  const e = (expr ?? "").trim();
+  if (!e) return null;
+  let s = e;
+  const syms = details
+    .map((d) => ({ sym: (d.symbol ?? "").trim(), val: (d.value ?? "").trim() }))
+    .filter((d) => d.sym)
+    .sort((a, b) => b.sym.length - a.sym.length); // longest first to avoid partial hits
+  for (const { sym, val } of syms) {
+    if (val === "" || Number.isNaN(Number(val))) return null; // value not yet known
+    const re = new RegExp(sym.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
+    s = s.replace(re, `(${Number(val)})`);
+  }
+  if (!/^[0-9.+\-*/()%\s]*$/.test(s)) return null; // only arithmetic survives
+  try {
+    const r = Function(`"use strict";return (${s})`)();
+    return Number.isFinite(r) ? Math.round(r * 10000) / 10000 : null;
+  } catch {
+    return null;
+  }
 }
 
 // Extracted from the Performance Planning page so both the global recap and the
@@ -96,7 +121,7 @@ export function KpiFormModal({
   const addConv = () => setForm((f) => ({ ...f, conversions: [...f.conversions, { from: "", to: "", value: "" }] }));
   const setConv = (i: number, key: keyof KpiConversion, v: string) => setForm((f) => ({ ...f, conversions: f.conversions.map((c, j) => (j === i ? { ...c, [key]: v } : c)) }));
   const removeConv = (i: number) => setForm((f) => ({ ...f, conversions: f.conversions.filter((_, j) => j !== i) }));
-  const addFD = () => setForm((f) => ({ ...f, formulaDetails: [...(f.formulaDetails ?? []), { symbol: "", definition: "", formula: "" }] }));
+  const addFD = () => setForm((f) => ({ ...f, formulaDetails: [...(f.formulaDetails ?? []), { symbol: "", definition: "", value: "" }] }));
   const setFD = (i: number, key: keyof FormulaDetail, v: string) => setForm((f) => ({ ...f, formulaDetails: (f.formulaDetails ?? []).map((d, j) => (j === i ? { ...d, [key]: v } : d)) }));
   const removeFD = (i: number) => setForm((f) => ({ ...f, formulaDetails: (f.formulaDetails ?? []).filter((_, j) => j !== i) }));
 
@@ -181,24 +206,45 @@ export function KpiFormModal({
           {/* Detail Formula — expandable formula components (used at KPI realization). */}
           <div className="border-t pt-3">
             <label className="flex items-center gap-2 text-[12px] font-medium"><input type="checkbox" checked={!!form.hasFormulaDetail} onChange={(e) => setF("hasFormulaDetail", e.target.checked)} className="accent-royal-500" /> Detail Formula</label>
-            <span className="mt-0.5 block text-[10px] text-[var(--muted)]">Komponen rumus (Simbol · Definisi · Formula) — dipakai saat Realisasi KPI.</span>
+            <span className="mt-0.5 block text-[10px] text-[var(--muted)]">Komponen rumus (Simbol · Definisi) + Rumus Perhitungan — dipakai saat Realisasi KPI.</span>
             {form.hasFormulaDetail && (
               <div className="mt-2 space-y-2">
                 <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                   <span className="w-14 shrink-0 text-center">Simbol</span>
                   <span className="flex-1">Definisi</span>
-                  <span className="flex-1">Formula</span>
+                  <span className="w-24 shrink-0">Value</span>
                   <span className="w-4 shrink-0" />
                 </div>
                 {(form.formulaDetails ?? []).map((d, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <input value={d.symbol} onChange={(e) => setFD(i, "symbol", e.target.value)} placeholder="a" className="w-14 shrink-0 rounded-lg border bg-[rgb(var(--surface))] px-2 py-1.5 text-center text-[13px] font-semibold text-royal-400 outline-none focus:border-royal-500" />
                     <input value={d.definition} onChange={(e) => setFD(i, "definition", e.target.value)} placeholder="Definisi" className="flex-1 rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500" />
-                    <input value={d.formula} onChange={(e) => setFD(i, "formula", e.target.value)} placeholder="Formula" className="flex-1 rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500" />
+                    <input value={d.value ?? ""} onChange={(e) => setFD(i, "value", e.target.value)} inputMode="decimal" placeholder="—" className="w-24 shrink-0 rounded-lg border bg-[rgb(var(--surface))] px-2 py-1.5 text-right text-[13px] outline-none focus:border-royal-500" />
                     <button onClick={() => removeFD(i)} className="w-4 shrink-0 text-[var(--muted)] hover:text-rose-400" title={t("Delete")}>✕</button>
                   </div>
                 ))}
                 <Btn variant="ghost" onClick={addFD}><Icon.plus className="h-3.5 w-3.5" /> {t("Add row")}</Btn>
+                <label className="mt-1 block text-[11px] font-medium text-[var(--muted)]">Rumus Perhitungan
+                  <input value={form.computationFormula ?? ""} onChange={(e) => setF("computationFormula", e.target.value)} placeholder="mis. (a / b) * 100" className={`${inputCls} font-mono`} />
+                </label>
+                {(() => {
+                  const details = form.formulaDetails ?? [];
+                  const syms = details.map((d) => d.symbol.trim()).filter(Boolean);
+                  if (!syms.length) return null;
+                  const result = evalComputation(form.computationFormula ?? "", details);
+                  return (
+                    <div className="space-y-1">
+                      <span className="block text-[10px] text-[var(--muted)]">Gunakan simbol: {syms.map((s) => <code key={s} className="mx-0.5 rounded bg-royal-500/12 px-1 font-semibold text-royal-400">{s}</code>)} — Value kosong diisi saat Realisasi KPI.</span>
+                      {(form.computationFormula ?? "").trim() && (
+                        result !== null ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/12 px-2 py-1 text-[12px] font-semibold text-emerald-500">= {result.toLocaleString("id-ID")}</span>
+                        ) : (
+                          <span className="block text-[10px] text-amber-500">Hasil muncul otomatis bila semua Value terisi angka.</span>
+                        )
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
