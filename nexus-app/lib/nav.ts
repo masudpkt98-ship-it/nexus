@@ -27,7 +27,8 @@ export const navItems: NavItem[] = [
       { label: "KPI Eligibility", href: "/dashboard/eligibility" },
     ],
   },
-  // Directory of employees — grouped under Overview, next to the dashboards.
+  // Grouped under Overview, next to the dashboards (order: Nexian, then Directory).
+  { label: "Nexian", href: "/nexian", icon: "spark", section: "Overview" },
   { label: "Employee Directory", href: "/people", icon: "users", section: "Overview" },
 
   { label: "Strategic Planning", href: "/strategy", icon: "strategy", section: "Plan & Execute" },
@@ -61,7 +62,6 @@ export const navItems: NavItem[] = [
     ],
   },
   { label: "Development", href: "/development", icon: "development", section: "People & Performance" },
-  { label: "Nexian", href: "/nexian", icon: "spark", section: "People & Performance" },
 
   { label: "Customer Request", href: "/requests", icon: "request", section: "Customer", badge: "3" },
   { label: "Satisfaction", href: "/satisfaction", icon: "satisfaction", section: "Customer" },
