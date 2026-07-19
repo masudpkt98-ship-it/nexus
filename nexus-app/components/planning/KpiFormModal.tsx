@@ -9,7 +9,7 @@ import { EmployeePicker } from "@/components/EmployeePicker";
 import {
   kpiPerspectives, kpiGroups, kpiTypes, kpiPolarities, kpiFrequencies,
   kpiCascadeTypes, kpiConsolidations, kpiUnits, kpiValidities, esgCriteriaOptions, kpiMonths,
-  type PlanningKpi, type KpiConversion, type StrategicGoal,
+  type PlanningKpi, type KpiConversion, type FormulaDetail, type StrategicGoal,
 } from "@/lib/data";
 import { useI18n } from "@/lib/i18n";
 import { useLocalState } from "@/lib/useLocalState";
@@ -26,7 +26,7 @@ export const newKpiId = () => { try { return `pk-${crypto.randomUUID().slice(0, 
 type Form = Omit<PlanningKpi, "id"> & { id: string | null };
 const emptyForm = (period: string, group: string): Form => ({
   id: null, group, perspective: "Financial", strategicGoalId: "", strategicGoalText: undefined, name: "", definition: "", purpose: "",
-  type: "Strategis", weight: 0, formula: "", hasConversion: false, conversions: [], measurement: "Exact", polarity: "Maximize",
+  type: "Strategis", weight: 0, formula: "", hasConversion: false, conversions: [], hasFormulaDetail: false, formulaDetails: [], measurement: "Exact", polarity: "Maximize",
   frequency: "Monthly", cascadeType: "Fully A", consolidation: "Take Last Known", monthlyTargets: {}, annualTarget: 0,
   dataSource: "", unit: "Persen", esgCriteria: [], validity: "Exact", proxyMax: undefined, supportingFile: "", pic: "", dataManager: "", period,
 });
@@ -59,7 +59,9 @@ export function KpiFormModal({
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const [form, setForm] = useState<Form>(initial ? { ...initial } : emptyForm(period, defaultGroup));
+  const [form, setForm] = useState<Form>(initial
+    ? { ...initial, hasFormulaDetail: initial.hasFormulaDetail ?? false, formulaDetails: initial.formulaDetails ?? [] }
+    : emptyForm(period, defaultGroup));
   // Render through a portal to <body> so an ancestor's transform (e.g. the page's
   // animate-fade-up wrapper) can't become the fixed-positioning containing block —
   // which mis-placed the modal and made its body impossible to scroll.
@@ -82,6 +84,9 @@ export function KpiFormModal({
   const addConv = () => setForm((f) => ({ ...f, conversions: [...f.conversions, { from: "", to: "", value: "" }] }));
   const setConv = (i: number, key: keyof KpiConversion, v: string) => setForm((f) => ({ ...f, conversions: f.conversions.map((c, j) => (j === i ? { ...c, [key]: v } : c)) }));
   const removeConv = (i: number) => setForm((f) => ({ ...f, conversions: f.conversions.filter((_, j) => j !== i) }));
+  const addFD = () => setForm((f) => ({ ...f, formulaDetails: [...(f.formulaDetails ?? []), { symbol: "", definition: "", formula: "", bobot: "" }] }));
+  const setFD = (i: number, key: keyof FormulaDetail, v: string) => setForm((f) => ({ ...f, formulaDetails: (f.formulaDetails ?? []).map((d, j) => (j === i ? { ...d, [key]: v } : d)) }));
+  const removeFD = (i: number) => setForm((f) => ({ ...f, formulaDetails: (f.formulaDetails ?? []).filter((_, j) => j !== i) }));
 
   const save = () => {
     const name = form.name.trim();
@@ -174,6 +179,33 @@ export function KpiFormModal({
           </div>
 
           <label className={labelCls}>{t("Scoring formula")}<textarea value={form.formula} onChange={(e) => setF("formula", e.target.value)} rows={2} className={inputCls} /></label>
+
+          {/* Detail Formula — expandable formula components (used at KPI realization). */}
+          <div className="border-t pt-3">
+            <label className="flex items-center gap-2 text-[12px] font-medium"><input type="checkbox" checked={!!form.hasFormulaDetail} onChange={(e) => setF("hasFormulaDetail", e.target.checked)} className="accent-royal-500" /> Detail Formula</label>
+            <span className="mt-0.5 block text-[10px] text-[var(--muted)]">Komponen rumus (Simbol · Definisi · Formula · Bobot) — dipakai saat Realisasi KPI.</span>
+            {form.hasFormulaDetail && (
+              <div className="mt-2 space-y-2">
+                <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                  <span className="w-14 shrink-0 text-center">Simbol</span>
+                  <span className="flex-1">Definisi</span>
+                  <span className="flex-1">Formula</span>
+                  <span className="w-20 shrink-0">Bobot</span>
+                  <span className="w-4 shrink-0" />
+                </div>
+                {(form.formulaDetails ?? []).map((d, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input value={d.symbol} onChange={(e) => setFD(i, "symbol", e.target.value)} placeholder="a" className="w-14 shrink-0 rounded-lg border bg-[rgb(var(--surface))] px-2 py-1.5 text-center text-[13px] font-semibold text-royal-400 outline-none focus:border-royal-500" />
+                    <input value={d.definition} onChange={(e) => setFD(i, "definition", e.target.value)} placeholder="Definisi" className="flex-1 rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500" />
+                    <input value={d.formula} onChange={(e) => setFD(i, "formula", e.target.value)} placeholder="Formula" className="flex-1 rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500" />
+                    <input value={d.bobot} onChange={(e) => setFD(i, "bobot", e.target.value)} placeholder="%" className="w-20 shrink-0 rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500" />
+                    <button onClick={() => removeFD(i)} className="w-4 shrink-0 text-[var(--muted)] hover:text-rose-400" title={t("Delete")}>✕</button>
+                  </div>
+                ))}
+                <Btn variant="ghost" onClick={addFD}><Icon.plus className="h-3.5 w-3.5" /> {t("Add row")}</Btn>
+              </div>
+            )}
+          </div>
 
           <div className="border-t pt-3">
             <label className="flex items-center gap-2 text-[12px] font-medium"><input type="checkbox" checked={form.hasConversion} onChange={(e) => setF("hasConversion", e.target.checked)} className="accent-royal-500" /> {t("Has achievement conversion")}</label>
