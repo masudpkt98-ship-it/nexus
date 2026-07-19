@@ -125,13 +125,37 @@ export function KpiFormModal({
             )}
           </div>
 
-          <div className="border-t pt-3"><div className={sectionCls}>{t("Monthly targets")}</div></div>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {kpiMonths.map((m) => (
-              <label key={m} className="block text-[11px] text-[var(--muted)]">{m}
-                <input type="number" value={form.monthlyTargets[m] ?? ""} onChange={(e) => setMonthly(m, Number(e.target.value))} placeholder="0" className={inputCls} />
-              </label>
-            ))}
+          <div className="border-t pt-3 flex flex-wrap items-center gap-2">
+            <div className={sectionCls}>{t("Monthly targets")}</div>
+            <span className="inline-flex items-center gap-1 text-[10px] text-[var(--muted)]">
+              <span className="h-2.5 w-2.5 rounded-sm bg-gold-500/25 ring-1 ring-gold-500/50" /> bulan akhir triwulan (dihitung)
+            </span>
+          </div>
+          {/* One column per Triwulan → Mar · Jun · Sep · Des land on the bottom row, highlighted. */}
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            {[0, 1, 2, 3].map((qi) => {
+              const label = ["Triwulan I", "Triwulan II", "Triwulan III", "Triwulan IV"][qi];
+              const months = kpiMonths.slice(qi * 3, qi * 3 + 3);
+              return (
+                <div key={qi} className="rounded-xl border p-2">
+                  <div className="mb-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-royal-400">{label}</div>
+                  <div className="space-y-1.5">
+                    {months.map((m, mi) => {
+                      const end = mi === 2; // 3rd month of the quarter = Mar/Jun/Sep/Des
+                      return (
+                        <label key={m} className={cn("block rounded-lg px-1.5 pb-1 pt-0.5", end && "bg-gold-500/15 ring-1 ring-gold-500/40")}>
+                          <span className={cn("flex items-center justify-between text-[11px]", end ? "font-semibold text-gold-600 dark:text-gold-300" : "text-[var(--muted)]")}>
+                            {m}{end && <Icon.check className="h-3 w-3" />}
+                          </span>
+                          <input type="number" value={form.monthlyTargets[m] ?? ""} onChange={(e) => setMonthly(m, Number(e.target.value))} placeholder="0"
+                            className={cn("mt-0.5 w-full rounded-lg border bg-[rgb(var(--surface))] px-2 py-1 text-[13px] outline-none focus:border-royal-500", end && "border-gold-500/50")} />
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
           <div className="flex items-end gap-2">
             <label className={cn(labelCls, "flex-1")}>{t("Annual target")}<input type="number" value={form.annualTarget} onChange={(e) => setF("annualTarget", Number(e.target.value))} className={inputCls} /></label>
