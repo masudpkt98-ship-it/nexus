@@ -7,7 +7,7 @@ import { Badge, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { EmployeePicker } from "@/components/EmployeePicker";
 import {
-  kpiPerspectives, kpiGroups, kpiTypes, kpiMeasurements, kpiPolarities, kpiFrequencies,
+  kpiPerspectives, kpiGroups, kpiTypes, kpiPolarities, kpiFrequencies,
   kpiCascadeTypes, kpiConsolidations, kpiUnits, kpiValidities, esgCriteriaOptions, kpiMonths,
   type PlanningKpi, type KpiConversion, type StrategicGoal,
 } from "@/lib/data";
@@ -166,7 +166,6 @@ export function KpiFormModal({
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <label className={labelCls}>{t("KPI Type")}<select value={form.type} onChange={(e) => setF("type", e.target.value)} className={selCls}>{kpiTypes.map((x) => <option key={x}>{x}</option>)}</select></label>
             <label className={labelCls}>{t("Weight (%)")}<input type="number" min={0} max={100} value={form.weight} onChange={(e) => setF("weight", Number(e.target.value))} className={inputCls} /></label>
-            <label className={labelCls}>{t("Measurement")}<select value={form.measurement} onChange={(e) => setF("measurement", e.target.value)} className={selCls}>{kpiMeasurements.map((x) => <option key={x}>{x}</option>)}</select></label>
             <label className={labelCls}>{t("Polarity")}<select value={form.polarity} onChange={(e) => setF("polarity", e.target.value)} className={selCls}>{kpiPolarities.map((x) => <option key={x}>{x}</option>)}</select></label>
             <label className={labelCls}>{t("Frequency")}<select value={form.frequency} onChange={(e) => setF("frequency", e.target.value)} className={selCls}>{kpiFrequencies.map((x) => <option key={x}>{x}</option>)}</select></label>
             <label className={labelCls}>{t("Cascade type")}<select value={form.cascadeType} onChange={(e) => setF("cascadeType", e.target.value)} className={selCls}>{kpiCascadeTypes.map((x) => <option key={x}>{x}</option>)}</select></label>

@@ -182,7 +182,7 @@ export function PlanningLevel({ level }: { level: PlanLevel }) {
                                         <td className="px-3 py-2">
                                           <div className="font-medium">{k.name}</div>
                                           <div className="mt-0.5 flex flex-wrap gap-1">
-                                            {[k.group, k.perspective, k.measurement, k.polarity, k.frequency].filter(Boolean).map((c, j) => <span key={j} className="rounded bg-royal-500/10 px-1.5 py-0.5 text-[10px] text-royal-400">{c}</span>)}
+                                            {[k.group, k.perspective, k.validity, k.polarity, k.frequency].filter(Boolean).map((c, j) => <span key={j} className="rounded bg-royal-500/10 px-1.5 py-0.5 text-[10px] text-royal-400">{c}</span>)}
                                           </div>
                                         </td>
                                         <td className="px-3 py-2 align-top text-[var(--muted)]">{k.unit}</td>

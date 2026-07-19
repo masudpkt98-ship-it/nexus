@@ -1289,7 +1289,7 @@ export const kpiUnits = [
   "Unit", "Kunjungan", "Jumlah Kios", "Jumlah", "Jumlah Orang", "Layanan", "Hektar",
   "Hari", "Hari Kerja", "Kali", "Indeks", "Poin", "Skor", "Rate",
 ] as const;
-export const kpiValidities = ["Exact", "Proxy"] as const;
+export const kpiValidities = ["Exact", "Proxy", "Activity"] as const;
 export const esgCriteriaOptions = ["Environment", "Social", "Governance"] as const;
 export const kpiMonths = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"] as const;
 

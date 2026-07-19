@@ -130,7 +130,7 @@ export function PlanningKorporat() {
                       <div className="font-medium">{k.name}</div>
                       {objectiveOf(k) && <div className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-violet-400"><Icon.strategy className="h-2.5 w-2.5" /> {objectiveOf(k)}</div>}
                       <div className="mt-1 flex flex-wrap gap-1">
-                        {[k.group, k.perspective, k.measurement, k.polarity, k.frequency].filter(Boolean).map((c, j) => <span key={j} className="rounded bg-royal-500/10 px-1.5 py-0.5 text-[10px] text-royal-400">{c}</span>)}
+                        {[k.group, k.perspective, k.validity, k.polarity, k.frequency].filter(Boolean).map((c, j) => <span key={j} className="rounded bg-royal-500/10 px-1.5 py-0.5 text-[10px] text-royal-400">{c}</span>)}
                       </div>
                     </td>
                     <td className="px-4 py-3 align-top text-xs text-[var(--muted)]">{k.unit}</td>

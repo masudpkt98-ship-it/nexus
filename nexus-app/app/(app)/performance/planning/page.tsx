@@ -38,15 +38,15 @@ export default function PerformancePlanningPage() {
 
   const onExport = async () => {
     const XLSX = await import("xlsx");
-    const aoa: (string | number)[][] = [[t("Group"), t("Perspective"), t("Strategic Goal"), "KPI", t("Unit"), t("Target"), t("Weight (%)"), t("Measurement"), t("Polarity"), t("Frequency"), t("Cascade type"), "PIC"]];
-    kpis.filter((k) => k.period === period).forEach((k) => aoa.push([k.group, k.perspective, objectiveOf(k) ?? "", k.name, k.unit, k.annualTarget, k.weight, k.measurement, k.polarity, k.frequency, k.cascadeType, k.pic]));
+    const aoa: (string | number)[][] = [[t("Group"), t("Perspective"), t("Strategic Goal"), "KPI", t("Unit"), t("Target"), t("Weight (%)"), t("Validity"), t("Polarity"), t("Frequency"), t("Cascade type"), "PIC"]];
+    kpis.filter((k) => k.period === period).forEach((k) => aoa.push([k.group, k.perspective, objectiveOf(k) ?? "", k.name, k.unit, k.annualTarget, k.weight, k.validity, k.polarity, k.frequency, k.cascadeType, k.pic]));
     aoa.push([]); aoa.push(["", "", "", "", "", "", totalWeight, "", "", "", "", ""]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), "KPI");
     XLSX.writeFile(wb, `nexus-kpi-planning-${period}.xlsx`);
   };
 
-  const chips = (k: PlanningKpi) => [k.measurement, k.cascadeType, k.polarity, k.consolidation, k.frequency, k.type].filter(Boolean);
+  const chips = (k: PlanningKpi) => [k.validity, k.cascadeType, k.polarity, k.consolidation, k.frequency, k.type].filter(Boolean);
 
   return (
     <>
