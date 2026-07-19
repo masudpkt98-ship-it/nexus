@@ -5,7 +5,7 @@ import { Card, DonutChart, Gauge, ProgressBar, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import {
   METRICS, PLAN_BUCKETS, BUCKET_COLOR, BUCKET_TONE,
-  type ProgressModel, type KompartemenProgress, type UnitProgress,
+  type ProgressModel, type DirectorateProgress, type KompartemenProgress, type UnitProgress,
   type PlanBucket, type MetricKey, type MetricAgg,
 } from "@/lib/perfProgress";
 
@@ -27,6 +27,7 @@ interface BoardData {
 export function ProgressUnitView({ model, periodText }: { model: ProgressModel; periodText: string }) {
   const allKomp = model.directorates.flatMap((d) => d.kompartemens);
   const kompRanking = [...allKomp].sort((a, b) => b.completeness - a.completeness || b.jumlah - a.jumlah || a.kompartemen.localeCompare(b.kompartemen));
+  const dirRanking = [...model.directorates].sort((a, b) => b.completeness - a.completeness || b.jumlah - a.jumlah || a.directorate.localeCompare(b.directorate));
 
   return (
     <div className="space-y-5">
@@ -36,8 +37,8 @@ export function ProgressUnitView({ model, periodText }: { model: ProgressModel; 
           total={model.totalKaryawan} buckets={model.buckets} metrics={model.metrics} />
       </Card>
 
-      {/* Rankings — Kompartemen (default) & Unit Kerja */}
-      <RankingCard kompRanking={kompRanking} unitRanking={model.ranking} />
+      {/* Rankings — Direktorat / Kompartemen / Unit Kerja */}
+      <RankingCard dirRanking={dirRanking} kompRanking={kompRanking} unitRanking={model.ranking} />
 
       {/* Klaster Direktorat — the 5 Direktorat together */}
       <ClusterCard title="Capaian per Direktorat" subtitle={`${model.directorates.length} Direktorat`} icon="users">
@@ -187,15 +188,18 @@ function MetricGauge({ label, agg, available, size = 104 }: { label: string; agg
   );
 }
 
-// ---- Ranking (Kompartemen default · Unit Kerja) -------------------------------
-function RankingCard({ kompRanking, unitRanking }: { kompRanking: KompartemenProgress[]; unitRanking: UnitProgress[] }) {
-  const [mode, setMode] = useState<"komp" | "unit">("komp");
+// ---- Ranking (Direktorat · Kompartemen · Unit Kerja) --------------------------
+function RankingCard({ dirRanking, kompRanking, unitRanking }: { dirRanking: DirectorateProgress[]; kompRanking: KompartemenProgress[]; unitRanking: UnitProgress[] }) {
+  const [mode, setMode] = useState<"dir" | "komp" | "unit">("dir");
   const [showAll, setShowAll] = useState(false);
   const medal = ["🥇", "🥈", "🥉"];
-  const rows = mode === "komp"
+  const rows = mode === "dir"
+    ? dirRanking.map((d) => ({ key: d.directorate, name: d.directorate, sub: `${d.kompartemens.length} kompartemen · ${d.units.length} unit`, jumlah: d.jumlah, completeness: d.completeness }))
+    : mode === "komp"
     ? kompRanking.map((k) => ({ key: `${k.directorate}-${k.kompartemen}`, name: k.kompartemen, sub: k.directorate, jumlah: k.jumlah, completeness: k.completeness }))
     : unitRanking.map((u) => ({ key: `${u.directorate}-${u.unit}`, name: u.unit, sub: u.directorate, jumlah: u.jumlah, completeness: u.completeness }));
   const list = showAll ? rows.slice(0, 30) : rows.slice(0, 10);
+  const modeLabel = mode === "dir" ? "Direktorat" : mode === "komp" ? "Kompartemen" : "Unit Kerja";
 
   return (
     <Card>
@@ -203,13 +207,13 @@ function RankingCard({ kompRanking, unitRanking }: { kompRanking: KompartemenPro
         <div className="flex items-center gap-2">
           <Icon.spark className="h-5 w-5 text-gold-400" />
           <div>
-            <div className="text-[14px] font-bold">Ranking {mode === "komp" ? "Kompartemen" : "Unit Kerja"} Terlengkap</div>
+            <div className="text-[14px] font-bold">Ranking {modeLabel} Terlengkap</div>
             <div className="text-[11px] text-[var(--muted)]">Skor kelengkapan tahapan KPI (Rencana &amp; Realisasi approved)</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex gap-1">
-            {([["komp", "Kompartemen"], ["unit", "Unit Kerja"]] as const).map(([v, label]) => (
+            {([["dir", "Direktorat"], ["komp", "Kompartemen"], ["unit", "Unit Kerja"]] as const).map(([v, label]) => (
               <button key={v} onClick={() => { setMode(v); setShowAll(false); }}
                 className={cn("rounded-lg px-3 py-1.5 text-[12px] font-medium transition", mode === v ? "bg-royal-500/15 text-royal-400" : "glass hover:bg-black/5 dark:hover:bg-white/5")}>
                 {label}
