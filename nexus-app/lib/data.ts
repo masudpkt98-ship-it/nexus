@@ -1296,6 +1296,9 @@ export const kpiMonths = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt"
 export interface KpiConversion { from: string; to: string; value: string }
 // Formula component (used at KPI realization): symbol · definition · value.
 export interface FormulaDetail { symbol: string; definition: string; value?: string }
+// One "Detail Formula" block: a set of components + its own computation formula.
+// A KPI may carry several when its scoring needs more than one calculation.
+export interface FormulaBlock { label?: string; rows: FormulaDetail[]; formula: string }
 export interface PlanningKpi {
   id: string;
   group: string; // KPI Bersama / Direktorat / Individu (recap grouping)
@@ -1311,8 +1314,9 @@ export interface PlanningKpi {
   hasConversion: boolean;
   conversions: KpiConversion[];
   hasFormulaDetail?: boolean; // "Detail Formula" — expanded formula components
-  formulaDetails?: FormulaDetail[];
-  computationFormula?: string; // Rumus Perhitungan — mengeksekusi simbol Detail Formula saat Realisasi
+  formulaBlocks?: FormulaBlock[]; // one or more Detail Formula blocks (multi-calculation)
+  formulaDetails?: FormulaDetail[]; // legacy single-block components (migrated to formulaBlocks)
+  computationFormula?: string; // legacy single Rumus Perhitungan (migrated to formulaBlocks)
   measurement: string; // Jenis Pengukuran
   polarity: string;
   frequency: string;

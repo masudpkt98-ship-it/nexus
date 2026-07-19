@@ -10,7 +10,7 @@ import { StrategicPicker } from "@/components/planning/StrategicPicker";
 import {
   kpiPerspectives, kpiGroups, kpiTypes, kpiPolarities, kpiFrequencies,
   kpiCascadeTypes, kpiConsolidations, kpiUnits, kpiValidities, esgCriteriaOptions, kpiMonths,
-  type PlanningKpi, type KpiConversion, type FormulaDetail, type StrategicGoal,
+  type PlanningKpi, type KpiConversion, type FormulaDetail, type FormulaBlock, type StrategicGoal,
 } from "@/lib/data";
 import { useI18n } from "@/lib/i18n";
 import { useLocalState } from "@/lib/useLocalState";
@@ -27,7 +27,7 @@ export const newKpiId = () => { try { return `pk-${crypto.randomUUID().slice(0, 
 type Form = Omit<PlanningKpi, "id"> & { id: string | null };
 const emptyForm = (period: string, group: string): Form => ({
   id: null, group, perspective: "Financial", strategicGoalId: "", strategicGoalText: undefined, name: "", definition: "", purpose: "",
-  type: "Strategis", weight: 0, formula: "", hasConversion: false, conversions: [], hasFormulaDetail: false, formulaDetails: [], computationFormula: "", measurement: "Exact", polarity: "Maximize",
+  type: "Strategis", weight: 0, formula: "", hasConversion: false, conversions: [], hasFormulaDetail: false, formulaBlocks: [], measurement: "Exact", polarity: "Maximize",
   frequency: "Monthly", cascadeType: "Fully A", consolidation: "Take Last Known", monthlyTargets: {}, annualTarget: 0,
   dataSource: "", unit: "Persen", esgCriteria: [], validity: "Exact", proxyMax: undefined, supportingFile: "", pic: "", dataManager: "", period,
 });
@@ -85,9 +85,18 @@ export function KpiFormModal({
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const [form, setForm] = useState<Form>(initial
-    ? { ...initial, hasFormulaDetail: initial.hasFormulaDetail ?? false, formulaDetails: initial.formulaDetails ?? [] }
-    : emptyForm(period, defaultGroup));
+  const [form, setForm] = useState<Form>(() => {
+    if (!initial) return emptyForm(period, defaultGroup);
+    // Migrate legacy single-block (formulaDetails + computationFormula) → formulaBlocks.
+    const legacyRows = initial.formulaDetails ?? [];
+    const blocks: FormulaBlock[] = initial.formulaBlocks?.length
+      ? initial.formulaBlocks
+      : legacyRows.length || (initial.computationFormula ?? "").trim()
+        ? [{ label: "", rows: legacyRows.length ? legacyRows : [{ symbol: "", definition: "", value: "" }], formula: initial.computationFormula ?? "" }]
+        : [];
+    const { formulaDetails: _fd, computationFormula: _cf, ...rest } = initial;
+    return { ...rest, hasFormulaDetail: initial.hasFormulaDetail ?? false, formulaBlocks: blocks };
+  });
   // Render through a portal to <body> so an ancestor's transform (e.g. the page's
   // animate-fade-up wrapper) can't become the fixed-positioning containing block —
   // which mis-placed the modal and made its body impossible to scroll.
@@ -121,9 +130,14 @@ export function KpiFormModal({
   const addConv = () => setForm((f) => ({ ...f, conversions: [...f.conversions, { from: "", to: "", value: "" }] }));
   const setConv = (i: number, key: keyof KpiConversion, v: string) => setForm((f) => ({ ...f, conversions: f.conversions.map((c, j) => (j === i ? { ...c, [key]: v } : c)) }));
   const removeConv = (i: number) => setForm((f) => ({ ...f, conversions: f.conversions.filter((_, j) => j !== i) }));
-  const addFD = () => setForm((f) => ({ ...f, formulaDetails: [...(f.formulaDetails ?? []), { symbol: "", definition: "", value: "" }] }));
-  const setFD = (i: number, key: keyof FormulaDetail, v: string) => setForm((f) => ({ ...f, formulaDetails: (f.formulaDetails ?? []).map((d, j) => (j === i ? { ...d, [key]: v } : d)) }));
-  const removeFD = (i: number) => setForm((f) => ({ ...f, formulaDetails: (f.formulaDetails ?? []).filter((_, j) => j !== i) }));
+  // Detail Formula — multiple blocks; each block has its own components + formula.
+  const mapBlocks = (f: Form, fn: (b: FormulaBlock, i: number) => FormulaBlock) => ({ ...f, formulaBlocks: (f.formulaBlocks ?? []).map(fn) });
+  const addBlock = () => setForm((f) => ({ ...f, formulaBlocks: [...(f.formulaBlocks ?? []), { label: "", rows: [{ symbol: "", definition: "", value: "" }], formula: "" }] }));
+  const removeBlock = (bi: number) => setForm((f) => ({ ...f, formulaBlocks: (f.formulaBlocks ?? []).filter((_, j) => j !== bi) }));
+  const setBlockField = (bi: number, key: "label" | "formula", v: string) => setForm((f) => mapBlocks(f, (b, j) => (j === bi ? { ...b, [key]: v } : b)));
+  const addRow = (bi: number) => setForm((f) => mapBlocks(f, (b, j) => (j === bi ? { ...b, rows: [...b.rows, { symbol: "", definition: "", value: "" }] } : b)));
+  const setRow = (bi: number, ri: number, key: keyof FormulaDetail, v: string) => setForm((f) => mapBlocks(f, (b, j) => (j === bi ? { ...b, rows: b.rows.map((d, k) => (k === ri ? { ...d, [key]: v } : d)) } : b)));
+  const removeRow = (bi: number, ri: number) => setForm((f) => mapBlocks(f, (b, j) => (j === bi ? { ...b, rows: b.rows.filter((_, k) => k !== ri) } : b)));
 
   const save = () => {
     const name = form.name.trim();
@@ -205,46 +219,56 @@ export function KpiFormModal({
 
           {/* Detail Formula — expandable formula components (used at KPI realization). */}
           <div className="border-t pt-3">
-            <label className="flex items-center gap-2 text-[12px] font-medium"><input type="checkbox" checked={!!form.hasFormulaDetail} onChange={(e) => setF("hasFormulaDetail", e.target.checked)} className="accent-royal-500" /> Detail Formula</label>
-            <span className="mt-0.5 block text-[10px] text-[var(--muted)]">Komponen rumus (Simbol · Definisi) + Rumus Perhitungan — dipakai saat Realisasi KPI.</span>
+            <label className="flex items-center gap-2 text-[12px] font-medium"><input type="checkbox" checked={!!form.hasFormulaDetail} onChange={(e) => { const on = e.target.checked; setForm((f) => ({ ...f, hasFormulaDetail: on, formulaBlocks: on && !(f.formulaBlocks ?? []).length ? [{ label: "", rows: [{ symbol: "", definition: "", value: "" }], formula: "" }] : (f.formulaBlocks ?? []) })); }} className="accent-royal-500" /> Detail Formula</label>
+            <span className="mt-0.5 block text-[10px] text-[var(--muted)]">Komponen rumus (Simbol · Definisi · Value) + Rumus Perhitungan — dipakai saat Realisasi KPI. Bisa lebih dari satu perhitungan.</span>
             {form.hasFormulaDetail && (
-              <div className="mt-2 space-y-2">
-                <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-                  <span className="w-14 shrink-0 text-center">Simbol</span>
-                  <span className="flex-1">Definisi</span>
-                  <span className="w-24 shrink-0">Value</span>
-                  <span className="w-4 shrink-0" />
-                </div>
-                {(form.formulaDetails ?? []).map((d, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <input value={d.symbol} onChange={(e) => setFD(i, "symbol", e.target.value)} placeholder="a" className="w-14 shrink-0 rounded-lg border bg-[rgb(var(--surface))] px-2 py-1.5 text-center text-[13px] font-semibold text-royal-400 outline-none focus:border-royal-500" />
-                    <input value={d.definition} onChange={(e) => setFD(i, "definition", e.target.value)} placeholder="Definisi" className="flex-1 rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500" />
-                    <input value={d.value ?? ""} onChange={(e) => setFD(i, "value", e.target.value)} inputMode="decimal" placeholder="—" className="w-24 shrink-0 rounded-lg border bg-[rgb(var(--surface))] px-2 py-1.5 text-right text-[13px] outline-none focus:border-royal-500" />
-                    <button onClick={() => removeFD(i)} className="w-4 shrink-0 text-[var(--muted)] hover:text-rose-400" title={t("Delete")}>✕</button>
-                  </div>
-                ))}
-                <Btn variant="ghost" onClick={addFD}><Icon.plus className="h-3.5 w-3.5" /> {t("Add row")}</Btn>
-                <label className="mt-1 block text-[11px] font-medium text-[var(--muted)]">Rumus Perhitungan
-                  <input value={form.computationFormula ?? ""} onChange={(e) => setF("computationFormula", e.target.value)} placeholder="mis. (a / b) * 100" className={`${inputCls} font-mono`} />
-                </label>
-                {(() => {
-                  const details = form.formulaDetails ?? [];
-                  const syms = details.map((d) => d.symbol.trim()).filter(Boolean);
-                  if (!syms.length) return null;
-                  const result = evalComputation(form.computationFormula ?? "", details);
+              <div className="mt-2 space-y-3">
+                {(form.formulaBlocks ?? []).map((blk, bi) => {
+                  const syms = blk.rows.map((d) => d.symbol.trim()).filter(Boolean);
+                  const result = evalComputation(blk.formula, blk.rows);
                   return (
-                    <div className="space-y-1">
-                      <span className="block text-[10px] text-[var(--muted)]">Gunakan simbol: {syms.map((s) => <code key={s} className="mx-0.5 rounded bg-royal-500/12 px-1 font-semibold text-royal-400">{s}</code>)} — Value kosong diisi saat Realisasi KPI.</span>
-                      {(form.computationFormula ?? "").trim() && (
-                        result !== null ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/12 px-2 py-1 text-[12px] font-semibold text-emerald-500">= {result.toLocaleString("id-ID")}</span>
-                        ) : (
-                          <span className="block text-[10px] text-amber-500">Hasil muncul otomatis bila semua Value terisi angka.</span>
-                        )
-                      )}
+                    <div key={bi} className="rounded-xl border border-dashed p-3">
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-royal-500/15 text-[11px] font-semibold text-royal-400">{bi + 1}</span>
+                        <input value={blk.label ?? ""} onChange={(e) => setBlockField(bi, "label", e.target.value)} placeholder={`Nama perhitungan (opsional), mis. Perhitungan ${bi + 1}`} className="flex-1 rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1 text-[12px] font-medium outline-none focus:border-royal-500" />
+                        <button onClick={() => removeBlock(bi)} className="shrink-0 text-[var(--muted)] hover:text-rose-400" title={t("Delete")}>✕</button>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                          <span className="w-14 shrink-0 text-center">Simbol</span>
+                          <span className="flex-1">Definisi</span>
+                          <span className="w-24 shrink-0">Value</span>
+                          <span className="w-4 shrink-0" />
+                        </div>
+                        {blk.rows.map((d, ri) => (
+                          <div key={ri} className="flex items-center gap-2">
+                            <input value={d.symbol} onChange={(e) => setRow(bi, ri, "symbol", e.target.value)} placeholder="a" className="w-14 shrink-0 rounded-lg border bg-[rgb(var(--surface))] px-2 py-1.5 text-center text-[13px] font-semibold text-royal-400 outline-none focus:border-royal-500" />
+                            <input value={d.definition} onChange={(e) => setRow(bi, ri, "definition", e.target.value)} placeholder="Definisi" className="flex-1 rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500" />
+                            <input value={d.value ?? ""} onChange={(e) => setRow(bi, ri, "value", e.target.value)} inputMode="decimal" placeholder="—" className="w-24 shrink-0 rounded-lg border bg-[rgb(var(--surface))] px-2 py-1.5 text-right text-[13px] outline-none focus:border-royal-500" />
+                            <button onClick={() => removeRow(bi, ri)} className="w-4 shrink-0 text-[var(--muted)] hover:text-rose-400" title={t("Delete")}>✕</button>
+                          </div>
+                        ))}
+                        <Btn variant="ghost" onClick={() => addRow(bi)}><Icon.plus className="h-3.5 w-3.5" /> {t("Add row")}</Btn>
+                        <label className="mt-1 block text-[11px] font-medium text-[var(--muted)]">Rumus Perhitungan
+                          <input value={blk.formula} onChange={(e) => setBlockField(bi, "formula", e.target.value)} placeholder="mis. (a / b) * 100" className={`${inputCls} font-mono`} />
+                        </label>
+                        {syms.length > 0 && (
+                          <div className="space-y-1">
+                            <span className="block text-[10px] text-[var(--muted)]">Gunakan simbol: {syms.map((s) => <code key={s} className="mx-0.5 rounded bg-royal-500/12 px-1 font-semibold text-royal-400">{s}</code>)} — Value kosong diisi saat Realisasi KPI.</span>
+                            {blk.formula.trim() && (
+                              result !== null ? (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/12 px-2 py-1 text-[12px] font-semibold text-emerald-500">= {result.toLocaleString("id-ID")}</span>
+                              ) : (
+                                <span className="block text-[10px] text-amber-500">Hasil muncul otomatis bila semua Value terisi angka.</span>
+                              )
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
-                })()}
+                })}
+                <Btn variant="ghost" onClick={addBlock}><Icon.plus className="h-3.5 w-3.5" /> Add Detail Formula</Btn>
               </div>
             )}
           </div>
