@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Btn } from "@/components/PageHeader";
 import { Badge, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
-import { EmployeePicker } from "@/components/EmployeePicker";
+import { UnitPicker } from "@/components/UnitPicker";
 import {
   kpiPerspectives, kpiGroups, kpiTypes, kpiPolarities, kpiFrequencies,
   kpiCascadeTypes, kpiConsolidations, kpiUnits, kpiValidities, esgCriteriaOptions, kpiMonths,
@@ -284,8 +284,8 @@ export function KpiFormModal({
 
           <div className="border-t pt-3"><div className={sectionCls}>{t("Responsibility")}</div></div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className={labelCls}>{t("KPI owner (PIC)")}<EmployeePicker value={form.pic} onChange={(v) => setF("pic", v)} className={inputCls} /></label>
-            <label className={labelCls}>{t("KPI data manager")}<EmployeePicker value={form.dataManager} onChange={(v) => setF("dataManager", v)} className={inputCls} /></label>
+            <label className={labelCls}>{t("KPI owner (PIC)")} — Unit Kerja<UnitPicker value={form.pic} onChange={(v) => setF("pic", v)} className={inputCls} /></label>
+            <label className={labelCls}>{t("KPI data manager")} — Unit Kerja<UnitPicker value={form.dataManager} onChange={(v) => setF("dataManager", v)} className={inputCls} /></label>
           </div>
         </div>
         <div className="flex justify-end gap-2 border-t p-3">
