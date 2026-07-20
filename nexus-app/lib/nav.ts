@@ -74,6 +74,17 @@ export const navItems: NavItem[] = [
           { label: "Individu (AVP & Staf)", href: "/performance/planning/individu" },
         ],
       },
+      {
+        label: "Performance Monitoring",
+        href: "/performance/monitoring",
+        children: [
+          { label: "Korporat", href: "/performance/monitoring/korporat" },
+          { label: "Direktorat", href: "/performance/monitoring/direktorat" },
+          { label: "Manajemen", href: "/performance/monitoring/manajemen" },
+          { label: "Unit Kerja", href: "/performance/monitoring/unit-kerja" },
+          { label: "Individu (AVP & Staf)", href: "/performance/monitoring/individu" },
+        ],
+      },
     ],
   },
   { label: "Development", href: "/development", icon: "development", section: "People & Performance" },

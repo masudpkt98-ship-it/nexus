@@ -50,9 +50,14 @@ const config: Config = {
         shimmer: {
           "100%": { transform: "translateX(100%)" },
         },
+        "slide-in-right": {
+          "0%": { opacity: "0", transform: "translateX(24px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
       },
       animation: {
         "fade-up": "fade-up 0.5s ease-out both",
+        "slide-in-right": "slide-in-right 0.28s ease-out both",
       },
     },
   },
