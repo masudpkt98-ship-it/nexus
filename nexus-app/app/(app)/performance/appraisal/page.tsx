@@ -7,15 +7,17 @@ import { Icon } from "@/components/Icons";
 import { AppraisalTable, CriteriaLegend } from "@/components/appraisal/AppraisalTable";
 import { RealisasiModal } from "@/components/monitoring/RealisasiModal";
 import { PeriodControls } from "@/components/monitoring/PeriodControls";
+import { ExportMenu } from "@/components/ExportMenu";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import { getStoredUser } from "@/lib/api";
 import { planningKpis as seedPlanning, type PlanningKpi } from "@/lib/data";
 import {
   REALIZATION_KEY, type RealizationMap, type RealizationEntry, type PeriodSel,
-  defaultPeriod, realizationKey,
+  defaultPeriod, realizationKey, periodLabel,
 } from "@/lib/perfRealization";
 import { APPRAISAL_LEVELS } from "@/lib/perfAppraisal";
+import { exportAppraisal, PERUSAHAAN, type ExportKind } from "@/lib/perfExport";
 
 export default function PerformanceAppraisalPage() {
   const { t } = useI18n();
@@ -28,6 +30,9 @@ export default function PerformanceAppraisalPage() {
   const rows = kpis.filter((k) => k.period === sel.year && (!search.trim() || `${k.name} ${k.unit}`.toLowerCase().includes(search.trim().toLowerCase())));
   const saveEntry = (kpi: PlanningKpi, entry: RealizationEntry) => setRealizations((m) => ({ ...m, [realizationKey(kpi.id, sel)]: entry }));
   const createdBy = () => { try { return getStoredUser<{ name?: string }>()?.name; } catch { return undefined; } };
+  const onExport = (kind: ExportKind) => exportAppraisal(kind, "PERFORMANCE APPRAISAL", `nexus-appraisal-${sel.year}`, [
+    { info: [["Perusahaan", PERUSAHAAN], ["Periode", `Tahun ${sel.year} · ${periodLabel(sel)}`], ["Status", "—"]], kpis: rows },
+  ], sel, realizations);
 
   return (
     <>
@@ -37,7 +42,7 @@ export default function PerformanceAppraisalPage() {
       <PageHeader
         title="Performance Appraisal"
         subtitle="Penilaian KPI (Bobot × Pencapaian) + PBI · Bulanan · Triwulanan · Semesteran · Tahunan"
-        actions={<PeriodControls sel={sel} onChange={setSel} />}
+        actions={<><PeriodControls sel={sel} onChange={setSel} /><ExportMenu onSelect={onExport} /></>}
       />
 
       <div className="mb-4 flex flex-wrap gap-2">

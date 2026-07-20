@@ -9,6 +9,8 @@ import { KpiFormModal } from "@/components/planning/KpiFormModal";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import { strategicGoals as seedGoals, type PlanningKpi, type StrategicGoal } from "@/lib/data";
+import { ExportMenu } from "@/components/ExportMenu";
+import { exportPlanning, PERUSAHAAN, type ExportKind } from "@/lib/perfExport";
 import { MAPPING_KEY, emptyMapping, type MappingState } from "@/lib/perfMapping";
 import {
   PLAN_UNIT_KPIS_KEY, PLAN_OWNERS_KEY, type UnitKpiMap, type OwnerMap,
@@ -73,6 +75,10 @@ export function PlanningKorporat() {
 
   const objectiveOf = (k: PlanningKpi) => goals.find((g) => g.id === k.strategicGoalId)?.title || k.strategicGoalText;
 
+  const onExport = (kind: ExportKind) => exportPlanning(kind, "PERFORMANCE PLANNING", `nexus-planning-korporat-${period}`, [
+    { info: [["Perusahaan", PERUSAHAAN], ["Direktorat", "Utama"], ["Kompartemen", "KPI Korporat"], ["Periode", `Tahun ${period}`], ["Status", "—"]], kpis },
+  ]);
+
   return (
     <>
       <Link href="/performance/planning" className="mb-2 inline-flex items-center gap-1 text-[12px] text-[var(--muted)] transition hover:text-royal-400">
@@ -89,6 +95,7 @@ export function PlanningKorporat() {
                 {periods.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </label>
+            <ExportMenu onSelect={onExport} />
             <Btn variant="primary" onClick={() => setModal(null)}><Icon.plus className="h-4 w-4" /> {t("Add KPI")}</Btn>
           </>
         }

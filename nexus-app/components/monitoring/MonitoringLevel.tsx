@@ -8,6 +8,8 @@ import { Icon } from "@/components/Icons";
 import { RealisasiTable } from "@/components/monitoring/RealisasiTable";
 import { RealisasiModal } from "@/components/monitoring/RealisasiModal";
 import { PeriodControls } from "@/components/monitoring/PeriodControls";
+import { ExportMenu } from "@/components/ExportMenu";
+import { exportMonitoring, PERUSAHAAN, type ExportKind } from "@/lib/perfExport";
 import { useLocalState } from "@/lib/useLocalState";
 import { getStoredUser } from "@/lib/api";
 import { type PlanningKpi } from "@/lib/data";
@@ -17,7 +19,7 @@ import {
 } from "@/lib/perfPlanning";
 import {
   REALIZATION_KEY, type RealizationMap, type RealizationEntry, type PeriodSel,
-  defaultPeriod, monitorLevelLabel, realizationKey, isActivePeriod,
+  defaultPeriod, monitorLevelLabel, realizationKey, isActivePeriod, periodLabel,
 } from "@/lib/perfRealization";
 
 export function MonitoringLevel({ level }: { level: PlanLevel }) {
@@ -45,6 +47,18 @@ export function MonitoringLevel({ level }: { level: PlanLevel }) {
 
   const createdBy = () => { try { return getStoredUser<{ name?: string }>()?.name; } catch { return undefined; } };
 
+  const onExport = (kind: ExportKind) => {
+    const sections = unitsForLevel(level)
+      .map((u) => ({ u, list: unitKpis(u.key) }))
+      .filter((s) => s.list.length)
+      .map(({ u, list }) => ({
+        info: [["Perusahaan", PERUSAHAAN], ["Direktorat", u.directorate], [u.parent ? "Unit Kerja" : "Kompartemen", u.display], ["Periode", `Tahun ${sel.year} · ${periodLabel(sel)}`], ["Status", "—"]] as [string, string][],
+        kpis: list,
+      }));
+    if (!sections.length) { alert("Belum ada KPI untuk diekspor pada level ini."); return; }
+    exportMonitoring(kind, `PERFORMANCE MONITORING — ${monitorLevelLabel(level).toUpperCase()}`, `nexus-monitoring-${level}-${sel.year}`, sections, sel, realizations);
+  };
+
   return (
     <>
       <Link href="/performance/monitoring" className="mb-2 inline-flex items-center gap-1 text-[12px] text-[var(--muted)] transition hover:text-royal-400">
@@ -56,6 +70,7 @@ export function MonitoringLevel({ level }: { level: PlanLevel }) {
         actions={
           <>
             <PeriodControls sel={sel} onChange={setSel} />
+            <ExportMenu onSelect={onExport} />
             <Link href={`/performance/planning/${level}`} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-medium text-[var(--text)] transition hover:border-royal-500/50 hover:text-royal-400">
               <Icon.chevron className="h-3.5 w-3.5" /> Perencanaan
             </Link>

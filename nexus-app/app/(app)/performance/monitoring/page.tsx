@@ -7,14 +7,16 @@ import { Icon } from "@/components/Icons";
 import { RealisasiTable } from "@/components/monitoring/RealisasiTable";
 import { RealisasiModal } from "@/components/monitoring/RealisasiModal";
 import { PeriodControls } from "@/components/monitoring/PeriodControls";
+import { ExportMenu } from "@/components/ExportMenu";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import { getStoredUser } from "@/lib/api";
 import { planningKpis as seedPlanning, type PlanningKpi } from "@/lib/data";
 import {
   REALIZATION_KEY, type RealizationMap, type RealizationEntry, type PeriodSel,
-  defaultPeriod, realizationKey, MONITOR_LEVELS,
+  defaultPeriod, realizationKey, periodLabel, MONITOR_LEVELS,
 } from "@/lib/perfRealization";
+import { exportMonitoring, PERUSAHAAN, type ExportKind } from "@/lib/perfExport";
 
 export default function PerformanceMonitoringPage() {
   const { t } = useI18n();
@@ -27,6 +29,9 @@ export default function PerformanceMonitoringPage() {
   const rows = kpis.filter((k) => k.period === sel.year && (!search.trim() || `${k.name} ${k.unit}`.toLowerCase().includes(search.trim().toLowerCase())));
   const saveEntry = (kpi: PlanningKpi, entry: RealizationEntry) => setRealizations((m) => ({ ...m, [realizationKey(kpi.id, sel)]: entry }));
   const createdBy = () => { try { return getStoredUser<{ name?: string }>()?.name; } catch { return undefined; } };
+  const onExport = (kind: ExportKind) => exportMonitoring(kind, "PERFORMANCE MONITORING", `nexus-monitoring-${sel.year}`, [
+    { info: [["Perusahaan", PERUSAHAAN], ["Periode", `Tahun ${sel.year} · ${periodLabel(sel)}`], ["Status", "—"]], kpis: rows },
+  ], sel, realizations);
 
   return (
     <>
@@ -36,7 +41,7 @@ export default function PerformanceMonitoringPage() {
       <PageHeader
         title="Performance Monitoring"
         subtitle="Rekap Realisasi KPI · Bulanan · Triwulanan · Semesteran · Tahunan"
-        actions={<PeriodControls sel={sel} onChange={setSel} />}
+        actions={<><PeriodControls sel={sel} onChange={setSel} /><ExportMenu onSelect={onExport} /></>}
       />
 
       {/* Per-level entry points (identical structure to Planning) */}

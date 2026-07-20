@@ -9,6 +9,8 @@ import { AppraisalTable, CriteriaLegend } from "@/components/appraisal/Appraisal
 import { PbiTable } from "@/components/appraisal/PbiTable";
 import { RealisasiModal } from "@/components/monitoring/RealisasiModal";
 import { PeriodControls } from "@/components/monitoring/PeriodControls";
+import { ExportMenu } from "@/components/ExportMenu";
+import { exportAppraisal, PERUSAHAAN, type ExportKind } from "@/lib/perfExport";
 import { useLocalState } from "@/lib/useLocalState";
 import { getStoredUser } from "@/lib/api";
 import { type PlanningKpi } from "@/lib/data";
@@ -18,7 +20,7 @@ import {
 } from "@/lib/perfPlanning";
 import {
   REALIZATION_KEY, type RealizationMap, type RealizationEntry, type PeriodSel,
-  defaultPeriod, realizationKey,
+  defaultPeriod, realizationKey, periodLabel,
 } from "@/lib/perfRealization";
 import {
   APPRAISAL_STATUS_KEY, type AppraisalStatusMap, defaultStatus,
@@ -43,6 +45,9 @@ export function AppraisalKorporat() {
   const reverse = () => setStatusMap((m) => ({ ...m, [UNIT]: { status: "Drafted", version: m[UNIT]?.version ?? 1 } }));
   const setPbiScore = (pbiId: string, field: keyof PbiScore, value: number) =>
     setPbi((m) => ({ ...m, [pbiKey(UNIT, pbiId)]: { ...m[pbiKey(UNIT, pbiId)], [field]: value } }));
+  const onExport = (kind: ExportKind) => exportAppraisal(kind, "PERFORMANCE APPRAISAL", `nexus-appraisal-korporat-${sel.year}`, [
+    { info: [["Perusahaan", PERUSAHAAN], ["Direktorat", "Utama"], ["Kompartemen", "KPI Korporat"], ["Periode", `Tahun ${sel.year} · ${periodLabel(sel)}`], ["Status", st.status]], kpis },
+  ], sel, realizations);
 
   return (
     <>
@@ -58,6 +63,7 @@ export function AppraisalKorporat() {
             {st.status === "Approved"
               ? <Btn variant="ghost" onClick={reverse}><Icon.chevron className="h-4 w-4 rotate-180" /> Reverse</Btn>
               : <Btn variant="primary" onClick={approve}><Icon.check className="h-4 w-4" /> Approval</Btn>}
+            <ExportMenu onSelect={onExport} />
             <Link href="/performance/monitoring/korporat" className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-medium text-[var(--text)] transition hover:border-royal-500/50 hover:text-royal-400">
               <Icon.chevron className="h-3.5 w-3.5" /> Pencapaian
             </Link>

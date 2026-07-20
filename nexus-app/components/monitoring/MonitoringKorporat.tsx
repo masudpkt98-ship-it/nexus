@@ -8,6 +8,8 @@ import { Icon } from "@/components/Icons";
 import { RealisasiTable } from "@/components/monitoring/RealisasiTable";
 import { RealisasiModal } from "@/components/monitoring/RealisasiModal";
 import { PeriodControls } from "@/components/monitoring/PeriodControls";
+import { ExportMenu } from "@/components/ExportMenu";
+import { exportMonitoring, PERUSAHAAN, type ExportKind } from "@/lib/perfExport";
 import { useLocalState } from "@/lib/useLocalState";
 import { getStoredUser } from "@/lib/api";
 import { type PlanningKpi } from "@/lib/data";
@@ -17,7 +19,7 @@ import {
 } from "@/lib/perfPlanning";
 import {
   REALIZATION_KEY, type RealizationMap, type RealizationEntry, type PeriodSel,
-  defaultPeriod, realizationKey, isActivePeriod,
+  defaultPeriod, realizationKey, isActivePeriod, periodLabel,
 } from "@/lib/perfRealization";
 
 // Monitoring · Korporat — fill Realisasi for the corporate KPIs owned by the
@@ -35,6 +37,9 @@ export function MonitoringKorporat() {
   const saveEntry = (kpi: PlanningKpi, entry: RealizationEntry) =>
     setRealizations((m) => ({ ...m, [realizationKey(kpi.id, sel)]: entry }));
   const createdBy = () => { try { return getStoredUser<{ name?: string }>()?.name; } catch { return undefined; } };
+  const onExport = (kind: ExportKind) => exportMonitoring(kind, "PERFORMANCE MONITORING", `nexus-monitoring-korporat-${sel.year}`, [
+    { info: [["Perusahaan", PERUSAHAAN], ["Direktorat", "Utama"], ["Kompartemen", "KPI Korporat"], ["Periode", `Tahun ${sel.year} · ${periodLabel(sel)}`], ["Status", "—"]], kpis },
+  ], sel, realizations);
 
   return (
     <>
@@ -47,6 +52,7 @@ export function MonitoringKorporat() {
         actions={
           <>
             <PeriodControls sel={sel} onChange={setSel} />
+            <ExportMenu onSelect={onExport} />
             <Link href="/performance/planning/korporat" className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-medium text-[var(--text)] transition hover:border-royal-500/50 hover:text-royal-400">
               <Icon.chevron className="h-3.5 w-3.5" /> Perencanaan
             </Link>

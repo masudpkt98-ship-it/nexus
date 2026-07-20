@@ -6,6 +6,8 @@ import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, Badge, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { EmployeePicker } from "@/components/EmployeePicker";
+import { ExportMenu } from "@/components/ExportMenu";
+import { exportPlanning, PERUSAHAAN, type ExportKind } from "@/lib/perfExport";
 import { KpiFormModal } from "@/components/planning/KpiFormModal";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
@@ -68,6 +70,18 @@ export function PlanningLevel({ level }: { level: PlanLevel }) {
   const total = unitsForLevel(level).length;
   const withOwner = unitsForLevel(level).filter((u) => owners[u.key]?.name).length;
 
+  const onExport = (kind: ExportKind) => {
+    const sections = unitsForLevel(level)
+      .map((u) => ({ u, list: unitKpis(u.key) }))
+      .filter((s) => s.list.length)
+      .map(({ u, list }) => ({
+        info: [["Perusahaan", PERUSAHAAN], ["Direktorat", u.directorate], [u.parent ? "Unit Kerja" : "Kompartemen", u.display], ["Periode", `Tahun ${period}`], ["Status", "—"]] as [string, string][],
+        kpis: list,
+      }));
+    if (!sections.length) { alert("Belum ada KPI untuk diekspor pada level ini."); return; }
+    exportPlanning(kind, `PERFORMANCE PLANNING — ${planLevelLabel(level).toUpperCase()}`, `nexus-planning-${level}-${period}`, sections);
+  };
+
   return (
     <>
       <Link href="/performance" className="mb-2 inline-flex items-center gap-1 text-[12px] text-[var(--muted)] transition hover:text-royal-400">
@@ -84,6 +98,7 @@ export function PlanningLevel({ level }: { level: PlanLevel }) {
                 {periods.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </label>
+            <ExportMenu onSelect={onExport} />
           </>
         }
       />

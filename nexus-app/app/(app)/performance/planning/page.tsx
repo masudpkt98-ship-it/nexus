@@ -13,6 +13,8 @@ import {
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import { PLAN_LEVELS } from "@/lib/perfPlanning";
+import { ExportMenu } from "@/components/ExportMenu";
+import { exportPlanning, PERUSAHAAN, type ExportKind } from "@/lib/perfExport";
 
 export default function PerformancePlanningPage() {
   const { t } = useI18n();
@@ -36,14 +38,11 @@ export default function PerformancePlanningPage() {
   const saveKpi = (k: PlanningKpi) => { setKpis((l) => (l.some((x) => x.id === k.id) ? l.map((x) => (x.id === k.id ? k : x)) : [...l, k])); setEditing(undefined); };
   const remove = (k: PlanningKpi) => { if (confirm(`${t("Delete")} “${k.name}”?`)) setKpis((l) => l.filter((x) => x.id !== k.id)); };
 
-  const onExport = async () => {
-    const XLSX = await import("xlsx");
-    const aoa: (string | number)[][] = [[t("Group"), t("Perspective"), t("Strategic Goal"), "KPI", t("Unit"), t("Target"), t("Weight (%)"), t("Validity"), t("Polarity"), t("Frequency"), t("Cascade type"), "PIC"]];
-    kpis.filter((k) => k.period === period).forEach((k) => aoa.push([k.group, k.perspective, objectiveOf(k) ?? "", k.name, k.unit, k.annualTarget, k.weight, k.validity, k.polarity, k.frequency, k.cascadeType, k.pic]));
-    aoa.push([]); aoa.push(["", "", "", "", "", "", totalWeight, "", "", "", "", ""]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), "KPI");
-    XLSX.writeFile(wb, `nexus-kpi-planning-${period}.xlsx`);
+  const onExport = (kind: ExportKind) => {
+    const list = kpis.filter((k) => k.period === period);
+    exportPlanning(kind, "PERFORMANCE PLANNING", `nexus-planning-${period}`, [
+      { info: [["Perusahaan", PERUSAHAAN], ["Periode", `Tahun ${period}`], ["Status", "—"]], kpis: list },
+    ]);
   };
 
   const chips = (k: PlanningKpi) => [k.validity, k.cascadeType, k.polarity, k.consolidation, k.frequency, k.type].filter(Boolean);
@@ -63,7 +62,7 @@ export default function PerformancePlanningPage() {
                 {periods.map((p) => (<option key={p} value={p}>{p}</option>))}
               </select>
             </label>
-            <Btn variant="ghost" onClick={onExport}><Icon.document className="h-4 w-4" /> {t("Export Excel")}</Btn>
+            <ExportMenu onSelect={onExport} />
             <Btn variant="primary" onClick={() => setEditing(null)}><Icon.plus className="h-4 w-4" /> {t("Add KPI")}</Btn>
           </>
         }
