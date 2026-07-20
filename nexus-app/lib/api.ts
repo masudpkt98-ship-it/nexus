@@ -112,6 +112,21 @@ export async function apiSend<T = any>(
   return (json && typeof json === "object" && "data" in json ? json.data : json) as T;
 }
 
+// ---- Employee Directory (PII, server-enforced, unit-scoped) ----------------
+/** Employees the caller may see (scoped by unit/directorate). Returns the raw
+ *  Employee records, ready to hydrate the client cache. */
+export async function apiListEmployees(): Promise<import("./data").Employee[]> {
+  return apiGet<import("./data").Employee[]>("/employees");
+}
+/** Bulk import the directory (admin only). `replace` clears first (send on the
+ *  first chunk). */
+export async function apiImportEmployees(employees: unknown[], replace = false): Promise<{ imported: number; total: number }> {
+  return apiSend("POST", "/employees/import", { employees, replace });
+}
+export async function apiClearEmployees(): Promise<void> {
+  await apiSend("DELETE", "/employees");
+}
+
 // ---- Performance Planning — KPIs + Owners (server-enforced, unit-scoped) ---
 export interface PlanningKpiDTO {
   kpi_id: string;

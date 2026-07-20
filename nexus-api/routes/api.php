@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\ChatThreadController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\CompetencyController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\NexianController;
 use App\Http\Controllers\Api\PlanningController;
 use App\Http\Controllers\Api\RealizationController;
@@ -62,6 +63,11 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
     // Strategy / OKR
     // Data exports (Excel / PowerPoint)
+    // Employee Directory (PII) — scoped reads; admin-only bulk import.
+    Route::get('/employees', [EmployeeController::class, 'index'])->middleware('permission:people.view');
+    Route::post('/employees/import', [EmployeeController::class, 'import'])->middleware(['permission:people.manage', 'throttle:sensitive']);
+    Route::delete('/employees', [EmployeeController::class, 'clear'])->middleware('permission:people.manage');
+
     // Performance Planning — server-enforced, unit-scoped KPIs + KPI Owners.
     Route::get('/planning-kpis', [PlanningController::class, 'kpisIndex'])->middleware('permission:performance.view');
     Route::post('/planning-kpis', [PlanningController::class, 'kpiUpsert'])->middleware('permission:performance.view');

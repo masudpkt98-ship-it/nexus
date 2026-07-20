@@ -69,10 +69,10 @@ class User extends Authenticatable
         // (Partner) / directorate (Manajemen) by the frontend via unit/directorate.
         'KPI Partner Manajemen' => [
             'dashboard.view', 'competency.view', 'performance.view', 'performance.manage',
-            'objectives.view', 'analytics.view', 'knowledge.view', 'notifications.view', 'ai.view',
+            'people.view', 'objectives.view', 'analytics.view', 'knowledge.view', 'notifications.view', 'ai.view',
         ],
         'KPI Partner' => [
-            'dashboard.view', 'competency.view', 'performance.view',
+            'dashboard.view', 'competency.view', 'performance.view', 'people.view',
             'knowledge.view', 'notifications.view', 'ai.view',
         ],
     ];

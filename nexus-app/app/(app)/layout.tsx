@@ -5,18 +5,32 @@ import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { cn } from "@/components/ui";
-import { AuthProvider } from "@/lib/auth";
-import { getStoredUser } from "@/lib/api";
+import { AuthProvider, useApiAuthed } from "@/lib/auth";
+import { getStoredUser, apiListEmployees } from "@/lib/api";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const authed = useApiAuthed();
 
   // Force provisioned accounts to change their initial password first.
   useEffect(() => {
     const u = getStoredUser<{ must_change_password?: boolean }>();
     if (u?.must_change_password) router.replace("/change-password");
   }, [router]);
+
+  // Hydrate the Employee Directory (PII) cache from the backend — the server
+  // returns ONLY the rows in this user's scope, so pickers/dashboards that read
+  // `nexus-employees` show scoped data instead of a bulk client-side import.
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiListEmployees().then((list) => {
+      if (!alive || !list.length) return;
+      try { localStorage.setItem("nexus-employees", JSON.stringify(list)); } catch { /* quota */ }
+    }).catch(() => { /* offline → keep local cache */ });
+    return () => { alive = false; };
+  }, [authed]);
 
   return (
     <AuthProvider>

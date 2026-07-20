@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, Badge, Avatar } from "@/components/ui";
 import { Icon } from "@/components/Icons";
@@ -8,7 +8,8 @@ import { employees as seed, type Employee } from "@/lib/data";
 import { rowsToEmployees } from "@/lib/importEmployees";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
-import { useAuth, scopeAllows } from "@/lib/auth";
+import { useAuth, scopeAllows, useApiAuthed } from "@/lib/auth";
+import { apiListEmployees, apiImportEmployees, apiClearEmployees, ApiError } from "@/lib/api";
 
 const PAGE_SIZE = 50;
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).map((s) => s[0]).slice(0, 2).join("").toUpperCase() || "?";
@@ -22,6 +23,19 @@ export default function PeoplePage() {
   // Scoped view: a KPI Partner only sees employees within their unit-kerja scope.
   const scoped = useMemo(() => rows.filter((e) => scopeAllows(session, e.directorate, e.unit)), [rows, session]);
   const setRows = setRowsRaw;
+  const authed = useApiAuthed();
+
+  // When API-authed, the directory comes from the backend (server returns ONLY
+  // this user's scoped rows) — PII is no longer a client-side bulk import.
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiListEmployees().then((list) => {
+      if (alive && list.length) setRows(list);
+    }).catch(() => { /* offline → keep local cache */ });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed]);
   const [q, setQ] = useState("");
   const [fDir, setFDir] = useState("");
   const [fLoc, setFLoc] = useState("");
@@ -71,7 +85,24 @@ export default function PeoplePage() {
       } else {
         setRows(emps);
         resetPage();
-        setNote(`${t("Imported")} ${emps.length} ${t("employees")} — ${t("from sheet")} “${name}”.`);
+        // When API-authed, push the directory to the backend (admin-only) in
+        // chunks — the raw xlsx PII lands on the server, not in every browser.
+        if (authed) {
+          try {
+            const CHUNK = 300;
+            for (let i = 0; i < emps.length; i += CHUNK) {
+              await apiImportEmployees(emps.slice(i, i + CHUNK), i === 0 /* replace on first chunk */);
+            }
+            setNote(`${t("Imported")} ${emps.length} ${t("employees")} → server (${t("from sheet")} “${name}”).`);
+          } catch (e) {
+            const msg = e instanceof ApiError && e.status === 403
+              ? "Impor ke server ditolak (khusus admin). Data tersimpan lokal saja."
+              : "Gagal mengunggah ke server; data tersimpan lokal saja.";
+            setNote(msg);
+          }
+        } else {
+          setNote(`${t("Imported")} ${emps.length} ${t("employees")} — ${t("from sheet")} “${name}”.`);
+        }
       }
     } catch (err) {
       setNote(t("Could not read the file. Make sure it is a valid .xlsx."));
@@ -86,6 +117,7 @@ export default function PeoplePage() {
     setRows([]);
     resetPage();
     setNote(null);
+    if (authed) apiClearEmployees().catch(() => { /* offline / not admin → local clear only */ });
   };
 
   const genderLabel = (g: string) => (g === "L" ? t("Male") : g === "P" ? t("Female") : g || "—");
