@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/Icons";
@@ -10,11 +10,12 @@ import { PeriodControls } from "@/components/monitoring/PeriodControls";
 import { ExportMenu } from "@/components/ExportMenu";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
-import { getStoredUser } from "@/lib/api";
+import { getStoredUser, apiListRealizations, apiSaveRealization } from "@/lib/api";
+import { useApiAuthed } from "@/lib/auth";
 import { planningKpis as seedPlanning, type PlanningKpi } from "@/lib/data";
 import {
   REALIZATION_KEY, type RealizationMap, type RealizationEntry, type PeriodSel,
-  defaultPeriod, realizationKey, periodLabel, MONITOR_LEVELS,
+  defaultPeriod, realizationKey, realizationMapKey, slotKey, entryFromRow, periodLabel, MONITOR_LEVELS,
 } from "@/lib/perfRealization";
 import { exportMonitoring, PERUSAHAAN, type ExportKind } from "@/lib/perfExport";
 
@@ -26,8 +27,29 @@ export default function PerformanceMonitoringPage() {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ kpi: PlanningKpi } | null>(null);
 
+  const authed = useApiAuthed();
   const rows = kpis.filter((k) => k.period === sel.year && (!search.trim() || `${k.name} ${k.unit}`.toLowerCase().includes(search.trim().toLowerCase())));
-  const saveEntry = (kpi: PlanningKpi, entry: RealizationEntry) => setRealizations((m) => ({ ...m, [realizationKey(kpi.id, sel)]: entry }));
+
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiListRealizations(sel.year).then((list) => {
+      if (!alive || !list.length) return;
+      setRealizations((m) => { const next = { ...m }; for (const r of list) next[realizationMapKey(r.kpi_id, r.slot)] = entryFromRow(r); return next; });
+    }).catch(() => { /* offline → keep local cache */ });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed, sel.year]);
+
+  const saveEntry = (kpi: PlanningKpi, entry: RealizationEntry) => {
+    setRealizations((m) => ({ ...m, [realizationKey(kpi.id, sel)]: entry }));
+    if (!authed) return;
+    apiSaveRealization({
+      kpi_id: kpi.id, slot: slotKey(sel), year: sel.year, unit_key: "recap",
+      value: entry.value, evidence_type: entry.evidenceType ?? null,
+      evidence: entry.evidence ?? null, evidence_name: entry.evidenceName ?? null, note: entry.note ?? null,
+    }).catch((e: { status?: number }) => { if (e?.status === 403) alert("Ditolak server: hanya admin yang dapat mengisi Realisasi di halaman rekap."); });
+  };
   const createdBy = () => { try { return getStoredUser<{ name?: string }>()?.name; } catch { return undefined; } };
   const onExport = (kind: ExportKind) => exportMonitoring(kind, "PERFORMANCE MONITORING", `nexus-monitoring-${sel.year}`, [
     { info: [["Perusahaan", PERUSAHAAN], ["Periode", `Tahun ${sel.year} · ${periodLabel(sel)}`], ["Status", "—"]], kpis: rows },

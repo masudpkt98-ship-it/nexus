@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, Badge } from "@/components/ui";
@@ -11,7 +11,8 @@ import { PeriodControls } from "@/components/monitoring/PeriodControls";
 import { ExportMenu } from "@/components/ExportMenu";
 import { exportMonitoring, PERUSAHAAN, type ExportKind } from "@/lib/perfExport";
 import { useLocalState } from "@/lib/useLocalState";
-import { getStoredUser } from "@/lib/api";
+import { getStoredUser, apiListRealizations, apiSaveRealization } from "@/lib/api";
+import { useApiAuthed } from "@/lib/auth";
 import { type PlanningKpi } from "@/lib/data";
 import {
   PLAN_UNIT_KPIS_KEY, type UnitKpiMap, KORPORAT_UNIT_KEY as UNIT,
@@ -19,8 +20,11 @@ import {
 } from "@/lib/perfPlanning";
 import {
   REALIZATION_KEY, type RealizationMap, type RealizationEntry, type PeriodSel,
-  defaultPeriod, realizationKey, isActivePeriod, periodLabel,
+  defaultPeriod, realizationKey, realizationMapKey, slotKey, entryFromRow, isActivePeriod, periodLabel,
 } from "@/lib/perfRealization";
+
+const KORP_DIR = "Utama";
+const KORP_NAME = "KPI Korporat";
 
 // Monitoring · Korporat — fill Realisasi for the corporate KPIs owned by the
 // Direktur Utama. Reads the planned Korporat KPIs (kept in sync by Planning).
@@ -30,12 +34,33 @@ export function MonitoringKorporat() {
   const [sel, setSel] = useState<PeriodSel>(() => defaultPeriod("2026"));
   const [modal, setModal] = useState<{ kpi: PlanningKpi } | null>(null);
 
+  const authed = useApiAuthed();
   const kpis = (kpiMap[UNIT] ?? []).filter((k) => k.period === sel.year);
   const filled = kpis.filter((k) => isActivePeriod(k, sel) && realizations[realizationKey(k.id, sel)]).length;
   const active = kpis.filter((k) => isActivePeriod(k, sel)).length;
 
-  const saveEntry = (kpi: PlanningKpi, entry: RealizationEntry) =>
+  // Backend is source of truth when API-authed (server-enforced, unit-scoped).
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiListRealizations(sel.year).then((rows) => {
+      if (!alive || !rows.length) return;
+      setRealizations((m) => { const next = { ...m }; for (const r of rows) next[realizationMapKey(r.kpi_id, r.slot)] = entryFromRow(r); return next; });
+    }).catch(() => { /* offline → keep local cache */ });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed, sel.year]);
+
+  const saveEntry = (kpi: PlanningKpi, entry: RealizationEntry) => {
     setRealizations((m) => ({ ...m, [realizationKey(kpi.id, sel)]: entry }));
+    if (!authed) return;
+    apiSaveRealization({
+      kpi_id: kpi.id, slot: slotKey(sel), year: sel.year,
+      unit_key: UNIT, unit_name: KORP_NAME, directorate: KORP_DIR,
+      value: entry.value, evidence_type: entry.evidenceType ?? null,
+      evidence: entry.evidence ?? null, evidence_name: entry.evidenceName ?? null, note: entry.note ?? null,
+    }).catch((e: { status?: number }) => { if (e?.status === 403) alert("Ditolak server: unit ini di luar wewenang Anda."); });
+  };
   const createdBy = () => { try { return getStoredUser<{ name?: string }>()?.name; } catch { return undefined; } };
   const onExport = (kind: ExportKind) => exportMonitoring(kind, "PERFORMANCE MONITORING", `nexus-monitoring-korporat-${sel.year}`, [
     { info: [["Perusahaan", PERUSAHAAN], ["Direktorat", "Utama"], ["Kompartemen", "KPI Korporat"], ["Periode", `Tahun ${sel.year} · ${periodLabel(sel)}`], ["Status", "—"]], kpis },

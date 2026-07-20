@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\CompetencyController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\NexianController;
+use App\Http\Controllers\Api\RealizationController;
 use App\Http\Controllers\Api\SatisfactionController;
 use App\Http\Controllers\Api\ObjectiveController;
 use App\Http\Controllers\Api\PerformanceKpiController;
@@ -58,6 +59,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Strategy / OKR
     // Data exports (Excel / PowerPoint)
+    // Performance Monitoring — server-enforced, unit-scoped Realisasi KPI.
+    Route::get('/realizations', [RealizationController::class, 'index'])->middleware('permission:performance.view');
+    Route::post('/realizations', [RealizationController::class, 'upsert'])->middleware('permission:performance.view');
+
     // Performance Appraisal — server-enforced, unit-scoped approval + PBI.
     Route::get('/appraisals', [AppraisalController::class, 'index'])->middleware('permission:performance.view');
     Route::post('/appraisals', [AppraisalController::class, 'upsert'])->middleware('permission:performance.manage');

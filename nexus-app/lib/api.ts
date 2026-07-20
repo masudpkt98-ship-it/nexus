@@ -110,6 +110,34 @@ export async function apiSend<T = any>(
   return (json && typeof json === "object" && "data" in json ? json.data : json) as T;
 }
 
+// ---- Performance Monitoring — Realisasi (server-enforced, unit-scoped) -----
+export interface RealizationDTO {
+  kpi_id: string;
+  slot: string;
+  year: string;
+  unit_key?: string | null;
+  unit_name?: string | null;
+  directorate?: string | null;
+  value?: number | null;
+  evidence_type?: "upload" | "link" | null;
+  evidence?: string | null;
+  evidence_name?: string | null;
+  note?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** List Realisasi the caller is allowed to see (scoped by unit/directorate). */
+export async function apiListRealizations(year: string): Promise<RealizationDTO[]> {
+  return apiGet<RealizationDTO[]>(`/realizations?year=${encodeURIComponent(year)}`);
+}
+
+/** Upsert one KPI's Realisasi for a slot. Server rejects (403) if the unit is
+ *  outside the caller's scope. */
+export async function apiSaveRealization(payload: RealizationDTO): Promise<RealizationDTO> {
+  return apiSend<RealizationDTO>("POST", "/realizations", payload);
+}
+
 // ---- Performance Appraisal (server-enforced, unit-scoped) ------------------
 export interface AppraisalDTO {
   unit_key: string;

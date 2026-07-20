@@ -135,6 +135,23 @@ export const slotKey = (sel: PeriodSel): string =>
   `${sel.year}-${sel.gran[0]}${sel.idx}`;
 export const realizationKey = (kpiId: string, sel: PeriodSel): string =>
   `${kpiId}::${slotKey(sel)}`;
+export const realizationMapKey = (kpiId: string, slot: string): string => `${kpiId}::${slot}`;
+
+// Reconstruct a RealizationEntry from a backend row (loosely typed to avoid a
+// cross-import with lib/api).
+export function entryFromRow(r: {
+  value?: number | null; evidence_type?: string | null; evidence?: string | null;
+  evidence_name?: string | null; note?: string | null; updated_at?: string; created_at?: string;
+}): RealizationEntry {
+  return {
+    value: Number(r.value) || 0,
+    evidenceType: (r.evidence_type as EvidenceType) || undefined,
+    evidence: r.evidence || undefined,
+    evidenceName: r.evidence_name || undefined,
+    note: r.note || undefined,
+    createdAt: r.updated_at || r.created_at || undefined,
+  };
+}
 
 // ---- Levels (mirror Planning's, under /performance/monitoring) ----------------
 export const MONITOR_LEVELS: { key: PlanLevel; label: string; href: string }[] = [
