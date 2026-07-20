@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 
@@ -23,6 +24,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // In production every generated URL is https (correct links + secure
+        // cookies) once TLS is terminated at the edge (Caddy / Cloudflare).
+        // Harmless locally where the app env is not production.
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
+
         // Brute-force protection for login: 5 tries/min per (email + IP) so one
         // attacker can't grind a single account, plus a 20/min per-IP backstop
         // against spraying many accounts from one source. Exceeding returns 429

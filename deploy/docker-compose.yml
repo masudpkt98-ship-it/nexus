@@ -1,0 +1,59 @@
+# =============================================================================
+# NEXUS production stack — Caddy (auto-HTTPS edge) + Next.js + Laravel + Postgres.
+# Reference template: review/adapt before real use. Bring up with:
+#   docker compose --env-file api.env.production -f docker-compose.yml up -d --build
+# Point DNS (or Cloudflare, proxied) at this host; Caddy issues the certificate.
+# =============================================================================
+
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../nexus-api:/srv/api:ro          # Caddy serves Laravel public/ static
+      - caddy_data:/data                  # certificates (persist!)
+      - caddy_config:/config
+      - caddy_logs:/var/log/caddy
+    depends_on: [web, api]
+
+  web:
+    build:
+      context: ../nexus-app
+      dockerfile: ../deploy/web.Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # Same-origin API — must match your domain (drives CSP connect-src too).
+      NEXT_PUBLIC_API_URL: "https://nexus.example.com/api"
+    expose: ["3000"]
+
+  api:
+    build:
+      context: ../nexus-api
+      dockerfile: ../deploy/api.Dockerfile
+    restart: unless-stopped
+    env_file: [api.env.production]
+    volumes:
+      - ../nexus-api:/srv/api             # shared with Caddy (same code path)
+    expose: ["9000"]
+    depends_on: [db]
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nexus
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: "${DB_PASSWORD:?set DB_PASSWORD}"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  caddy_data:
+  caddy_config:
+  caddy_logs:
+  db_data:

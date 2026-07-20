@@ -1,0 +1,4 @@
+# Never commit real production secrets — only the .example template is tracked.
+api.env.production
+*.env.production
+!*.example

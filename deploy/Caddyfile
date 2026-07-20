@@ -1,0 +1,48 @@
+# =============================================================================
+# NEXUS — edge reverse proxy with AUTOMATIC HTTPS (Let's Encrypt).
+#
+# Caddy obtains + renews TLS certificates automatically. Frontend (Next.js) and
+# the Laravel API are served from ONE origin so the API is same-origin with the
+# app: no CORS, and the app's CSP `connect-src 'self'` covers it.
+#
+# Replace nexus.example.com with your real domain (must point to this server).
+# Run: caddy run --config ./Caddyfile   (or via docker-compose in this folder)
+# =============================================================================
+
+nexus.example.com {
+	encode zstd gzip
+
+	# Defence-in-depth headers at the edge (Next also sets its own CSP).
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+		-X-Powered-By
+	}
+
+	# --- Laravel API (same-origin under /api) --------------------------------
+	# Caddy serves Laravel's public/ and hands .php to php-fpm (the `api`
+	# container). Laravel's own routes live under /api, so no path rewrite.
+	@api path /api/*
+	handle @api {
+		root * /srv/api/public
+		php_fastcgi api:9000
+		file_server
+	}
+
+	# --- Next.js frontend (standalone server) --------------------------------
+	handle {
+		reverse_proxy web:3000
+	}
+
+	log {
+		output file /var/log/caddy/nexus.log
+		format json
+	}
+}
+
+# HTTP → HTTPS is automatic in Caddy. If serving behind Cloudflare, set the
+# Cloudflare SSL mode to "Full (strict)" so the edge→origin hop is also TLS.
