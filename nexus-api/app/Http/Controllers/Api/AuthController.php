@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Support\Audit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -31,6 +32,8 @@ class AuthController extends Controller
         }
 
         $token = $user->createToken('nexus-web')->plainTextToken;
+
+        Audit::record('auth.login', ['user' => $user, 'meta' => ['role' => $user->role]]);
 
         // The token also rides in an httpOnly cookie so JavaScript (and any XSS)
         // can't read it. AuthenticateWithCookie promotes it to the Bearer header
@@ -63,6 +66,7 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
+        Audit::record('auth.logout', ['user' => $request->user()]);
         $request->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => 'Logged out successfully.'])

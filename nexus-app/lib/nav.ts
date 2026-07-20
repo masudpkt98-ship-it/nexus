@@ -107,6 +107,7 @@ export const navItems: NavItem[] = [
   { label: "Knowledge", href: "/knowledge", icon: "knowledge", section: "Workspace" },
   { label: "Documents", href: "/documents", icon: "document", section: "Workspace" },
   { label: "Notifications", href: "/notifications", icon: "bell", section: "Workspace" },
+  { label: "Audit Log", href: "/audit", icon: "alert", section: "Workspace" },
 
   { label: "AI Assistant", href: "/ai-assistant", icon: "ai", section: "Intelligence" },
   { label: "Analytics", href: "/analytics", icon: "analytics", section: "Intelligence" },

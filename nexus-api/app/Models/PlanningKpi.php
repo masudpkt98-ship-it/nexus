@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class PlanningKpi extends Model
 {
+    use Auditable;
+
     protected $table = 'planning_kpis';
 
     protected $fillable = [

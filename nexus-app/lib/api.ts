@@ -135,6 +135,27 @@ export async function apiSend<T = any>(
   return (json && typeof json === "object" && "data" in json ? json.data : json) as T;
 }
 
+// ---- Audit trail (admin only) ----------------------------------------------
+export interface AuditLogDTO {
+  id: number;
+  user_name?: string | null;
+  action: string;
+  target?: string | null;
+  unit_key?: string | null;
+  directorate?: string | null;
+  ip?: string | null;
+  meta?: Record<string, unknown> | null;
+  created_at?: string | null;
+}
+export async function apiListAudit(opts: { deniedOnly?: boolean; action?: string; limit?: number } = {}): Promise<AuditLogDTO[]> {
+  const q = new URLSearchParams();
+  if (opts.deniedOnly) q.set("denied", "1");
+  if (opts.action) q.set("action", opts.action);
+  if (opts.limit) q.set("limit", String(opts.limit));
+  const qs = q.toString();
+  return apiGet<AuditLogDTO[]>(`/audit-logs${qs ? `?${qs}` : ""}`);
+}
+
 // ---- Employee Directory (PII, server-enforced, unit-scoped) ----------------
 /** Employees the caller may see (scoped by unit/directorate). Returns the raw
  *  Employee records, ready to hydrate the client cache. */

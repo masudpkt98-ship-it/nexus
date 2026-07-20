@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Concerns\ScopesByUnit;
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
+use App\Support\Audit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -68,6 +69,8 @@ class EmployeeController extends Controller
             }
         });
 
+        Audit::record('employee.import', ['meta' => ['count' => count($employees), 'replace' => $replace, 'total' => Employee::count()]]);
+
         return response()->json(['data' => ['imported' => count($employees), 'total' => Employee::count()]]);
     }
 
@@ -75,6 +78,7 @@ class EmployeeController extends Controller
     public function clear(Request $request): JsonResponse
     {
         Employee::query()->delete();
+        Audit::record('employee.clear', ['user' => $request->user()]);
 
         return response()->json(['data' => ['cleared' => true]]);
     }

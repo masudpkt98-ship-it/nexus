@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Realization;
 use App\Models\User;
+use App\Support\Audit;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -97,6 +98,8 @@ class RealizationController extends Controller
         ]);
 
         if (! $this->canWrite($user, (string) ($data['directorate'] ?? ''), (string) ($data['unit_name'] ?? ''))) {
+            Audit::record('scope.denied', ['user' => $user, 'target' => $data['unit_key'] ?? null, 'directorate' => $data['directorate'] ?? null, 'meta' => ['action' => 'realization.upsert']]);
+
             return response()->json([
                 'message' => 'You are not allowed to submit Realisasi for this unit.',
             ], 403);

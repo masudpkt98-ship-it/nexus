@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ScopesByUnit;
 use App\Http\Controllers\Controller;
 use App\Models\PlanningKpi;
 use App\Models\PlanningOwner;
+use App\Support\Audit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -47,6 +48,8 @@ class PlanningController extends Controller
         ]);
 
         if (! $this->canWriteUnit($user, (string) ($data['directorate'] ?? ''), (string) ($data['unit_name'] ?? ''))) {
+            Audit::record('scope.denied', ['user' => $user, 'target' => $data['unit_key'] ?? null, 'directorate' => $data['directorate'] ?? null, 'meta' => ['action' => 'planning_kpi.upsert']]);
+
             return response()->json(['message' => 'You are not allowed to plan KPIs for this unit.'], 403);
         }
 
@@ -75,6 +78,8 @@ class PlanningController extends Controller
             return response()->json(['message' => 'Not found.'], 404);
         }
         if (! $this->canWriteUnit($user, (string) $kpi->directorate, (string) $kpi->unit_name)) {
+            Audit::record('scope.denied', ['user' => $user, 'target' => $kpiId, 'directorate' => $kpi->directorate, 'meta' => ['action' => 'planning_kpi.delete']]);
+
             return response()->json(['message' => 'You are not allowed to delete this KPI.'], 403);
         }
         $kpi->delete();
@@ -103,6 +108,8 @@ class PlanningController extends Controller
         ]);
 
         if (! $this->canWriteUnit($user, (string) ($data['directorate'] ?? ''), (string) ($data['unit_name'] ?? ''))) {
+            Audit::record('scope.denied', ['user' => $user, 'target' => $data['unit_key'] ?? null, 'directorate' => $data['directorate'] ?? null, 'meta' => ['action' => 'planning_owner.upsert']]);
+
             return response()->json(['message' => 'You are not allowed to set the owner for this unit.'], 403);
         }
 

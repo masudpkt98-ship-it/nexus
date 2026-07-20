@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Audit;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,6 +18,12 @@ class EnsurePermission
         $user = $request->user();
 
         if (! $user || ! $user->hasPermission($permission)) {
+            Audit::record('access.denied', [
+                'user' => $user,
+                'target' => $permission,
+                'meta' => ['path' => $request->path(), 'method' => $request->method()],
+            ]);
+
             return response()->json([
                 'message' => 'This action is unauthorized for your role.',
                 'required_permission' => $permission,

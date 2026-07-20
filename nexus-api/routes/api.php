@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AppraisalController;
+use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AiGeneratorController;
 use App\Http\Controllers\Api\ArtifactController;
 use App\Http\Controllers\Api\AuthController;
@@ -63,6 +64,9 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
     // Strategy / OKR
     // Data exports (Excel / PowerPoint)
+    // Audit trail (admin only).
+    Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware('permission:audit.view');
+
     // Employee Directory (PII) — scoped reads; admin-only bulk import.
     Route::get('/employees', [EmployeeController::class, 'index'])->middleware('permission:people.view');
     Route::post('/employees/import', [EmployeeController::class, 'import'])->middleware(['permission:people.manage', 'throttle:sensitive']);

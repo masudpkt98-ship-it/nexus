@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Appraisal;
 use App\Models\User;
+use App\Support\Audit;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -98,6 +99,8 @@ class AppraisalController extends Controller
         ]);
 
         if (! $this->canWrite($user, (string) ($data['directorate'] ?? ''), (string) ($data['unit_name'] ?? ''))) {
+            Audit::record('scope.denied', ['user' => $user, 'target' => $data['unit_key'] ?? null, 'unit_name' => $data['unit_name'] ?? null, 'meta' => ['action' => 'appraisal.upsert', 'directorate' => $data['directorate'] ?? null]]);
+
             return response()->json([
                 'message' => 'You are not allowed to modify the appraisal for this unit.',
             ], 403);
