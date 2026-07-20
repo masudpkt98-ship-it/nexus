@@ -103,6 +103,19 @@ export interface PbiScore { reward?: number; punishment?: number; skor?: number 
 export type PbiScoreMap = Record<string, PbiScore>; // `${unitKey}::${pbiId}` → score
 export const pbiKey = (unitKey: string, pbiId: string) => `${unitKey}::${pbiId}`;
 
+// Convert between the flat PbiScoreMap (`${unitKey}::${pbiId}`) used by the UI
+// and the per-unit `{ pbiId: score }` shape the backend stores.
+export function packPbi(unitKey: string, scores: PbiScoreMap): Record<string, PbiScore> {
+  const out: Record<string, PbiScore> = {};
+  for (const item of PBI_CATALOG) { const s = scores[pbiKey(unitKey, item.id)]; if (s) out[item.id] = s; }
+  return out;
+}
+export function unpackPbi(unitKey: string, pbi?: Record<string, PbiScore> | null): PbiScoreMap {
+  const out: PbiScoreMap = {};
+  if (pbi) for (const [pid, s] of Object.entries(pbi)) out[pbiKey(unitKey, pid)] = s;
+  return out;
+}
+
 // ---- Levels (mirror Planning/Monitoring, under /performance/appraisal) --------
 export const APPRAISAL_LEVELS: { key: PlanLevel; label: string; href: string }[] = [
   { key: "korporat", label: "Korporat", href: "/performance/appraisal/korporat" },

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\AnalyticsController;
+use App\Http\Controllers\Api\AppraisalController;
 use App\Http\Controllers\Api\AiGeneratorController;
 use App\Http\Controllers\Api\ArtifactController;
 use App\Http\Controllers\Api\AuthController;
@@ -57,6 +58,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Strategy / OKR
     // Data exports (Excel / PowerPoint)
+    // Performance Appraisal — server-enforced, unit-scoped approval + PBI.
+    Route::get('/appraisals', [AppraisalController::class, 'index'])->middleware('permission:performance.view');
+    Route::post('/appraisals', [AppraisalController::class, 'upsert'])->middleware('permission:performance.manage');
+
     Route::get('/exports/kpis', [ExportController::class, 'kpis'])->middleware('permission:performance.view');
     Route::get('/exports/competencies', [ExportController::class, 'competencies'])->middleware('permission:competency.view');
     Route::get('/exports/report', [ExportController::class, 'report'])->middleware('permission:analytics.view');

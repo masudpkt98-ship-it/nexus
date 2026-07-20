@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, Badge, cn } from "@/components/ui";
@@ -12,7 +12,8 @@ import { PeriodControls } from "@/components/monitoring/PeriodControls";
 import { ExportMenu } from "@/components/ExportMenu";
 import { exportAppraisal, PERUSAHAAN, type ExportKind } from "@/lib/perfExport";
 import { useLocalState } from "@/lib/useLocalState";
-import { getStoredUser } from "@/lib/api";
+import { getStoredUser, apiListAppraisals, apiSaveAppraisal } from "@/lib/api";
+import { useApiAuthed } from "@/lib/auth";
 import { type PlanningKpi } from "@/lib/data";
 import {
   type PlanLevel, isAccordionLevel, unitsForLevel, unitsByDirektorat,
@@ -25,7 +26,7 @@ import {
 import {
   APPRAISAL_STATUS_KEY, type AppraisalStatusMap, defaultStatus,
   APPRAISAL_PBI_KEY, type PbiScoreMap, type PbiScore, pbiKey,
-  appraisalTotals, appraisalLevelLabel,
+  appraisalTotals, appraisalLevelLabel, packPbi, unpackPbi,
 } from "@/lib/perfAppraisal";
 
 export function AppraisalLevel({ level }: { level: PlanLevel }) {
@@ -48,12 +49,45 @@ export function AppraisalLevel({ level }: { level: PlanLevel }) {
   const saveEntry = (kpi: PlanningKpi, entry: RealizationEntry) => setRealizations((m) => ({ ...m, [realizationKey(kpi.id, sel)]: entry }));
   const createdBy = () => { try { return getStoredUser<{ name?: string }>()?.name; } catch { return undefined; } };
 
+  const authed = useApiAuthed();
+  // key → { name, directorate } for building backend payloads.
+  const unitMeta = useMemo(() => {
+    const m: Record<string, { name: string; directorate: string }> = {};
+    for (const u of unitsForLevel(level)) m[u.key] = { name: u.display, directorate: u.directorate };
+    return m;
+  }, [level]);
+
+  // Backend is source of truth when API-authed (server-enforced, unit-scoped).
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiListAppraisals(sel.year).then((rows) => {
+      if (!alive || !rows.length) return;
+      setStatusMap((m) => { const next = { ...m }; for (const r of rows) next[r.unit_key] = { status: r.status, version: r.version }; return next; });
+      setPbi((m) => { const next = { ...m }; for (const r of rows) Object.assign(next, unpackPbi(r.unit_key, r.pbi)); return next; });
+    }).catch(() => { /* offline → keep local cache */ });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed, sel.year]);
+
+  const pushBackend = (key: string, status: "Drafted" | "Approved", version: number, pbiMap: PbiScoreMap) => {
+    if (!authed) return;
+    const meta = unitMeta[key];
+    apiSaveAppraisal({ unit_key: key, unit_name: meta?.name, directorate: meta?.directorate, year: sel.year, status, version, pbi: packPbi(key, pbiMap) })
+      .catch((e: { status?: number }) => { if (e?.status === 403) alert("Ditolak server: unit ini di luar wewenang Anda."); });
+  };
+
   const status = (key: string) => statusMap[key] ?? defaultStatus();
-  const approve = (key: string) => setStatusMap((m) => ({ ...m, [key]: { status: "Approved", version: (m[key]?.version ?? 0) + 1 } }));
-  const reverse = (key: string) => setStatusMap((m) => ({ ...m, [key]: { status: "Drafted", version: m[key]?.version ?? 1 } }));
+  const approve = (key: string) => { const v = (statusMap[key]?.version ?? 0) + 1; setStatusMap((m) => ({ ...m, [key]: { status: "Approved", version: v } })); pushBackend(key, "Approved", v, pbi); };
+  const reverse = (key: string) => { const v = statusMap[key]?.version ?? 1; setStatusMap((m) => ({ ...m, [key]: { status: "Drafted", version: v } })); pushBackend(key, "Drafted", v, pbi); };
 
   const setPbiScore = (unitKey: string, pbiId: string, field: keyof PbiScore, value: number) =>
-    setPbi((m) => ({ ...m, [pbiKey(unitKey, pbiId)]: { ...m[pbiKey(unitKey, pbiId)], [field]: value } }));
+    setPbi((m) => {
+      const next = { ...m, [pbiKey(unitKey, pbiId)]: { ...m[pbiKey(unitKey, pbiId)], [field]: value } };
+      const s = statusMap[unitKey] ?? defaultStatus();
+      pushBackend(unitKey, s.status, s.version, next);
+      return next;
+    });
 
   const onExport = (kind: ExportKind) => {
     const sections = unitsForLevel(level)

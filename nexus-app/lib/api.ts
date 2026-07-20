@@ -110,6 +110,28 @@ export async function apiSend<T = any>(
   return (json && typeof json === "object" && "data" in json ? json.data : json) as T;
 }
 
+// ---- Performance Appraisal (server-enforced, unit-scoped) ------------------
+export interface AppraisalDTO {
+  unit_key: string;
+  unit_name?: string | null;
+  directorate?: string | null;
+  year: string;
+  status: "Drafted" | "Approved";
+  version: number;
+  pbi?: Record<string, { reward?: number; punishment?: number; skor?: number }> | null;
+}
+
+/** List appraisals the caller is allowed to see (scoped by unit/directorate). */
+export async function apiListAppraisals(year: string): Promise<AppraisalDTO[]> {
+  return apiGet<AppraisalDTO[]>(`/appraisals?year=${encodeURIComponent(year)}`);
+}
+
+/** Upsert one unit's appraisal (status/version/PBI). Server rejects (403) if the
+ *  unit is outside the caller's scope, regardless of the client. */
+export async function apiSaveAppraisal(payload: AppraisalDTO): Promise<AppraisalDTO> {
+  return apiSend<AppraisalDTO>("POST", "/appraisals", payload);
+}
+
 // ---- Progress portal (cross-device employee self-service) ------------------
 export interface ProgressMetric { done: boolean; label: string; tone: string; available: boolean }
 export interface ProgressLookup {
