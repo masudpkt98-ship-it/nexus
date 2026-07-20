@@ -139,9 +139,16 @@ export function KpiFormModal({
   const setRow = (bi: number, ri: number, key: keyof FormulaDetail, v: string) => setForm((f) => mapBlocks(f, (b, j) => (j === bi ? { ...b, rows: b.rows.map((d, k) => (k === ri ? { ...d, [key]: v } : d)) } : b)));
   const removeRow = (bi: number, ri: number) => setForm((f) => mapBlocks(f, (b, j) => (j === bi ? { ...b, rows: b.rows.filter((_, k) => k !== ri) } : b)));
 
+  const [nameError, setNameError] = useState(false);
+  const nameRef = useRef<HTMLInputElement>(null);
   const save = () => {
     const name = form.name.trim();
-    if (!name) return;
+    if (!name) {
+      setNameError(true);
+      nameRef.current?.focus();
+      nameRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
     const { id, ...rest } = form;
     onSave({
       id: id ?? newKpiId(), ...rest, name,
@@ -181,19 +188,22 @@ export function KpiFormModal({
             />
             <span className="mt-1 block text-[10px] text-[var(--muted)]">Ketik untuk cari cepat; bila tak ada yang cocok, langsung isi manual.</span>
           </label>
-          <label className={labelCls}>{t("KPI Name")}
+          <label className={labelCls}>{t("KPI Name")} <span className="text-rose-400">*</span>
             <input
+              ref={nameRef}
               value={form.name}
               onChange={(e) => {
                 const v = e.target.value;
+                if (v.trim()) setNameError(false);
                 const hit = findSubmittedKpi(submitted, v);
                 setForm((f) => ({ ...f, name: v, ...(hit ? { unit: hit.satuan || f.unit, polarity: hit.polaritas || f.polarity, frequency: hit.frekuensi || f.frequency } : {}) }));
               }}
               placeholder="% Excess of ROIC - WACC"
               list={kpiNameOptions.length ? "kpi-name-recall" : undefined}
               autoComplete="off"
-              className={inputCls}
+              className={cn(inputCls, nameError && "border-rose-400 focus:border-rose-400")}
             />
+            {nameError && <span className="mt-1 block text-[10px] font-medium text-rose-400">Nama KPI wajib diisi sebelum menyimpan.</span>}
             {kpiNameOptions.length > 0 && (
               <>
                 <datalist id="kpi-name-recall">{kpiNameOptions.map((n) => <option key={n} value={n} />)}</datalist>
