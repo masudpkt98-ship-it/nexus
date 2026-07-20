@@ -7,7 +7,7 @@ import { Icon } from "@/components/Icons";
 import { EmployeePicker } from "@/components/EmployeePicker";
 import { tasks as seed, taskColumns, programs as mockPrograms, milestones as mockMilestones, type Task, type Subtask, type TaskStatus, type Priority, type Program, type Milestone } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
-import { apiGet, apiSend, getToken } from "@/lib/api";
+import { apiGet, apiSend, hasSession } from "@/lib/api";
 import { taskProgress, subtaskProgress } from "@/lib/rollup";
 import { useI18n } from "@/lib/i18n";
 
@@ -215,7 +215,7 @@ export default function TasksPage() {
   const [form, setForm] = useState<Form>(emptyForm);
 
   useEffect(() => {
-    if (!getToken()) return;
+    if (!hasSession()) return;
     let active = true;
     apiGet<Task[]>("/tasks")
       .then((data) => {
@@ -232,7 +232,7 @@ export default function TasksPage() {
   }, []);
 
   const sync = (method: "POST" | "PUT" | "PATCH" | "DELETE", path: string, body?: unknown) => {
-    if (getToken()) apiSend(method, path, body).catch(() => {});
+    if (hasSession()) apiSend(method, path, body).catch(() => {});
   };
 
   const milestoneName = (id?: string) => (id ? miles.find((m) => m.id === id)?.name : undefined);

@@ -32,11 +32,28 @@ class AuthController extends Controller
 
         $token = $user->createToken('nexus-web')->plainTextToken;
 
+        // The token also rides in an httpOnly cookie so JavaScript (and any XSS)
+        // can't read it. AuthenticateWithCookie promotes it to the Bearer header
+        // on subsequent requests. SameSite=Lax blocks cross-site CSRF; Secure in
+        // production. The JSON `token` is kept for backward-compat but the web
+        // client no longer persists it.
+        $cookie = cookie(
+            name: 'nexus_token',
+            value: $token,
+            minutes: 60 * 24 * 30,
+            path: '/',
+            domain: null,
+            secure: app()->environment('production'),
+            httpOnly: true,
+            raw: false,
+            sameSite: 'lax',
+        );
+
         return response()->json([
             'token' => $token,
             'token_type' => 'Bearer',
             'user' => new UserResource($user),
-        ]);
+        ])->withCookie($cookie);
     }
 
     public function me(Request $request): UserResource
@@ -48,7 +65,8 @@ class AuthController extends Controller
     {
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['message' => 'Logged out successfully.']);
+        return response()->json(['message' => 'Logged out successfully.'])
+            ->withoutCookie('nexus_token');
     }
 
     /**

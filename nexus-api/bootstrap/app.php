@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \App\Http\Middleware\EnsurePermission::class,
         ]);
 
+        // Promote the httpOnly nexus_token cookie to a Bearer header before the
+        // Sanctum guard runs (so the token stays unreadable by client JS).
+        $middleware->prependToGroup('api', \App\Http\Middleware\AuthenticateWithCookie::class);
+
         // The app is only reachable through the edge proxy (Caddy / Cloudflare),
         // so honor its X-Forwarded-* headers — needed so Laravel detects HTTPS,
         // sets Secure cookies, and logs the real client IP for rate limiting.

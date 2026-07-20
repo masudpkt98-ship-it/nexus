@@ -6,7 +6,16 @@
 
 import type { PlanningKpi } from "./data";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
+// The API base must share the page's HOST so the httpOnly auth cookie counts as
+// same-site (SameSite=Lax) and rides fetches in dev — e.g. page localhost:3999 →
+// API localhost:8000 (not 127.0.0.1, which would be cross-site and drop the
+// cookie). In production set NEXT_PUBLIC_API_URL (ideally same-origin "/api").
+function resolveApiBase(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== "undefined") return `${window.location.protocol}//${window.location.hostname}:8000/api`;
+  return "http://127.0.0.1:8000/api";
+}
+const BASE = resolveApiBase();
 
 const TOKEN_KEY = "nexus-token";
 const USER_KEY = "nexus-user";
@@ -17,7 +26,11 @@ export function getToken(): string | null {
 }
 
 export function setSession(token: string, user: unknown) {
-  localStorage.setItem(TOKEN_KEY, token);
+  // The token now lives in an httpOnly cookie set by the server — never persist
+  // it in JS-readable storage (that's the whole point). Clear any legacy copy;
+  // keep only the non-secret user object (for display + auth gating).
+  void token;
+  localStorage.removeItem(TOKEN_KEY);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
@@ -25,6 +38,13 @@ export function getStoredUser<T = any>(): T | null {
   if (typeof window === "undefined") return null;
   const raw = localStorage.getItem(USER_KEY);
   return raw ? (JSON.parse(raw) as T) : null;
+}
+
+/** Whether a real-API session exists. The token is an httpOnly cookie (unreadable
+ *  by JS), so session presence is derived from the stored non-secret user. Use
+ *  this to gate API calls (it replaced the old getToken() truthiness checks). */
+export function hasSession(): boolean {
+  return !!getStoredUser();
 }
 
 export function clearSession() {
@@ -53,6 +73,7 @@ export class ApiError extends Error {
 export async function apiLogin(email: string, password: string) {
   const res = await fetch(`${BASE}/auth/login`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({ email, password }),
   });
@@ -68,6 +89,7 @@ export async function apiLogin(email: string, password: string) {
 export async function apiChangePassword(currentPassword: string, newPassword: string) {
   const res = await fetch(`${BASE}/auth/change-password`, {
     method: "POST",
+    credentials: "include",
     headers: headers(),
     body: JSON.stringify({ current_password: currentPassword, password: newPassword, password_confirmation: newPassword }),
   });
@@ -82,7 +104,7 @@ export async function apiChangePassword(currentPassword: string, newPassword: st
 
 export async function apiLogout() {
   try {
-    await fetch(`${BASE}/auth/logout`, { method: "POST", headers: headers() });
+    await fetch(`${BASE}/auth/logout`, { method: "POST", credentials: "include", headers: headers() });
   } catch {
     /* ignore */
   }
@@ -91,7 +113,7 @@ export async function apiLogout() {
 
 /** GET a resource. Unwraps Laravel's `{ data: ... }` envelope automatically. */
 export async function apiGet<T = any>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { headers: headers(), cache: "no-store" });
+  const res = await fetch(`${BASE}${path}`, { headers: headers(), credentials: "include", cache: "no-store" });
   if (!res.ok) throw new ApiError(`GET ${path} failed`, res.status);
   const json = await res.json();
   return (json && typeof json === "object" && "data" in json ? json.data : json) as T;
@@ -104,6 +126,7 @@ export async function apiSend<T = any>(
 ): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method,
+    credentials: "include",
     headers: headers(),
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -256,6 +279,7 @@ export async function apiDownload(
 ): Promise<void> {
   const res = await fetch(`${BASE}${path}`, {
     method,
+    credentials: "include",
     headers: headers(),
     body: body != null ? JSON.stringify(body) : undefined,
   });
@@ -274,9 +298,10 @@ export async function apiDownload(
   URL.revokeObjectURL(url);
 }
 
-/** True when a token exists (user authenticated against the real API). */
+/** True when a user session exists (the token itself is an unreadable httpOnly
+ *  cookie, so authentication is tracked via the stored non-secret user). */
 export function isAuthenticated(): boolean {
-  return !!getToken();
+  return !!getStoredUser();
 }
 
 /**
@@ -291,6 +316,7 @@ export async function apiStream(
 ): Promise<void> {
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
+    credentials: "include",
     headers: headers(),
     body: body ? JSON.stringify(body) : undefined,
     signal,

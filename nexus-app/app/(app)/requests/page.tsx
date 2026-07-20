@@ -7,7 +7,7 @@ import { Icon } from "@/components/Icons";
 import { serviceRequests as mockServiceRequests, type ServiceRequest } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
-import { apiGet, apiSend, getToken } from "@/lib/api";
+import { apiGet, apiSend, hasSession } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
 
 type Priority = ServiceRequest["priority"];
@@ -107,7 +107,7 @@ export default function RequestsPage() {
   const [form, setForm] = useState<Form>(emptyForm);
 
   useEffect(() => {
-    if (!getToken()) return;
+    if (!hasSession()) return;
     let active = true;
     apiGet<ServiceRequest[]>("/service-requests")
       .then((res) => {
@@ -124,7 +124,7 @@ export default function RequestsPage() {
   }, []);
 
   const sync = (method: "POST" | "PUT" | "DELETE", path: string, body?: unknown) => {
-    if (getToken()) apiSend(method, path, body).catch(() => {});
+    if (hasSession()) apiSend(method, path, body).catch(() => {});
   };
 
   const summary = [

@@ -7,7 +7,7 @@ import { Icon } from "@/components/Icons";
 import { notifications as mockNotifications } from "@/lib/data";
 import { useApiData } from "@/lib/useApi";
 import { LiveBadge } from "@/components/LiveBadge";
-import { apiSend, getToken } from "@/lib/api";
+import { apiSend, hasSession } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 
 const channels = ["All", "In-App", "Email", "WhatsApp", "Push"] as const;
@@ -51,7 +51,7 @@ export default function NotificationsPage() {
     const all: Record<string, boolean> = {};
     notifications.forEach((n) => (all[n.id] = true));
     setRead(all);
-    if (getToken()) {
+    if (hasSession()) {
       apiSend("POST", "/notifications/read-all").catch(() => {});
     }
   };

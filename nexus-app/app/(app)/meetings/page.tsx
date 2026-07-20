@@ -15,7 +15,7 @@ import {
 } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
-import { apiGet, apiSend, getToken } from "@/lib/api";
+import { apiGet, apiSend, hasSession } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
 
 const inputCls =
@@ -98,7 +98,7 @@ function Meetings() {
   const [form, setForm] = useState<MForm>(emptyMeeting);
 
   useEffect(() => {
-    if (!getToken()) return;
+    if (!hasSession()) return;
     let active = true;
     apiGet<Meeting[]>("/meetings")
       .then((res) => {
@@ -115,7 +115,7 @@ function Meetings() {
   }, []);
 
   const sync = (method: "POST" | "PUT" | "DELETE", path: string, body?: unknown) => {
-    if (getToken()) apiSend(method, path, body).catch(() => {});
+    if (hasSession()) apiSend(method, path, body).catch(() => {});
   };
 
   const openCreate = () => setForm({ ...emptyMeeting, open: true });

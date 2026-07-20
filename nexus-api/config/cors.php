@@ -40,6 +40,8 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    // Cookies (the httpOnly nexus_token) must be allowed to ride cross-origin
+    // requests. Requires a specific allowed_origin (never '*'), which is the case.
+    'supports_credentials' => true,
 
 ];

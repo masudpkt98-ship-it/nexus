@@ -7,7 +7,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import { useI18n, LANGS } from "@/lib/i18n";
 import { Avatar, cn } from "@/components/ui";
 import { currentUser, notifications as mockNotifications } from "@/lib/data";
-import { apiGet, apiLogout, apiSend, getToken } from "@/lib/api";
+import { apiGet, apiLogout, apiSend, hasSession } from "@/lib/api";
 import { useAuth, scopeLabel } from "@/lib/auth";
 
 type Notif = { id: string; channel: string; kind?: string; title: string; time: string; read: boolean };
@@ -20,12 +20,12 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
   const [openLang, setOpenLang] = useState(false);
 
   const [items, setItems] = useState<Notif[]>(
-    getToken() ? [] : (mockNotifications as unknown as Notif[])
+    hasSession() ? [] : (mockNotifications as unknown as Notif[])
   );
 
   // Live notifications: poll every few seconds so new items appear on their own.
   useEffect(() => {
-    if (!getToken()) return;
+    if (!hasSession()) return;
     let active = true;
     const load = async () => {
       try {
@@ -47,7 +47,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
 
   const markAllRead = async () => {
     setItems((list) => list.map((n) => ({ ...n, read: true })));
-    if (getToken()) {
+    if (hasSession()) {
       try {
         await apiSend("POST", "/notifications/read-all");
       } catch {

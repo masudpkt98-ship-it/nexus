@@ -7,14 +7,14 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import type { Employee } from "./data";
 import type { Nexian } from "./nexian";
-import { getToken } from "./api";
+import { getStoredUser } from "./api";
 
 // Hydration-safe API-auth flag. Returns false on the server AND the first client
-// render, then reflects the stored token after mount. Use this (never a bare
-// getToken()) to gate rendered UI, so SSR and client HTML always match.
+// render, then reflects the stored session after mount. The token itself is an
+// httpOnly cookie (unreadable by JS), so auth is gated on the stored user.
 export function useApiAuthed(): boolean {
   const [authed, setAuthed] = useState(false);
-  useEffect(() => { setAuthed(!!getToken()); }, []);
+  useEffect(() => { setAuthed(!!getStoredUser()); }, []);
   return authed;
 }
 

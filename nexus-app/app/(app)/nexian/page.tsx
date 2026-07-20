@@ -10,7 +10,7 @@ import { useI18n } from "@/lib/i18n";
 import { NEXIAN_KEY, type Nexian, parseNexian, waLink } from "@/lib/nexian";
 import { employees as employeeSeed, type Employee } from "@/lib/data";
 import { useAuth, sessionFromNexian } from "@/lib/auth";
-import { apiSend, getToken } from "@/lib/api";
+import { apiSend, hasSession } from "@/lib/api";
 
 const fmt = (n: number) => n.toLocaleString("id-ID");
 const selCls = "rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500";
@@ -44,7 +44,7 @@ export default function NexianPage() {
   // Bulk-create real Laravel login accounts for the whole team (Admin only).
   // Email = NPK@nexus.co, password = NPK. Needs an Admin API token.
   const provision = async () => {
-    if (!getToken()) { setNote(t("Log in as Admin via the API first (admin@nexus.co) to provision.")); return; }
+    if (!hasSession()) { setNote(t("Log in as Admin via the API first (admin@nexus.co) to provision.")); return; }
     setProvisioning(true);
     setNote(null);
     try {

@@ -17,7 +17,7 @@ import {
 import { useApiData } from "@/lib/useApi";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
-import { apiSend, getToken } from "@/lib/api";
+import { apiSend, hasSession } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
 
 const flow = ["Vision", "Mission", "Core Values", "Strategic Goals", "SWOT", "OKR", "Milestones"];
@@ -692,7 +692,7 @@ function Okr() {
   const saveForm = async () => {
     const body = { title: form.title.trim(), quarter: form.quarter, progress: form.progress };
     if (!body.title) return;
-    if (getToken()) {
+    if (hasSession()) {
       try {
         if (form.id == null) {
           const created = await apiSend<Obj>("POST", "/objectives", body);
@@ -714,7 +714,7 @@ function Okr() {
 
   const removeRow = async (o: Obj) => {
     setRows((r) => r.filter((x) => x.id !== o.id));
-    if (getToken()) {
+    if (hasSession()) {
       try {
         await apiSend("DELETE", `/objectives/${o.id}`);
       } catch {

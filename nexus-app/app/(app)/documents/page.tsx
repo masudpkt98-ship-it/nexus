@@ -7,7 +7,7 @@ import { Icon } from "@/components/Icons";
 import { documents as mockDocs, docFolders, type DocItem, type DocType, type DocApproval } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
-import { apiGet, apiSend, getToken } from "@/lib/api";
+import { apiGet, apiSend, hasSession } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
 
 const typeTone: Record<DocType, "blue" | "green" | "amber" | "purple"> = {
@@ -109,7 +109,7 @@ export default function DocumentsPage() {
 
   // Hybrid storage: seed from localStorage, then prefer the live API when signed in.
   useEffect(() => {
-    if (!getToken()) return;
+    if (!hasSession()) return;
     let active = true;
     apiGet<DocItem[]>("/documents")
       .then((res) => {
@@ -129,7 +129,7 @@ export default function DocumentsPage() {
 
   // Best-effort sync to the API (fire-and-forget) when signed in.
   const sync = (method: "POST" | "PUT" | "DELETE", path: string, body?: unknown) => {
-    if (getToken()) apiSend(method, path, body).catch(() => {});
+    if (hasSession()) apiSend(method, path, body).catch(() => {});
   };
 
   const folderCount = (name: string) => (name === "All" ? docs.length : docs.filter((d) => d.folder === name).length);

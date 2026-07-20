@@ -7,7 +7,7 @@ import { Icon } from "@/components/Icons";
 import { knowledgeDocs as mockKnowledgeDocs, type KnowledgeDoc } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
-import { apiGet, apiSend, getToken } from "@/lib/api";
+import { apiGet, apiSend, hasSession } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
 
 type KType = KnowledgeDoc["type"];
@@ -97,7 +97,7 @@ export default function KnowledgePage() {
 
   // Hybrid storage: seed from localStorage, prefer live API when signed in.
   useEffect(() => {
-    if (!getToken()) return;
+    if (!hasSession()) return;
     let active = true;
     apiGet<KnowledgeDoc[]>("/knowledge-docs")
       .then((res) => {
@@ -114,7 +114,7 @@ export default function KnowledgePage() {
   }, []);
 
   const sync = (method: "POST" | "PUT" | "DELETE", path: string, body?: unknown) => {
-    if (getToken()) apiSend(method, path, body).catch(() => {});
+    if (hasSession()) apiSend(method, path, body).catch(() => {});
   };
 
   const categories = useMemo(() => ["All", ...Array.from(new Set(docs.map((d) => d.category)))], [docs]);

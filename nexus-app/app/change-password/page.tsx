@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { LogoMark } from "@/components/Logo";
 import { Icon } from "@/components/Icons";
 import { useI18n } from "@/lib/i18n";
-import { apiChangePassword, getStoredUser, getToken, ApiError } from "@/lib/api";
+import { apiChangePassword, getStoredUser, hasSession, ApiError } from "@/lib/api";
 
 export default function ChangePasswordPage() {
   const { t } = useI18n();
@@ -19,7 +19,7 @@ export default function ChangePasswordPage() {
 
   // Must be logged in (have a token) to change a password.
   useEffect(() => {
-    if (!getToken()) { router.replace("/login"); return; }
+    if (!hasSession()) { router.replace("/login"); return; }
     const u = getStoredUser<{ name?: string }>();
     if (u?.name) setName(u.name);
   }, [router]);

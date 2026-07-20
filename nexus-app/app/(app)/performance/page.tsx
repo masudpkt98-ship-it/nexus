@@ -8,7 +8,7 @@ import { Icon } from "@/components/Icons";
 import { EmployeePicker } from "@/components/EmployeePicker";
 import { performanceKpis as mockPerformanceKpis, kpiTrend, topPerformers as mockTop, corporateKpis as seedCorporateKpis, type CorporateKpi } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
-import { apiGet, apiSend, apiDownload, getToken } from "@/lib/api";
+import { apiGet, apiSend, apiDownload, hasSession } from "@/lib/api";
 import { useApiAuthed } from "@/lib/auth";
 import { LiveBadge } from "@/components/LiveBadge";
 import { useI18n } from "@/lib/i18n";
@@ -80,7 +80,7 @@ export default function PerformancePage() {
 
   // Hybrid: seed from localStorage, prefer live API when signed in.
   useEffect(() => {
-    if (!getToken()) return;
+    if (!hasSession()) return;
     let active = true;
     apiGet<Kpi[]>("/performance-kpis")
       .then((res) => {
@@ -97,7 +97,7 @@ export default function PerformancePage() {
   }, []);
 
   const sync = (method: "POST" | "PUT" | "DELETE", path: string, body?: unknown) => {
-    if (getToken()) apiSend(method, path, body).catch(() => {});
+    if (hasSession()) apiSend(method, path, body).catch(() => {});
   };
 
   // --- KPI CRUD ---

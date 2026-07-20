@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiGet, getToken } from "./api";
+import { apiGet, hasSession } from "./api";
 
 /**
  * Load data from the Laravel API with a mock fallback.
@@ -16,7 +16,7 @@ export function useApiData<T>(path: string, fallback: T): { data: T; live: boole
 
   useEffect(() => {
     let active = true;
-    if (!getToken()) {
+    if (!hasSession()) {
       setLoading(false);
       return;
     }

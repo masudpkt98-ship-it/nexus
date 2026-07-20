@@ -17,7 +17,7 @@ import {
 } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
-import { apiGet, apiSend, getToken } from "@/lib/api";
+import { apiGet, apiSend, hasSession } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
 import { milestoneProgress, milestoneStatus, programProgress, programStatus, programMilestonesDone, taskComplete } from "@/lib/rollup";
 
@@ -101,7 +101,7 @@ export default function ProgramsPage() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (!getToken()) return;
+    if (!hasSession()) return;
     let active = true;
     apiGet<Program[]>("/programs")
       .then((res) => {
@@ -118,7 +118,7 @@ export default function ProgramsPage() {
   }, []);
 
   const sync = (method: "POST" | "PUT" | "DELETE", path: string, body?: unknown) => {
-    if (getToken()) apiSend(method, path, body).catch(() => {});
+    if (hasSession()) apiSend(method, path, body).catch(() => {});
   };
 
   const milesOf = (pid: string) => miles.filter((m) => m.programId === pid);

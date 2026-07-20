@@ -31,7 +31,7 @@ import {
   type Milestone,
   type Task,
 } from "@/lib/data";
-import { apiGet, getStoredUser, getToken } from "@/lib/api";
+import { apiGet, getStoredUser, hasSession } from "@/lib/api";
 import { useLocalState } from "@/lib/useLocalState";
 import { programProgress, programStatus, programMilestonesDone } from "@/lib/rollup";
 import { useI18n } from "@/lib/i18n";
@@ -71,7 +71,7 @@ export default function DashboardPage() {
   const storedName = getStoredUser<any>()?.name ?? currentUser.name;
 
   useEffect(() => {
-    if (!getToken()) return;
+    if (!hasSession()) return;
     (async () => {
       try {
         const d = await apiGet<any>("/dashboard");

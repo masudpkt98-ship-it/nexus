@@ -8,7 +8,7 @@ import { Icon } from "@/components/Icons";
 import { LiveBadge } from "@/components/LiveBadge";
 import { useApiData } from "@/lib/useApi";
 import { useI18n } from "@/lib/i18n";
-import { apiGet, apiSend, apiStream, apiDownload, getToken } from "@/lib/api";
+import { apiGet, apiSend, apiStream, apiDownload, hasSession } from "@/lib/api";
 import { useApiAuthed } from "@/lib/auth";
 import { useLocalState } from "@/lib/useLocalState";
 import {
@@ -125,7 +125,7 @@ export default function AiAssistantPage() {
   useEffect(() => {
     let active = true;
     (async () => {
-      if (getToken()) {
+      if (hasSession()) {
         try {
           let list = await apiGet<Thread[]>("/ai/threads");
           if (!Array.isArray(list)) list = [];
@@ -161,7 +161,7 @@ export default function AiAssistantPage() {
 
   // Persist to localStorage only in demo mode (server stores turns when signed in).
   useEffect(() => {
-    if (!hydrated || getToken()) return;
+    if (!hydrated || hasSession()) return;
     try {
       localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
     } catch {
@@ -200,7 +200,7 @@ export default function AiAssistantPage() {
     if (busy) return;
     setThreadsOpen(false);
     setEditingId(null);
-    if (!getToken()) {
+    if (!hasSession()) {
       setMessages([GREETING]);
       try {
         localStorage.removeItem(CHAT_STORAGE_KEY);
@@ -362,7 +362,7 @@ export default function AiAssistantPage() {
       source: undefined,
       params: { level: "Department", focus: "", employee: "", scope: "" },
     });
-    if (kind === "idp" && getToken() && employees.length === 0) {
+    if (kind === "idp" && hasSession() && employees.length === 0) {
       apiGet<{ developmentPlans?: { employee: string; readiness: number }[] }>("/competency")
         .then((d) => setEmployees(d.developmentPlans ?? []))
         .catch(() => {});
@@ -434,7 +434,7 @@ export default function AiAssistantPage() {
 
   const runGenerator = async () => {
     if (!gen.kind) return;
-    if (!getToken()) {
+    if (!hasSession()) {
       // Offline: build the artifact from live NEXUS data (with a brief "thinking" beat).
       setGen((g) => ({ ...g, loading: true, streaming: true, markdown: "", source: undefined }));
       setGenSaved(null);
@@ -499,7 +499,7 @@ export default function AiAssistantPage() {
   };
 
   const exportPdf = async () => {
-    if (!gen.markdown || !getToken()) return;
+    if (!gen.markdown || !hasSession()) return;
     try {
       await apiDownload("/ai/artifacts/pdf", { title: artifactTitle(), markdown: gen.markdown }, "nexus-artifact.pdf");
     } catch {
@@ -525,7 +525,7 @@ export default function AiAssistantPage() {
     if (!text.trim() || busy) return;
 
     // Name a brand-new thread after its first message (optimistic).
-    if (getToken() && activeThreadId != null && !messages.some((m) => m.role === "user")) {
+    if (hasSession() && activeThreadId != null && !messages.some((m) => m.role === "user")) {
       const title = text.length > 40 ? text.slice(0, 40) + "…" : text;
       setThreads((ts) => ts.map((t) => (t.id === activeThreadId ? { ...t, title } : t)));
     }
@@ -535,7 +535,7 @@ export default function AiAssistantPage() {
     setTyping(true);
     setBusy(true);
 
-    if (getToken()) {
+    if (hasSession()) {
       const controller = new AbortController();
       abortRef.current = controller;
       let acc = "";
