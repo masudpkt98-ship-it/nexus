@@ -24,22 +24,24 @@ use Illuminate\Support\Facades\Route;
 
 // ---- Public ----
 Route::get('/health', fn () => response()->json(['status' => 'ok', 'app' => 'NEXUS API', 'version' => '1.0']));
-Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
 // Employee self-service: look up your own progress by NPK + PIN (no login).
 Route::post('/progress/lookup', [ProgressController::class, 'lookup'])->middleware('throttle:20,1');
 
 // ---- Protected (Sanctum bearer token) ----
-Route::middleware('auth:sanctum')->group(function () {
+// A generous per-user rate ceiling (throttle:api) guards the whole authenticated
+// surface against runaway/abusive clients.
+Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
-    Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
+    Route::post('/auth/change-password', [AuthController::class, 'changePassword'])->middleware('throttle:sensitive');
 
     // Bulk-provision Nexian (KPI Partner) login accounts (Admin only).
-    Route::post('/nexian/provision', [NexianController::class, 'provision'])->middleware('permission:nexian.provision');
+    Route::post('/nexian/provision', [NexianController::class, 'provision'])->middleware(['permission:nexian.provision', 'throttle:sensitive']);
 
     // Publish per-employee KPI progress + access PINs for the public portal (Admin only).
-    Route::post('/progress/publish', [ProgressController::class, 'publish'])->middleware('permission:progress.publish');
+    Route::post('/progress/publish', [ProgressController::class, 'publish'])->middleware(['permission:progress.publish', 'throttle:sensitive']);
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('permission:dashboard.view');
 
