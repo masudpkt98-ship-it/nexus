@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Icon } from "@/components/Icons";
@@ -15,6 +15,8 @@ import { useI18n } from "@/lib/i18n";
 import { PLAN_LEVELS } from "@/lib/perfPlanning";
 import { ExportMenu } from "@/components/ExportMenu";
 import { exportPlanning, PERUSAHAAN, type ExportKind } from "@/lib/perfExport";
+import { useApiAuthed } from "@/lib/auth";
+import { apiListPlanningKpis, apiSavePlanningKpi, apiDeletePlanningKpi } from "@/lib/api";
 
 export default function PerformancePlanningPage() {
   const { t } = useI18n();
@@ -35,8 +37,32 @@ export default function PerformancePlanningPage() {
   }, [kpis, period, search]);
   const totalWeight = rows.reduce((s, k) => s + (k.weight || 0), 0);
 
-  const saveKpi = (k: PlanningKpi) => { setKpis((l) => (l.some((x) => x.id === k.id) ? l.map((x) => (x.id === k.id ? k : x)) : [...l, k])); setEditing(undefined); };
-  const remove = (k: PlanningKpi) => { if (confirm(`${t("Delete")} “${k.name}”?`)) setKpis((l) => l.filter((x) => x.id !== k.id)); };
+  const authed = useApiAuthed();
+  // Recap KPIs are stored under the "recap" unit — writable only by admins (scope).
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiListPlanningKpis(period).then((data) => {
+      if (!alive) return;
+      const mine = data.filter((r) => r.unit_key === "recap");
+      if (!mine.length) return;
+      setKpis((l) => { const next = [...l]; for (const r of mine) { const i = next.findIndex((k) => k.id === r.payload.id); if (i >= 0) next[i] = r.payload; else next.push(r.payload); } return next; });
+    }).catch(() => { /* offline → keep local */ });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed, period]);
+
+  const on403 = (e: { status?: number }) => { if (e?.status === 403) alert("Ditolak server: hanya admin yang dapat mengubah rekap Planning."); };
+  const saveKpi = (k: PlanningKpi) => {
+    setKpis((l) => (l.some((x) => x.id === k.id) ? l.map((x) => (x.id === k.id ? k : x)) : [...l, k]));
+    setEditing(undefined);
+    if (authed) apiSavePlanningKpi({ kpi_id: k.id, unit_key: "recap", period: k.period, payload: k }).catch(on403);
+  };
+  const remove = (k: PlanningKpi) => {
+    if (!confirm(`${t("Delete")} “${k.name}”?`)) return;
+    setKpis((l) => l.filter((x) => x.id !== k.id));
+    if (authed) apiDeletePlanningKpi(k.id).catch(on403);
+  };
 
   const onExport = (kind: ExportKind) => {
     const list = kpis.filter((k) => k.period === period);

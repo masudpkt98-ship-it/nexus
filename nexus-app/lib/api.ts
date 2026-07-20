@@ -4,6 +4,8 @@
 // so the UI keeps working for a standalone demo.
 // ============================================================================
 
+import type { PlanningKpi } from "./data";
+
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
 
 const TOKEN_KEY = "nexus-token";
@@ -108,6 +110,42 @@ export async function apiSend<T = any>(
   if (!res.ok) throw new ApiError(`${method} ${path} failed`, res.status);
   const json = await res.json().catch(() => ({}));
   return (json && typeof json === "object" && "data" in json ? json.data : json) as T;
+}
+
+// ---- Performance Planning — KPIs + Owners (server-enforced, unit-scoped) ---
+export interface PlanningKpiDTO {
+  kpi_id: string;
+  unit_key: string;
+  unit_name?: string | null;
+  directorate?: string | null;
+  period: string;
+  payload: PlanningKpi;
+}
+export interface PlanningOwnerDTO {
+  unit_key: string;
+  unit_name?: string | null;
+  directorate?: string | null;
+  jabatan?: string | null;
+  name?: string | null;
+  npk?: string | null;
+}
+
+/** List planned KPIs the caller may see (scoped by unit/directorate). */
+export async function apiListPlanningKpis(year: string): Promise<PlanningKpiDTO[]> {
+  return apiGet<PlanningKpiDTO[]>(`/planning-kpis?year=${encodeURIComponent(year)}`);
+}
+/** Upsert one planned KPI (server rejects out-of-scope units with 403). */
+export async function apiSavePlanningKpi(payload: PlanningKpiDTO): Promise<PlanningKpiDTO> {
+  return apiSend<PlanningKpiDTO>("POST", "/planning-kpis", payload);
+}
+export async function apiDeletePlanningKpi(kpiId: string): Promise<void> {
+  await apiSend("DELETE", `/planning-kpis/${encodeURIComponent(kpiId)}`);
+}
+export async function apiListPlanningOwners(): Promise<PlanningOwnerDTO[]> {
+  return apiGet<PlanningOwnerDTO[]>("/planning-owners");
+}
+export async function apiSavePlanningOwner(payload: PlanningOwnerDTO): Promise<PlanningOwnerDTO> {
+  return apiSend<PlanningOwnerDTO>("POST", "/planning-owners", payload);
 }
 
 // ---- Performance Monitoring — Realisasi (server-enforced, unit-scoped) -----

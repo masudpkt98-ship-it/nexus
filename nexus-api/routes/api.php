@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\CompetencyController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\NexianController;
+use App\Http\Controllers\Api\PlanningController;
 use App\Http\Controllers\Api\RealizationController;
 use App\Http\Controllers\Api\SatisfactionController;
 use App\Http\Controllers\Api\ObjectiveController;
@@ -61,6 +62,13 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
     // Strategy / OKR
     // Data exports (Excel / PowerPoint)
+    // Performance Planning — server-enforced, unit-scoped KPIs + KPI Owners.
+    Route::get('/planning-kpis', [PlanningController::class, 'kpisIndex'])->middleware('permission:performance.view');
+    Route::post('/planning-kpis', [PlanningController::class, 'kpiUpsert'])->middleware('permission:performance.view');
+    Route::delete('/planning-kpis/{kpiId}', [PlanningController::class, 'kpiDestroy'])->middleware('permission:performance.view');
+    Route::get('/planning-owners', [PlanningController::class, 'ownersIndex'])->middleware('permission:performance.view');
+    Route::post('/planning-owners', [PlanningController::class, 'ownerUpsert'])->middleware('permission:performance.view');
+
     // Performance Monitoring — server-enforced, unit-scoped Realisasi KPI.
     Route::get('/realizations', [RealizationController::class, 'index'])->middleware('permission:performance.view');
     Route::post('/realizations', [RealizationController::class, 'upsert'])->middleware('permission:performance.view');

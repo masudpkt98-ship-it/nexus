@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, Badge, cn } from "@/components/ui";
@@ -8,6 +8,8 @@ import { Icon } from "@/components/Icons";
 import { EmployeePicker } from "@/components/EmployeePicker";
 import { ExportMenu } from "@/components/ExportMenu";
 import { exportPlanning, PERUSAHAAN, type ExportKind } from "@/lib/perfExport";
+import { useApiAuthed } from "@/lib/auth";
+import { apiListPlanningKpis, apiSavePlanningKpi, apiDeletePlanningKpi, apiListPlanningOwners, apiSavePlanningOwner } from "@/lib/api";
 import { KpiFormModal } from "@/components/planning/KpiFormModal";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
@@ -45,15 +47,57 @@ export function PlanningLevel({ level }: { level: PlanLevel }) {
     return [...all].sort().reverse();
   }, [kpiMap, period]);
 
+  const authed = useApiAuthed();
+  const unitMeta = useMemo(() => {
+    const m: Record<string, { name: string; directorate: string }> = {};
+    for (const u of unitsForLevel(level)) m[u.key] = { name: u.display, directorate: u.directorate };
+    return m;
+  }, [level]);
+
+  // When API-authed, overlay backend KPIs + owners (server-enforced, unit-scoped)
+  // onto the local cache — never destructive, so unsynced local data survives.
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    Promise.all([apiListPlanningKpis(period), apiListPlanningOwners()]).then(([kpiRows, ownerRows]) => {
+      if (!alive) return;
+      if (kpiRows.length) setKpiMap((m) => {
+        const next = { ...m };
+        for (const r of kpiRows) {
+          const list = next[r.unit_key] ? [...next[r.unit_key]] : [];
+          const i = list.findIndex((k) => k.id === r.payload.id);
+          if (i >= 0) list[i] = r.payload; else list.push(r.payload);
+          next[r.unit_key] = list;
+        }
+        return next;
+      });
+      if (ownerRows.length) setOwners((o) => {
+        const next = { ...o };
+        for (const r of ownerRows) next[r.unit_key] = { jabatan: r.jabatan || undefined, name: r.name || "", npk: r.npk || "" };
+        return next;
+      });
+    }).catch(() => { /* offline → keep local cache */ });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed, period]);
+
+  const on403 = (e: { status?: number }) => { if (e?.status === 403) alert("Ditolak server: unit ini di luar wewenang Anda."); };
+
   const unitKpis = (key: string) => (kpiMap[key] ?? []).filter((k) => k.period === period);
-  const saveKpi = (unitKey: string, kpi: PlanningKpi) => setKpiMap((m) => {
-    const list = m[unitKey] ?? [];
-    const exists = list.some((k) => k.id === kpi.id);
-    return { ...m, [unitKey]: exists ? list.map((k) => (k.id === kpi.id ? kpi : k)) : [...list, kpi] };
-  });
+  const saveKpi = (unitKey: string, kpi: PlanningKpi) => {
+    setKpiMap((m) => {
+      const list = m[unitKey] ?? [];
+      const exists = list.some((k) => k.id === kpi.id);
+      return { ...m, [unitKey]: exists ? list.map((k) => (k.id === kpi.id ? kpi : k)) : [...list, kpi] };
+    });
+    if (!authed) return;
+    const meta = unitMeta[unitKey];
+    apiSavePlanningKpi({ kpi_id: kpi.id, unit_key: unitKey, unit_name: meta?.name, directorate: meta?.directorate, period: kpi.period, payload: kpi }).catch(on403);
+  };
   const deleteKpi = (unitKey: string, id: string) => {
     if (!confirm(t("Delete") + "?")) return;
     setKpiMap((m) => ({ ...m, [unitKey]: (m[unitKey] ?? []).filter((k) => k.id !== id) }));
+    if (authed) apiDeletePlanningKpi(id).catch(on403);
   };
 
   // jabatanDefault = the unit's leader title (Direktur/SVP/VP/AVP) for this level.
@@ -63,8 +107,12 @@ export function PlanningLevel({ level }: { level: PlanLevel }) {
     setOwnerDraft(ex ? { jabatan: ex.jabatan ?? jabatanDefault, name: ex.name, npk: ex.npk } : { jabatan: jabatanDefault, name: "", npk: "" });
   };
   const saveOwner = (key: string) => {
-    setOwners((o) => ({ ...o, [key]: { jabatan: ownerDraft.jabatan?.trim() || undefined, name: ownerDraft.name.trim(), npk: ownerDraft.npk.trim() } }));
+    const owner = { jabatan: ownerDraft.jabatan?.trim() || undefined, name: ownerDraft.name.trim(), npk: ownerDraft.npk.trim() };
+    setOwners((o) => ({ ...o, [key]: owner }));
     setEditOwner(null);
+    if (!authed) return;
+    const meta = unitMeta[key];
+    apiSavePlanningOwner({ unit_key: key, unit_name: meta?.name, directorate: meta?.directorate, jabatan: owner.jabatan, name: owner.name, npk: owner.npk }).catch(on403);
   };
 
   const total = unitsForLevel(level).length;

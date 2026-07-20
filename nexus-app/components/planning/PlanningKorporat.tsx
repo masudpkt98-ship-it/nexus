@@ -11,6 +11,8 @@ import { useI18n } from "@/lib/i18n";
 import { strategicGoals as seedGoals, type PlanningKpi, type StrategicGoal } from "@/lib/data";
 import { ExportMenu } from "@/components/ExportMenu";
 import { exportPlanning, PERUSAHAAN, type ExportKind } from "@/lib/perfExport";
+import { useApiAuthed } from "@/lib/auth";
+import { apiListPlanningKpis, apiSavePlanningKpi, apiDeletePlanningKpi } from "@/lib/api";
 import { MAPPING_KEY, emptyMapping, type MappingState } from "@/lib/perfMapping";
 import {
   PLAN_UNIT_KPIS_KEY, PLAN_OWNERS_KEY, type UnitKpiMap, type OwnerMap,
@@ -29,6 +31,9 @@ export function PlanningKorporat() {
   const [goals] = useLocalState<StrategicGoal[]>("strategy-goals-2026", seedGoals);
   const [period, setPeriod] = useState("2026");
   const [modal, setModal] = useState<PlanningKpi | null | undefined>(undefined);
+  const authed = useApiAuthed();
+  const KORP_NAME = "KPI Korporat";
+  const KORP_DIR = "Utama";
 
   // Owner is fixed to the Direktur Utama official.
   useEffect(() => {
@@ -59,6 +64,25 @@ export function PlanningKorporat() {
     return [...all].sort().reverse();
   }, [kpiMap, period]);
 
+  // When API-authed, overlay backend Korporat KPIs (server-enforced) onto local.
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiListPlanningKpis(period).then((rows) => {
+      if (!alive) return;
+      const mine = rows.filter((r) => r.unit_key === UNIT);
+      if (!mine.length) return;
+      setKpiMap((m) => {
+        const list = m[UNIT] ? [...m[UNIT]] : [];
+        for (const r of mine) { const i = list.findIndex((k) => k.id === r.payload.id); if (i >= 0) list[i] = r.payload; else list.push(r.payload); }
+        return { ...m, [UNIT]: list };
+      });
+    }).catch(() => { /* offline → keep local */ });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed, period]);
+
+  const on403 = (e: { status?: number }) => { if (e?.status === 403) alert("Ditolak server: unit ini di luar wewenang Anda."); };
   const kpis = (kpiMap[UNIT] ?? []).filter((k) => k.period === period);
   const totalWeight = kpis.reduce((s, k) => s + (k.weight || 0), 0);
   const isComplete = (k: PlanningKpi) => (k.weight || 0) > 0 && (k.annualTarget || 0) !== 0 && (!!k.strategicGoalId || !!k.strategicGoalText);
@@ -70,8 +94,13 @@ export function PlanningKorporat() {
       return { ...m, [UNIT]: list.some((x) => x.id === k.id) ? list.map((x) => (x.id === k.id ? k : x)) : [...list, k] };
     });
     setModal(undefined);
+    if (authed) apiSavePlanningKpi({ kpi_id: k.id, unit_key: UNIT, unit_name: KORP_NAME, directorate: KORP_DIR, period: k.period, payload: k }).catch(on403);
   };
-  const remove = (k: PlanningKpi) => { if (confirm(`${t("Delete")} “${k.name}”?`)) setKpiMap((m) => ({ ...m, [UNIT]: (m[UNIT] ?? []).filter((x) => x.id !== k.id) })); };
+  const remove = (k: PlanningKpi) => {
+    if (!confirm(`${t("Delete")} “${k.name}”?`)) return;
+    setKpiMap((m) => ({ ...m, [UNIT]: (m[UNIT] ?? []).filter((x) => x.id !== k.id) }));
+    if (authed) apiDeletePlanningKpi(k.id).catch(on403);
+  };
 
   const objectiveOf = (k: PlanningKpi) => goals.find((g) => g.id === k.strategicGoalId)?.title || k.strategicGoalText;
 
