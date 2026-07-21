@@ -56,6 +56,16 @@ const nextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // Same-origin API proxy for production (esp. PaaS where separate subdomains are
+  // cross-site and would drop the httpOnly auth cookie). Set API_PROXY_TARGET to
+  // the backend's URL and NEXT_PUBLIC_API_URL=/api — the browser then talks only
+  // to the frontend origin (cookie stays same-site) and Next proxies to Laravel.
+  // Unset in dev → no rewrite, so the existing localhost:8000 flow is untouched.
+  async rewrites() {
+    const target = process.env.API_PROXY_TARGET;
+    if (!target) return [];
+    return [{ source: "/api/:path*", destination: `${target.replace(/\/$/, "")}/api/:path*` }];
+  },
 };
 
 export default nextConfig;
