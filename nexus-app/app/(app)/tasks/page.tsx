@@ -71,10 +71,11 @@ const subtaskCounts = (t: Task) => {
 function Modal({ title, onClose, onSave, saveLabel, children }: { title: string; onClose: () => void; onSave: () => void; saveLabel: string; children: React.ReactNode }) {
   const { t } = useI18n();
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto glass card shadow-glass animate-fade-up">
-        <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-[rgb(var(--surface))]/80 p-4 backdrop-blur">
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative flex min-h-full items-center justify-center p-4">
+      <div className="relative z-10 w-full max-w-2xl glass card shadow-glass animate-fade-up">
+        <div className="flex items-center gap-2 border-b p-4">
           <Icon.task className="h-4 w-4 shrink-0 text-royal-400" />
           <div className="text-sm font-semibold">{title}</div>
           <button onClick={onClose} className="ml-auto rounded-lg px-2 py-1 text-[var(--muted)] transition hover:text-rose-400" aria-label="Close">
@@ -82,7 +83,7 @@ function Modal({ title, onClose, onSave, saveLabel, children }: { title: string;
           </button>
         </div>
         <div className="space-y-3 p-5">{children}</div>
-        <div className="sticky bottom-0 flex justify-end gap-2 border-t bg-[rgb(var(--surface))]/80 p-3 backdrop-blur">
+        <div className="flex justify-end gap-2 border-t p-3">
           <Btn variant="ghost" onClick={onClose}>
             {t("Cancel")}
           </Btn>
@@ -90,6 +91,7 @@ function Modal({ title, onClose, onSave, saveLabel, children }: { title: string;
             {saveLabel}
           </Btn>
         </div>
+      </div>
       </div>
     </div>
   );
