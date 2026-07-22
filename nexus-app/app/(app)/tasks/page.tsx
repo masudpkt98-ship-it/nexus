@@ -71,10 +71,9 @@ const subtaskCounts = (t: Task) => {
 function Modal({ title, onClose, onSave, saveLabel, children }: { title: string; onClose: () => void; onSave: () => void; saveLabel: string; children: React.ReactNode }) {
   const { t } = useI18n();
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto p-4">
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative flex min-h-full items-center justify-center p-4">
-      <div className="relative z-10 w-full max-w-2xl glass card shadow-glass animate-fade-up">
+      <div className="relative z-10 mx-auto my-4 w-full max-w-2xl glass card shadow-glass animate-fade-up">
         <div className="flex items-center gap-2 border-b p-4">
           <Icon.task className="h-4 w-4 shrink-0 text-royal-400" />
           <div className="text-sm font-semibold">{title}</div>
@@ -91,7 +90,6 @@ function Modal({ title, onClose, onSave, saveLabel, children }: { title: string;
             {saveLabel}
           </Btn>
         </div>
-      </div>
       </div>
     </div>
   );
