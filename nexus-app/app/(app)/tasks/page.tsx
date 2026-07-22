@@ -737,19 +737,34 @@ export default function TasksPage() {
             </label>
           </div>
 
-          {/* Dependensi — multi-select of other tasks */}
-          <label className={labelCls}>
+          {/* Dependensi — pilih task lain sebagai prasyarat (opsional). Kosong = tidak ada. */}
+          <div className={labelCls}>
             {t("Dependencies")}
             <select
-              multiple
-              value={form.dependencies}
-              onChange={(e) => setForm((f) => ({ ...f, dependencies: Array.from(e.target.selectedOptions, (o) => o.value) }))}
-              className={`${inputCls} h-24 text-[var(--text)]`}
+              value=""
+              onChange={(e) => {
+                const id = e.target.value;
+                if (id) setForm((f) => ({ ...f, dependencies: f.dependencies.includes(id) ? f.dependencies : [...f.dependencies, id] }));
+              }}
+              className={`${inputCls} text-[var(--text)]`}
             >
-              {items.filter((x) => x.id !== form.id).map((x) => (<option key={x.id} value={x.id}>{x.id} — {x.title}</option>))}
+              <option value="">{t("— Select —")}</option>
+              {items.filter((x) => x.id !== form.id && !form.dependencies.includes(x.id)).map((x) => (<option key={x.id} value={x.id}>{x.id} — {x.title}</option>))}
             </select>
-            <span className="mt-1 block text-[10px] text-[var(--muted)]">{t("Ctrl/Cmd-click to select multiple")}</span>
-          </label>
+            {form.dependencies.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {form.dependencies.map((id) => {
+                  const dt = items.find((x) => x.id === id);
+                  return (
+                    <span key={id} className="inline-flex items-center gap-1 rounded bg-royal-500/10 px-2 py-1 text-[11px] text-royal-400">
+                      {id}{dt ? ` — ${dt.title}` : ""}
+                      <button type="button" onClick={() => setForm((f) => ({ ...f, dependencies: f.dependencies.filter((d) => d !== id) }))} className="ml-0.5 text-[var(--muted)] transition hover:text-rose-400" aria-label={t("Delete")}>✕</button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* Tags */}
           <label className={labelCls}>
