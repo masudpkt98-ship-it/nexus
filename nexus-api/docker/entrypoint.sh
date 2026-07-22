@@ -20,13 +20,13 @@ php artisan config:clear
 echo "▶️  Running migrations..."
 php artisan migrate --force
 
-# Seed only when the database is empty (preserves data across restarts).
-if php -r "\$p = new PDO('pgsql:host=${DB_HOST};port=${DB_PORT};dbname=${DB_DATABASE}', '${DB_USERNAME}', '${DB_PASSWORD}'); \$n = (int) \$p->query('select count(*) from users')->fetchColumn(); exit(\$n > 0 ? 0 : 1);"; then
-  echo "ℹ️  Database already seeded — skipping."
-else
-  echo "🌱 Seeding demo data..."
-  php artisan db:seed --force
-fi
+# Ensure the admin account exists (idempotent, no demo data). Set ADMIN_PASSWORD.
+echo "🌱 Ensuring admin account (ProductionSeeder)..."
+php artisan db:seed --class=ProductionSeeder --force
 
-echo "🚀 NEXUS API listening on 0.0.0.0:8000"
-exec php artisan serve --host=0.0.0.0 --port=8000
+php artisan config:cache
+
+# Listen on the platform-assigned $PORT (Railway/Render inject it); 8000 locally.
+PORT="${PORT:-8000}"
+echo "🚀 NEXUS API listening on 0.0.0.0:${PORT}"
+exec php artisan serve --host=0.0.0.0 --port="${PORT}"

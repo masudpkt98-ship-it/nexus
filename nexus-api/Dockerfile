@@ -1,10 +1,13 @@
 # ---- NEXUS API (Laravel) ----
-FROM php:8.4-cli
+# PHP 8.3 on Debian bookworm (stable mirrors; satisfies composer "php": "^8.3").
+FROM php:8.3-cli
 
 # Robust PHP extension installer (handles pdo_pgsql, redis, etc. reliably)
 COPY --from=mlocati/php-extension-installer:latest /usr/bin/install-php-extensions /usr/local/bin/
 
-RUN apt-get update \
+# Clean lists + retry to tolerate transient mirror hiccups (hash-sum mismatches).
+RUN rm -rf /var/lib/apt/lists/* \
+    && apt-get -o Acquire::Retries=5 update \
     && apt-get install -y --no-install-recommends unzip git \
     && install-php-extensions pdo_pgsql redis mbstring bcmath zip gd \
     && rm -rf /var/lib/apt/lists/*
