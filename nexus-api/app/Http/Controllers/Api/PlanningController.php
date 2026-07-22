@@ -43,12 +43,13 @@ class PlanningController extends Controller
             'unit_key' => ['required', 'string', 'max:255'],
             'unit_name' => ['nullable', 'string', 'max:255'],
             'directorate' => ['nullable', 'string', 'max:255'],
+            'compartment' => ['nullable', 'string', 'max:255'],
             'period' => ['required', 'string', 'max:16'],
             'payload' => ['required', 'array'],
         ]);
 
-        if (! $this->canWriteUnit($user, (string) ($data['directorate'] ?? ''), (string) ($data['unit_name'] ?? ''))) {
-            Audit::record('scope.denied', ['user' => $user, 'target' => $data['unit_key'] ?? null, 'directorate' => $data['directorate'] ?? null, 'meta' => ['action' => 'planning_kpi.upsert']]);
+        if (! $this->canWriteUnit($user, (string) ($data['directorate'] ?? ''), (string) ($data['unit_name'] ?? ''), (string) ($data['compartment'] ?? ''))) {
+            Audit::record('scope.denied', ['user' => $user, 'target' => $data['unit_key'] ?? null, 'directorate' => $data['directorate'] ?? null, 'meta' => ['action' => 'planning_kpi.upsert', 'compartment' => $data['compartment'] ?? null]]);
 
             return response()->json(['message' => 'You are not allowed to plan KPIs for this unit.'], 403);
         }
@@ -60,6 +61,7 @@ class PlanningController extends Controller
                 'unit_key' => $data['unit_key'],
                 'unit_name' => $data['unit_name'] ?? null,
                 'directorate' => $data['directorate'] ?? null,
+                'compartment' => $data['compartment'] ?? ($existing->compartment ?? null),
                 'period' => $data['period'],
                 'payload' => $data['payload'],
                 'created_by' => $existing->created_by ?? $user->id,
@@ -77,8 +79,8 @@ class PlanningController extends Controller
         if (! $kpi) {
             return response()->json(['message' => 'Not found.'], 404);
         }
-        if (! $this->canWriteUnit($user, (string) $kpi->directorate, (string) $kpi->unit_name)) {
-            Audit::record('scope.denied', ['user' => $user, 'target' => $kpiId, 'directorate' => $kpi->directorate, 'meta' => ['action' => 'planning_kpi.delete']]);
+        if (! $this->canWriteUnit($user, (string) $kpi->directorate, (string) $kpi->unit_name, (string) $kpi->compartment)) {
+            Audit::record('scope.denied', ['user' => $user, 'target' => $kpiId, 'directorate' => $kpi->directorate, 'meta' => ['action' => 'planning_kpi.delete', 'compartment' => $kpi->compartment]]);
 
             return response()->json(['message' => 'You are not allowed to delete this KPI.'], 403);
         }
@@ -102,13 +104,14 @@ class PlanningController extends Controller
             'unit_key' => ['required', 'string', 'max:255'],
             'unit_name' => ['nullable', 'string', 'max:255'],
             'directorate' => ['nullable', 'string', 'max:255'],
+            'compartment' => ['nullable', 'string', 'max:255'],
             'jabatan' => ['nullable', 'string', 'max:255'],
             'name' => ['nullable', 'string', 'max:255'],
             'npk' => ['nullable', 'string', 'max:64'],
         ]);
 
-        if (! $this->canWriteUnit($user, (string) ($data['directorate'] ?? ''), (string) ($data['unit_name'] ?? ''))) {
-            Audit::record('scope.denied', ['user' => $user, 'target' => $data['unit_key'] ?? null, 'directorate' => $data['directorate'] ?? null, 'meta' => ['action' => 'planning_owner.upsert']]);
+        if (! $this->canWriteUnit($user, (string) ($data['directorate'] ?? ''), (string) ($data['unit_name'] ?? ''), (string) ($data['compartment'] ?? ''))) {
+            Audit::record('scope.denied', ['user' => $user, 'target' => $data['unit_key'] ?? null, 'directorate' => $data['directorate'] ?? null, 'meta' => ['action' => 'planning_owner.upsert', 'compartment' => $data['compartment'] ?? null]]);
 
             return response()->json(['message' => 'You are not allowed to set the owner for this unit.'], 403);
         }
@@ -119,6 +122,7 @@ class PlanningController extends Controller
             [
                 'unit_name' => $data['unit_name'] ?? null,
                 'directorate' => $data['directorate'] ?? null,
+                'compartment' => $data['compartment'] ?? ($existing->compartment ?? null),
                 'jabatan' => $data['jabatan'] ?? null,
                 'name' => $data['name'] ?? null,
                 'npk' => $data['npk'] ?? null,

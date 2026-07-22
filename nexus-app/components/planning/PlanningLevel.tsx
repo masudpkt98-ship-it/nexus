@@ -49,8 +49,8 @@ export function PlanningLevel({ level }: { level: PlanLevel }) {
 
   const authed = useApiAuthed();
   const unitMeta = useMemo(() => {
-    const m: Record<string, { name: string; directorate: string }> = {};
-    for (const u of unitsForLevel(level)) m[u.key] = { name: u.display, directorate: u.directorate };
+    const m: Record<string, { name: string; directorate: string; compartment: string }> = {};
+    for (const u of unitsForLevel(level)) m[u.key] = { name: u.display, directorate: u.directorate, compartment: u.compartment ?? "" };
     return m;
   }, [level]);
 
@@ -92,7 +92,7 @@ export function PlanningLevel({ level }: { level: PlanLevel }) {
     });
     if (!authed) return;
     const meta = unitMeta[unitKey];
-    apiSavePlanningKpi({ kpi_id: kpi.id, unit_key: unitKey, unit_name: meta?.name, directorate: meta?.directorate, period: kpi.period, payload: kpi }).catch(on403);
+    apiSavePlanningKpi({ kpi_id: kpi.id, unit_key: unitKey, unit_name: meta?.name, directorate: meta?.directorate, compartment: meta?.compartment, period: kpi.period, payload: kpi }).catch(on403);
   };
   const deleteKpi = (unitKey: string, id: string) => {
     if (!confirm(t("Delete") + "?")) return;
@@ -112,7 +112,7 @@ export function PlanningLevel({ level }: { level: PlanLevel }) {
     setEditOwner(null);
     if (!authed) return;
     const meta = unitMeta[key];
-    apiSavePlanningOwner({ unit_key: key, unit_name: meta?.name, directorate: meta?.directorate, jabatan: owner.jabatan, name: owner.name, npk: owner.npk }).catch(on403);
+    apiSavePlanningOwner({ unit_key: key, unit_name: meta?.name, directorate: meta?.directorate, compartment: meta?.compartment, jabatan: owner.jabatan, name: owner.name, npk: owner.npk }).catch(on403);
   };
 
   const total = unitsForLevel(level).length;

@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\ScopesByUnit;
 use App\Http\Controllers\Controller;
 use App\Models\Appraisal;
-use App\Models\User;
 use App\Support\Audit;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -21,57 +20,7 @@ use Illuminate\Http\Request;
  */
 class AppraisalController extends Controller
 {
-    /** Admin (wildcard) sees everything. */
-    private function isAdmin(User $user): bool
-    {
-        return in_array('*', $user->permissions(), true);
-    }
-
-    /** Apply the caller's data scope to a query. */
-    private function scope(Builder $query, User $user): Builder
-    {
-        if ($this->isAdmin($user)) {
-            return $query;
-        }
-        $unit = trim((string) $user->unit);
-        $dir = trim((string) $user->directorate);
-
-        // KPI Partner → only their own unit kerja.
-        if ($user->role === 'KPI Partner' && $unit !== '') {
-            return $query->where('unit_name', $unit);
-        }
-        // KPI Partner Manajemen / directorate-scoped roles → whole directorate.
-        if ($dir !== '') {
-            return $query->where('directorate', $dir);
-        }
-        if ($unit !== '') {
-            return $query->where('unit_name', $unit);
-        }
-        // No scope fields → only rows they created (safe default, never "all").
-        return $query->where('created_by', $user->id);
-    }
-
-    /** Whether the caller may write the appraisal for a given unit. */
-    private function canWrite(User $user, string $directorate, string $unitName): bool
-    {
-        if ($this->isAdmin($user)) {
-            return true;
-        }
-        $unit = trim((string) $user->unit);
-        $dir = trim((string) $user->directorate);
-
-        if ($user->role === 'KPI Partner') {
-            return $unit !== '' && $unitName === $unit;
-        }
-        if ($dir !== '') {
-            return $directorate === $dir;
-        }
-        if ($unit !== '') {
-            return $unitName === $unit;
-        }
-
-        return false;
-    }
+    use ScopesByUnit;
 
     public function index(Request $request): JsonResponse
     {
@@ -80,7 +29,7 @@ class AppraisalController extends Controller
         if ($year = $request->query('year')) {
             $query->where('year', $year);
         }
-        $rows = $this->scope($query, $user)->get();
+        $rows = $this->scopeToUser($query, $user)->get();
 
         return response()->json(['data' => $rows]);
     }
@@ -92,14 +41,15 @@ class AppraisalController extends Controller
             'unit_key' => ['required', 'string', 'max:255'],
             'unit_name' => ['nullable', 'string', 'max:255'],
             'directorate' => ['nullable', 'string', 'max:255'],
+            'compartment' => ['nullable', 'string', 'max:255'],
             'year' => ['required', 'string', 'max:16'],
             'status' => ['required', 'in:Drafted,Approved'],
             'version' => ['nullable', 'integer', 'min:1'],
             'pbi' => ['nullable', 'array'],
         ]);
 
-        if (! $this->canWrite($user, (string) ($data['directorate'] ?? ''), (string) ($data['unit_name'] ?? ''))) {
-            Audit::record('scope.denied', ['user' => $user, 'target' => $data['unit_key'] ?? null, 'unit_name' => $data['unit_name'] ?? null, 'meta' => ['action' => 'appraisal.upsert', 'directorate' => $data['directorate'] ?? null]]);
+        if (! $this->canWriteUnit($user, (string) ($data['directorate'] ?? ''), (string) ($data['unit_name'] ?? ''), (string) ($data['compartment'] ?? ''))) {
+            Audit::record('scope.denied', ['user' => $user, 'target' => $data['unit_key'] ?? null, 'directorate' => $data['directorate'] ?? null, 'meta' => ['action' => 'appraisal.upsert', 'compartment' => $data['compartment'] ?? null]]);
 
             return response()->json([
                 'message' => 'You are not allowed to modify the appraisal for this unit.',
@@ -113,6 +63,7 @@ class AppraisalController extends Controller
             [
                 'unit_name' => $data['unit_name'] ?? ($existing->unit_name ?? null),
                 'directorate' => $data['directorate'] ?? ($existing->directorate ?? null),
+                'compartment' => $data['compartment'] ?? ($existing->compartment ?? null),
                 'status' => $data['status'],
                 'version' => $data['version'] ?? ($existing->version ?? 1),
                 'pbi' => $data['pbi'] ?? ($existing->pbi ?? []),

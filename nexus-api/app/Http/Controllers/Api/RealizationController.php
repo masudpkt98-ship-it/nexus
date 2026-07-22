@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\ScopesByUnit;
 use App\Http\Controllers\Controller;
 use App\Models\Realization;
-use App\Models\User;
 use App\Support\Audit;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -21,52 +20,7 @@ use Illuminate\Http\Request;
  */
 class RealizationController extends Controller
 {
-    private function isAdmin(User $user): bool
-    {
-        return in_array('*', $user->permissions(), true);
-    }
-
-    private function scope(Builder $query, User $user): Builder
-    {
-        if ($this->isAdmin($user)) {
-            return $query;
-        }
-        $unit = trim((string) $user->unit);
-        $dir = trim((string) $user->directorate);
-
-        if ($user->role === 'KPI Partner' && $unit !== '') {
-            return $query->where('unit_name', $unit);
-        }
-        if ($dir !== '') {
-            return $query->where('directorate', $dir);
-        }
-        if ($unit !== '') {
-            return $query->where('unit_name', $unit);
-        }
-
-        return $query->where('created_by', $user->id);
-    }
-
-    private function canWrite(User $user, string $directorate, string $unitName): bool
-    {
-        if ($this->isAdmin($user)) {
-            return true;
-        }
-        $unit = trim((string) $user->unit);
-        $dir = trim((string) $user->directorate);
-
-        if ($user->role === 'KPI Partner') {
-            return $unit !== '' && $unitName === $unit;
-        }
-        if ($dir !== '') {
-            return $directorate === $dir;
-        }
-        if ($unit !== '') {
-            return $unitName === $unit;
-        }
-
-        return false;
-    }
+    use ScopesByUnit;
 
     public function index(Request $request): JsonResponse
     {
@@ -75,7 +29,7 @@ class RealizationController extends Controller
         if ($year = $request->query('year')) {
             $query->where('year', $year);
         }
-        $rows = $this->scope($query, $user)->get();
+        $rows = $this->scopeToUser($query, $user)->get();
 
         return response()->json(['data' => $rows]);
     }
@@ -90,6 +44,7 @@ class RealizationController extends Controller
             'unit_key' => ['nullable', 'string', 'max:255'],
             'unit_name' => ['nullable', 'string', 'max:255'],
             'directorate' => ['nullable', 'string', 'max:255'],
+            'compartment' => ['nullable', 'string', 'max:255'],
             'value' => ['nullable', 'numeric'],
             'evidence_type' => ['nullable', 'in:upload,link'],
             'evidence' => ['nullable', 'string'],
@@ -97,8 +52,8 @@ class RealizationController extends Controller
             'note' => ['nullable', 'string'],
         ]);
 
-        if (! $this->canWrite($user, (string) ($data['directorate'] ?? ''), (string) ($data['unit_name'] ?? ''))) {
-            Audit::record('scope.denied', ['user' => $user, 'target' => $data['unit_key'] ?? null, 'directorate' => $data['directorate'] ?? null, 'meta' => ['action' => 'realization.upsert']]);
+        if (! $this->canWriteUnit($user, (string) ($data['directorate'] ?? ''), (string) ($data['unit_name'] ?? ''), (string) ($data['compartment'] ?? ''))) {
+            Audit::record('scope.denied', ['user' => $user, 'target' => $data['unit_key'] ?? null, 'directorate' => $data['directorate'] ?? null, 'meta' => ['action' => 'realization.upsert', 'compartment' => $data['compartment'] ?? null]]);
 
             return response()->json([
                 'message' => 'You are not allowed to submit Realisasi for this unit.',
@@ -114,6 +69,7 @@ class RealizationController extends Controller
                 'unit_key' => $data['unit_key'] ?? ($existing->unit_key ?? null),
                 'unit_name' => $data['unit_name'] ?? ($existing->unit_name ?? null),
                 'directorate' => $data['directorate'] ?? ($existing->directorate ?? null),
+                'compartment' => $data['compartment'] ?? ($existing->compartment ?? null),
                 'value' => $data['value'] ?? null,
                 'evidence_type' => $data['evidence_type'] ?? null,
                 'evidence' => $data['evidence'] ?? null,

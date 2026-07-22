@@ -177,6 +177,7 @@ export interface PlanningKpiDTO {
   unit_key: string;
   unit_name?: string | null;
   directorate?: string | null;
+  compartment?: string | null;
   period: string;
   payload: PlanningKpi;
 }
@@ -184,6 +185,7 @@ export interface PlanningOwnerDTO {
   unit_key: string;
   unit_name?: string | null;
   directorate?: string | null;
+  compartment?: string | null;
   jabatan?: string | null;
   name?: string | null;
   npk?: string | null;
@@ -215,6 +217,7 @@ export interface RealizationDTO {
   unit_key?: string | null;
   unit_name?: string | null;
   directorate?: string | null;
+  compartment?: string | null;
   value?: number | null;
   evidence_type?: "upload" | "link" | null;
   evidence?: string | null;
@@ -240,6 +243,7 @@ export interface AppraisalDTO {
   unit_key: string;
   unit_name?: string | null;
   directorate?: string | null;
+  compartment?: string | null;
   year: string;
   status: "Drafted" | "Approved";
   version: number;

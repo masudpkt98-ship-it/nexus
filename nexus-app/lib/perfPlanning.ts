@@ -74,6 +74,7 @@ export interface PlanUnit {
   name: string; // display name (unprefixed)
   display: string; // display with any prefix (e.g. "Komp. …")
   directorate: string;
+  compartment?: string; // Kompartemen (SVP) this unit belongs to — drives Manajemen scope
   parent?: string; // parent unit (SVP for VP, VP for AVP) — small context label
 }
 
@@ -90,14 +91,14 @@ export function unitsForLevel(level: PlanLevel): PlanUnit[] {
     case "manajemen":
       return DIREKTUR.flatMap((d) =>
         (SVP_BY_DIREKTUR[d] ?? []).map((svp) => ({
-          key: `mnj:${d}:${svp}`, name: svp, display: `Komp. ${svp}`, directorate: d,
+          key: `mnj:${d}:${svp}`, name: svp, display: `Komp. ${svp}`, directorate: d, compartment: svp,
         }))
       );
     case "unit-kerja":
       return DIREKTUR.flatMap((d) =>
         (SVP_BY_DIREKTUR[d] ?? []).flatMap((svp) =>
           (VP_BY_SVP[svp] ?? []).map((vp) => ({
-            key: `unt:${d}:${svp}:${vp}`, name: vp, display: vp, directorate: d, parent: svp,
+            key: `unt:${d}:${svp}:${vp}`, name: vp, display: vp, directorate: d, compartment: svp, parent: svp,
           }))
         )
       );
@@ -106,7 +107,7 @@ export function unitsForLevel(level: PlanLevel): PlanUnit[] {
         (SVP_BY_DIREKTUR[d] ?? []).flatMap((svp) =>
           (VP_BY_SVP[svp] ?? []).flatMap((vp) =>
             targetsForVp(vp).map((avp) => ({
-              key: `ind:${d}:${vp}:${avp}`, name: avp, display: avp, directorate: d, parent: vp,
+              key: `ind:${d}:${vp}:${avp}`, name: avp, display: avp, directorate: d, compartment: svp, parent: vp,
             }))
           )
         )

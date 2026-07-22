@@ -12,7 +12,7 @@ class PlanningKpi extends Model
     protected $table = 'planning_kpis';
 
     protected $fillable = [
-        'kpi_id', 'unit_key', 'unit_name', 'directorate', 'period',
+        'kpi_id', 'unit_key', 'unit_name', 'directorate', 'compartment', 'period',
         'payload', 'created_by', 'updated_by',
     ];
 

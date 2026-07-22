@@ -52,8 +52,8 @@ export function AppraisalLevel({ level }: { level: PlanLevel }) {
   const authed = useApiAuthed();
   // key → { name, directorate } for building backend payloads.
   const unitMeta = useMemo(() => {
-    const m: Record<string, { name: string; directorate: string }> = {};
-    for (const u of unitsForLevel(level)) m[u.key] = { name: u.display, directorate: u.directorate };
+    const m: Record<string, { name: string; directorate: string; compartment: string }> = {};
+    for (const u of unitsForLevel(level)) m[u.key] = { name: u.display, directorate: u.directorate, compartment: u.compartment ?? "" };
     return m;
   }, [level]);
 
@@ -73,7 +73,7 @@ export function AppraisalLevel({ level }: { level: PlanLevel }) {
   const pushBackend = (key: string, status: "Drafted" | "Approved", version: number, pbiMap: PbiScoreMap) => {
     if (!authed) return;
     const meta = unitMeta[key];
-    apiSaveAppraisal({ unit_key: key, unit_name: meta?.name, directorate: meta?.directorate, year: sel.year, status, version, pbi: packPbi(key, pbiMap) })
+    apiSaveAppraisal({ unit_key: key, unit_name: meta?.name, directorate: meta?.directorate, compartment: meta?.compartment, year: sel.year, status, version, pbi: packPbi(key, pbiMap) })
       .catch((e: { status?: number }) => { if (e?.status === 403) alert("Ditolak server: unit ini di luar wewenang Anda."); });
   };
 

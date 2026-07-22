@@ -28,7 +28,7 @@ export function MonitoringLevel({ level }: { level: PlanLevel }) {
   const [kpiMap] = useLocalState<UnitKpiMap>(PLAN_UNIT_KPIS_KEY, {});
   const [realizations, setRealizations] = useLocalState<RealizationMap>(REALIZATION_KEY, {});
   const [sel, setSel] = useState<PeriodSel>(() => defaultPeriod("2026"));
-  const [modal, setModal] = useState<{ kpi: PlanningKpi; unitKey: string; unitName: string; directorate: string } | null>(null);
+  const [modal, setModal] = useState<{ kpi: PlanningKpi; unitKey: string; unitName: string; directorate: string; compartment: string } | null>(null);
   const authed = useApiAuthed();
 
   const groups = useMemo(
@@ -52,12 +52,12 @@ export function MonitoringLevel({ level }: { level: PlanLevel }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authed, sel.year]);
 
-  const saveEntry = (kpi: PlanningKpi, entry: RealizationEntry, meta?: { unitKey: string; unitName: string; directorate: string }) => {
+  const saveEntry = (kpi: PlanningKpi, entry: RealizationEntry, meta?: { unitKey: string; unitName: string; directorate: string; compartment: string }) => {
     setRealizations((m) => ({ ...m, [realizationKey(kpi.id, sel)]: entry }));
     if (!authed || !meta) return;
     apiSaveRealization({
       kpi_id: kpi.id, slot: slotKey(sel), year: sel.year,
-      unit_key: meta.unitKey, unit_name: meta.unitName, directorate: meta.directorate,
+      unit_key: meta.unitKey, unit_name: meta.unitName, directorate: meta.directorate, compartment: meta.compartment,
       value: entry.value, evidence_type: entry.evidenceType ?? null,
       evidence: entry.evidence ?? null, evidence_name: entry.evidenceName ?? null, note: entry.note ?? null,
     }).catch((e: { status?: number }) => { if (e?.status === 403) alert("Ditolak server: unit ini di luar wewenang Anda."); });
@@ -158,7 +158,7 @@ export function MonitoringLevel({ level }: { level: PlanLevel }) {
 
                         {expanded && (
                           <div className="border-t bg-black/[0.02] px-4 py-3 dark:bg-white/[0.02]">
-                            <RealisasiTable kpis={kpis} sel={sel} realizations={realizations} onEdit={(kpi) => setModal({ kpi, unitKey: u.key, unitName: u.display, directorate: u.directorate })} />
+                            <RealisasiTable kpis={kpis} sel={sel} realizations={realizations} onEdit={(kpi) => setModal({ kpi, unitKey: u.key, unitName: u.display, directorate: u.directorate, compartment: u.compartment ?? "" })} />
                           </div>
                         )}
                       </div>
@@ -177,7 +177,7 @@ export function MonitoringLevel({ level }: { level: PlanLevel }) {
           sel={sel}
           entry={realizations[realizationKey(modal.kpi.id, sel)]}
           createdByDefault={createdBy()}
-          onSave={(e) => { saveEntry(modal.kpi, e, { unitKey: modal.unitKey, unitName: modal.unitName, directorate: modal.directorate }); }}
+          onSave={(e) => { saveEntry(modal.kpi, e, { unitKey: modal.unitKey, unitName: modal.unitName, directorate: modal.directorate, compartment: modal.compartment }); }}
           onClose={() => setModal(null)}
         />
       )}

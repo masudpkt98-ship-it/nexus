@@ -29,6 +29,11 @@ trait ScopesByUnit
         if ($user->role === 'KPI Partner' && $unit !== '') {
             return $query->where('unit_name', $unit);
         }
+        // KPI Partner Manajemen → scoped to their Kompartemen (their unit field IS
+        // the compartment they manage), NOT the whole directorate.
+        if ($user->role === 'KPI Partner Manajemen' && $unit !== '') {
+            return $query->where('compartment', $unit);
+        }
         if ($dir !== '') {
             return $query->where('directorate', $dir);
         }
@@ -39,8 +44,8 @@ trait ScopesByUnit
         return $query->where('created_by', $user->id);
     }
 
-    /** Whether the user may write a row belonging to the given unit. */
-    protected function canWriteUnit(User $user, string $directorate, string $unitName): bool
+    /** Whether the user may write a row belonging to the given unit/compartment. */
+    protected function canWriteUnit(User $user, string $directorate, string $unitName, string $compartment = ''): bool
     {
         if ($this->isAdmin($user)) {
             return true;
@@ -50,6 +55,9 @@ trait ScopesByUnit
 
         if ($user->role === 'KPI Partner') {
             return $unit !== '' && $unitName === $unit;
+        }
+        if ($user->role === 'KPI Partner Manajemen') {
+            return $unit !== '' && $compartment === $unit;
         }
         if ($dir !== '') {
             return $directorate === $dir;

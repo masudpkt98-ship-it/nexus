@@ -12,7 +12,7 @@ class PlanningOwner extends Model
     protected $table = 'planning_owners';
 
     protected $fillable = [
-        'unit_key', 'unit_name', 'directorate',
+        'unit_key', 'unit_name', 'directorate', 'compartment',
         'jabatan', 'name', 'npk', 'created_by', 'updated_by',
     ];
 }

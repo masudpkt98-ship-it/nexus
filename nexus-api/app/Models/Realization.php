@@ -11,7 +11,7 @@ class Realization extends Model
     use Auditable;
 
     protected $fillable = [
-        'kpi_id', 'slot', 'year', 'unit_key', 'unit_name', 'directorate',
+        'kpi_id', 'slot', 'year', 'unit_key', 'unit_name', 'directorate', 'compartment',
         'value', 'evidence_type', 'evidence', 'evidence_name', 'note',
         'created_by', 'updated_by',
     ];

@@ -16,7 +16,7 @@ class Appraisal extends Model
     }
 
     protected $fillable = [
-        'unit_key', 'unit_name', 'directorate', 'year',
+        'unit_key', 'unit_name', 'directorate', 'compartment', 'year',
         'status', 'version', 'pbi', 'created_by', 'updated_by',
     ];
 
