@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Badge, Avatar, ProgressBar, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
@@ -70,7 +71,13 @@ const subtaskCounts = (t: Task) => {
 
 function Modal({ title, onClose, onSave, saveLabel, children }: { title: string; onClose: () => void; onSave: () => void; saveLabel: string; children: React.ReactNode }) {
   const { t } = useI18n();
-  return (
+  // Render into <body> so `fixed` is relative to the viewport. The app content is
+  // wrapped in an `animate-fade-up` element whose residual transform would
+  // otherwise make this a containing block and trap the overlay below the topbar.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const overlay = (
     <div className="fixed inset-0 z-50 overflow-y-auto p-4">
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative z-10 mx-auto my-4 w-full max-w-2xl glass card shadow-glass animate-fade-up">
@@ -93,6 +100,8 @@ function Modal({ title, onClose, onSave, saveLabel, children }: { title: string;
       </div>
     </div>
   );
+
+  return mounted ? createPortal(overlay, document.body) : null;
 }
 
 type Form = {
