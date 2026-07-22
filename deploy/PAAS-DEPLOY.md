@@ -32,6 +32,7 @@ and drop it). This is why we set `API_PROXY_TARGET` + `NEXT_PUBLIC_API_URL=/api`
   APP_ENV=production
   APP_DEBUG=false
   APP_KEY=base64:__PASTE_YOUR_KEY__   # generate: (cd nexus-api && php artisan key:generate --show) — never commit it
+  ADMIN_PASSWORD=__a-strong-initial-admin-password__   # for admin@nexus.co (forced change on first login)
   APP_URL=https://<will-be-your-web-url>
   FRONTEND_URL=https://<will-be-your-web-url>
   DB_CONNECTION=pgsql
@@ -47,8 +48,10 @@ and drop it). This is why we set `API_PROXY_TARGET` + `NEXT_PUBLIC_API_URL=/api`
   ```
 - **Start command** (Settings → Deploy → Custom Start Command):
   ```
-  php artisan migrate --force && php artisan config:cache && php artisan serve --host 0.0.0.0 --port $PORT
+  php artisan migrate --force && php artisan db:seed --class=ProductionSeeder --force && php artisan config:cache && php artisan serve --host 0.0.0.0 --port $PORT
   ```
+  (`ProductionSeeder` creates ONLY the admin account — idempotent, safe on every
+  redeploy. No demo data. Set `ADMIN_PASSWORD` below for a strong initial password.)
   (`php artisan serve` is fine for initial low traffic. For scale, switch to
   FrankenPHP/Octane later — the app code doesn't change.)
 - Deploy, then **Settings → Networking → Generate Domain** → copy the API URL,
