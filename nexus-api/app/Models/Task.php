@@ -14,14 +14,18 @@ class Task extends Model
         'code', 'title', 'description', 'status', 'priority', 'assignee_id',
         'program_id', 'due_date', 'checklist_total', 'checklist_done',
         'comments_count', 'tags',
+        'category', 'business_value', 'effort_value', 'effort_unit',
+        'requester', 'sprint', 'dependencies',
     ];
 
     protected $casts = [
         'tags' => 'array',
+        'dependencies' => 'array',
         'due_date' => 'date:Y-m-d',
         'checklist_total' => 'integer',
         'checklist_done' => 'integer',
         'comments_count' => 'integer',
+        'effort_value' => 'integer',
     ];
 
     public function assignee(): BelongsTo

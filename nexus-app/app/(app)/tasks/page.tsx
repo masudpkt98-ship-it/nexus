@@ -6,6 +6,7 @@ import { Badge, Avatar, ProgressBar, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { EmployeePicker } from "@/components/EmployeePicker";
 import { tasks as seed, taskColumns, programs as mockPrograms, milestones as mockMilestones, type Task, type Subtask, type TaskStatus, type Priority, type Program, type Milestone } from "@/lib/data";
+import { TASK_CATEGORIES, BUSINESS_VALUES, EFFORT_UNITS, periodOptions, categoryTone, businessValueBenefit, effortLabel, type EffortUnit } from "@/lib/taskMeta";
 import { useLocalState } from "@/lib/useLocalState";
 import { apiGet, apiSend, hasSession } from "@/lib/api";
 import { taskProgress, subtaskProgress } from "@/lib/rollup";
@@ -15,6 +16,25 @@ const priorityTone: Record<Priority, "gray" | "blue" | "amber" | "red"> = { Low:
 const statusTone: Record<TaskStatus, "gray" | "amber" | "blue" | "green"> = { Backlog: "gray", "In Progress": "amber", Review: "blue", Done: "green" };
 const views = ["Kanban", "List", "Calendar", "Gantt"] as const;
 const PRIORITIES: Priority[] = ["Low", "Medium", "High", "Critical"];
+
+// Task Backlog attributes → the shape the Laravel API stores (snake_case). Fields
+// the API can't yet resolve from the client (assignee_id, program_id) are left out
+// so validation never 422s; everything else round-trips.
+const taskToApi = (t: Partial<Task>) => ({
+  title: t.title,
+  description: t.description ?? null,
+  status: t.status,
+  priority: t.priority,
+  due_date: t.due || null,
+  tags: t.tags ?? [],
+  category: t.category ?? null,
+  business_value: t.businessValue ?? null,
+  effort_value: t.effortValue ?? null,
+  effort_unit: t.effortUnit ?? null,
+  requester: t.requester ?? null,
+  sprint: t.sprint ?? null,
+  dependencies: t.dependencies ?? [],
+});
 
 const inputCls = "mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500";
 const labelCls = "block text-[11px] font-medium text-[var(--muted)]";
@@ -53,8 +73,8 @@ function Modal({ title, onClose, onSave, saveLabel, children }: { title: string;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md glass card shadow-glass animate-fade-up">
-        <div className="flex items-center gap-2 border-b p-4">
+      <div className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto glass card shadow-glass animate-fade-up">
+        <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-[rgb(var(--surface))]/80 p-4 backdrop-blur">
           <Icon.task className="h-4 w-4 shrink-0 text-royal-400" />
           <div className="text-sm font-semibold">{title}</div>
           <button onClick={onClose} className="ml-auto rounded-lg px-2 py-1 text-[var(--muted)] transition hover:text-rose-400" aria-label="Close">
@@ -62,7 +82,7 @@ function Modal({ title, onClose, onSave, saveLabel, children }: { title: string;
           </button>
         </div>
         <div className="space-y-3 p-5">{children}</div>
-        <div className="flex justify-end gap-2 border-t p-3">
+        <div className="sticky bottom-0 flex justify-end gap-2 border-t bg-[rgb(var(--surface))]/80 p-3 backdrop-blur">
           <Btn variant="ghost" onClick={onClose}>
             {t("Cancel")}
           </Btn>
@@ -75,8 +95,18 @@ function Modal({ title, onClose, onSave, saveLabel, children }: { title: string;
   );
 }
 
-type Form = { open: boolean; id: string | null; title: string; status: TaskStatus; priority: Priority; assignee: string; program: string; milestoneId: string; due: string; tags: string };
-const emptyForm: Form = { open: false, id: null, title: "", status: "Backlog", priority: "Medium", assignee: "", program: "", milestoneId: "", due: "", tags: "" };
+type Form = {
+  open: boolean; id: string | null; title: string; status: TaskStatus; priority: Priority;
+  assignee: string; program: string; milestoneId: string; due: string; tags: string;
+  // Backlog attributes (Task.png)
+  description: string; category: string; businessValue: string;
+  effortValue: string; effortUnit: EffortUnit; requester: string; sprint: string; dependencies: string[];
+};
+const emptyForm: Form = {
+  open: false, id: null, title: "", status: "Backlog", priority: "Medium",
+  assignee: "", program: "", milestoneId: "", due: "", tags: "",
+  description: "", category: "Project", businessValue: "", effortValue: "", effortUnit: "Jam", requester: "", sprint: "", dependencies: [],
+};
 
 type DetailProps = {
   task: Task;
@@ -102,8 +132,31 @@ function TaskDetail(p: DetailProps) {
   const subs = task.subtasks ?? [];
   const evidence = task.evidence ?? [];
 
+  const dep = (task.dependencies ?? []).filter(Boolean);
+  const attrs: { label: string; value: React.ReactNode }[] = [
+    { label: t("Category"), value: task.category ? <Badge tone={categoryTone(task.category)}>{t(task.category)}</Badge> : "—" },
+    { label: t("Business Value"), value: task.businessValue ? <span title={businessValueBenefit(task.businessValue)} className="text-emerald-500">{task.businessValue}</span> : "—" },
+    { label: t("Effort Estimate"), value: effortLabel(task.effortValue, task.effortUnit as EffortUnit) || "—" },
+    { label: t("Owner / PIC"), value: task.assignee || "—" },
+    { label: t("Requester"), value: task.requester || "—" },
+    { label: t("Target Sprint / Period"), value: task.sprint || "—" },
+    { label: t("Created Date"), value: task.createdAt || "—" },
+    { label: t("Dependencies"), value: dep.length ? dep.join(", ") : "—" },
+  ];
+
   return (
-    <div className="grid gap-4 border-t bg-black/[0.02] p-4 dark:bg-white/[0.02] lg:grid-cols-2">
+    <div className="border-t bg-black/[0.02] p-4 dark:bg-white/[0.02]">
+      {/* Backlog attributes (Task.png) */}
+      {task.description && <p dir="auto" className="mb-3 text-[13px] leading-relaxed text-[var(--text)]">{task.description}</p>}
+      <div className="mb-4 grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border p-3 sm:grid-cols-4">
+        {attrs.map((a) => (
+          <div key={a.label} className="min-w-0">
+            <div className="text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">{a.label}</div>
+            <div className="mt-0.5 truncate text-[12px]">{a.value}</div>
+          </div>
+        ))}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
       {/* Subtasks → Checklist */}
       <div>
         <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{t("Subtasks")}</div>
@@ -197,6 +250,7 @@ function TaskDetail(p: DetailProps) {
           </div>
         </div>
       </div>
+      </div>
     </div>
   );
 
@@ -244,13 +298,20 @@ export default function TasksPage() {
     sync("PATCH", `/tasks/${id}/status`, { status });
   };
 
-  const openCreate = () => setForm({ ...emptyForm, open: true, program: programs[0]?.id ?? "" });
-  const openEdit = (x: Task) => setForm({ open: true, id: x.id, title: x.title, status: x.status, priority: x.priority, assignee: x.assignee, program: x.program, milestoneId: x.milestoneId ?? "", due: x.due, tags: x.tags.join(", ") });
+  const openCreate = () => setForm({ ...emptyForm, open: true, program: programs[0]?.id ?? "", sprint: `Q${Math.floor(new Date().getMonth() / 3) + 1} ${new Date().getFullYear()}` });
+  const openEdit = (x: Task) => setForm({
+    open: true, id: x.id, title: x.title, status: x.status, priority: x.priority, assignee: x.assignee,
+    program: x.program, milestoneId: x.milestoneId ?? "", due: x.due, tags: x.tags.join(", "),
+    description: x.description ?? "", category: x.category ?? "Project", businessValue: x.businessValue ?? "",
+    effortValue: x.effortValue != null ? String(x.effortValue) : "", effortUnit: (x.effortUnit as EffortUnit) ?? "Jam",
+    requester: x.requester ?? "", sprint: x.sprint ?? "", dependencies: x.dependencies ?? [],
+  });
   const close = () => setForm(emptyForm);
   const save = () => {
     const title = form.title.trim();
     if (!title) return;
     const assignee = form.assignee.trim() || "You";
+    const effortNum = parseInt(form.effortValue, 10);
     const body: Omit<Task, "id"> = {
       title,
       status: form.status,
@@ -263,16 +324,22 @@ export default function TasksPage() {
       checklist: { total: 0, done: 0 },
       comments: 0,
       tags: form.tags.split(",").map((s) => s.trim()).filter(Boolean),
+      description: form.description.trim() || undefined,
+      category: form.category || undefined,
+      businessValue: form.businessValue || undefined,
+      effortValue: Number.isFinite(effortNum) && effortNum > 0 ? effortNum : undefined,
+      effortUnit: form.effortUnit,
+      requester: form.requester.trim() || undefined,
+      sprint: form.sprint || undefined,
+      dependencies: form.dependencies.length ? form.dependencies : undefined,
     };
     if (form.id == null) {
-      const task: Task = { id: newId(), ...body };
+      const task: Task = { id: newId(), createdAt: new Date().toISOString().slice(0, 10), ...body };
       setItems((prev) => [task, ...prev]);
-      sync("POST", "/tasks", task);
+      sync("POST", "/tasks", taskToApi(task));
     } else {
-      const prev = items.find((x) => x.id === form.id);
       setItems((p) => p.map((x) => (x.id === form.id ? { ...x, ...body } : x)));
-      sync("PUT", `/tasks/${form.id}`, body);
-      void prev;
+      sync("PUT", `/tasks/${form.id}`, taskToApi(body));
     }
     close();
   };
@@ -376,7 +443,10 @@ export default function TasksPage() {
                   {colItems.map((tk) => (
                     <div key={tk.id} draggable onDragStart={() => setDragId(tk.id)} onDragEnd={() => setDragId(null)} dir="auto" className="group glass card cursor-grab p-3 shadow-glass transition hover:-translate-y-0.5 active:cursor-grabbing">
                       <div className="flex items-center justify-between">
-                        <Badge tone={priorityTone[tk.priority]}>{t(tk.priority)}</Badge>
+                        <div className="flex items-center gap-1.5">
+                          <Badge tone={priorityTone[tk.priority]}>{t(tk.priority)}</Badge>
+                          {tk.category && <Badge tone={categoryTone(tk.category)}>{t(tk.category)}</Badge>}
+                        </div>
                         <div className="flex items-center gap-1.5 text-[10px] text-[var(--muted)]">
                           <button onClick={() => openEdit(tk)} title={t("Edit")} className="opacity-0 transition hover:text-royal-400 group-hover:opacity-100">
                             {t("Edit")}
@@ -388,11 +458,23 @@ export default function TasksPage() {
                         </div>
                       </div>
                       <p className="mt-2 text-[13px] font-medium leading-snug">{tk.title}</p>
-                      {milestoneName(tk.milestoneId) && (
-                        <div className="mt-1.5 inline-flex items-center gap-1 rounded bg-violet-500/12 px-1.5 py-0.5 text-[10px] text-violet-400">
-                          <Icon.target className="h-2.5 w-2.5" /> {milestoneName(tk.milestoneId)}
-                        </div>
-                      )}
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {milestoneName(tk.milestoneId) && (
+                          <span className="inline-flex items-center gap-1 rounded bg-violet-500/12 px-1.5 py-0.5 text-[10px] text-violet-400">
+                            <Icon.target className="h-2.5 w-2.5" /> {milestoneName(tk.milestoneId)}
+                          </span>
+                        )}
+                        {tk.businessValue && (
+                          <span title={businessValueBenefit(tk.businessValue)} className="inline-flex items-center gap-1 rounded bg-emerald-500/12 px-1.5 py-0.5 text-[10px] text-emerald-500">
+                            <Icon.analytics className="h-2.5 w-2.5" /> {tk.businessValue}
+                          </span>
+                        )}
+                        {effortLabel(tk.effortValue, tk.effortUnit as EffortUnit) && (
+                          <span className="inline-flex items-center gap-1 rounded bg-royal-500/10 px-1.5 py-0.5 text-[10px] text-royal-400">
+                            <Icon.clock className="h-2.5 w-2.5" /> {effortLabel(tk.effortValue, tk.effortUnit as EffortUnit)}
+                          </span>
+                        )}
+                      </div>
                       <div className="mt-2 flex flex-wrap gap-1">
                         {tk.tags.map((tag) => (
                           <span key={tag} className="rounded bg-royal-500/10 px-1.5 py-0.5 text-[10px] text-royal-400">
@@ -470,6 +552,9 @@ export default function TasksPage() {
                         <div dir="auto" className="font-medium">{tk.title}</div>
                         <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-[var(--muted)]">
                           <span>{tk.id}</span>
+                          {tk.category && <Badge tone={categoryTone(tk.category)}>{t(tk.category)}</Badge>}
+                          {tk.businessValue && <span title={businessValueBenefit(tk.businessValue)} className="inline-flex items-center gap-1 text-emerald-500"><Icon.analytics className="h-3 w-3" /> {tk.businessValue}</span>}
+                          {effortLabel(tk.effortValue, tk.effortUnit as EffortUnit) && <span className="inline-flex items-center gap-1"><Icon.clock className="h-3 w-3" /> {effortLabel(tk.effortValue, tk.effortUnit as EffortUnit)}</span>}
                           {sc.total > 0 && <span className="inline-flex items-center gap-1"><Icon.task className="h-3 w-3" /> {sc.done}/{sc.total} {t("subtasks")}</span>}
                           {cc.total > 0 && <span className="inline-flex items-center gap-1"><Icon.check className="h-3 w-3" /> {cc.done}/{cc.total}</span>}
                           {evCount > 0 && <span className="inline-flex items-center gap-1 text-royal-400"><Icon.document className="h-3 w-3" /> {evCount}</span>}
@@ -543,15 +628,23 @@ export default function TasksPage() {
 
       {form.open && (
         <Modal title={form.id == null ? t("New Task") : t("Edit Task")} onClose={close} onSave={save} saveLabel={form.id == null ? t("Create") : t("Save")}>
+          {/* Judul Task */}
           <label className={labelCls}>
-            {t("Task")}
+            {t("Task Title")}
             <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder={t("e.g. Draft Q3 KPI cascade")} className={inputCls} />
           </label>
+          {/* Deskripsi */}
+          <label className={labelCls}>
+            {t("Description")}
+            <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={2} placeholder={t("Short description of the task")} className={`${inputCls} resize-y`} />
+          </label>
+
+          {/* Kategori · Prioritas */}
           <div className="grid grid-cols-2 gap-3">
             <label className={labelCls}>
-              {t("Status")}
-              <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as TaskStatus }))} className={`${inputCls} text-[var(--text)]`}>
-                {taskColumns.map((s) => (<option key={s} value={s}>{t(s)}</option>))}
+              {t("Category")}
+              <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className={`${inputCls} text-[var(--text)]`}>
+                {TASK_CATEGORIES.map((c) => (<option key={c.value} value={c.value}>{t(c.value)}</option>))}
               </select>
             </label>
             <label className={labelCls}>
@@ -561,21 +654,62 @@ export default function TasksPage() {
               </select>
             </label>
           </div>
+
+          {/* Business Value · Estimasi Effort */}
           <div className="grid grid-cols-2 gap-3">
             <label className={labelCls}>
-              {t("Assignee")}
-              <EmployeePicker
-                value={form.assignee}
-                onChange={(v) => setForm((f) => ({ ...f, assignee: v }))}
-                placeholderFallback={t("e.g. Rani K.")}
-                className={inputCls}
-              />
+              {t("Business Value")}
+              <select value={form.businessValue} onChange={(e) => setForm((f) => ({ ...f, businessValue: e.target.value }))} className={`${inputCls} text-[var(--text)]`}>
+                <option value="">{t("— Select —")}</option>
+                {BUSINESS_VALUES.map((b) => (<option key={b.value} value={b.value}>{b.value}</option>))}
+              </select>
+              {form.businessValue && <span className="mt-1 block text-[10px] italic text-[var(--muted)]">{businessValueBenefit(form.businessValue)}</span>}
             </label>
             <label className={labelCls}>
-              {t("Due")}
-              <input type="date" value={form.due} onChange={(e) => setForm((f) => ({ ...f, due: e.target.value }))} className={`${inputCls} text-[var(--text)]`} />
+              {t("Effort Estimate")}
+              <div className="mt-1 flex gap-2">
+                <input type="number" min={0} step={1} value={form.effortValue} onChange={(e) => setForm((f) => ({ ...f, effortValue: e.target.value }))} placeholder="0" className={`${inputCls} mt-0 w-20`} />
+                <select value={form.effortUnit} onChange={(e) => setForm((f) => ({ ...f, effortUnit: e.target.value as EffortUnit }))} className={`${inputCls} mt-0 flex-1 text-[var(--text)]`}>
+                  {EFFORT_UNITS.map((u) => (<option key={u} value={u}>{t(u)}</option>))}
+                </select>
+              </div>
             </label>
           </div>
+
+          {/* Owner/PIC · Requester */}
+          <div className="grid grid-cols-2 gap-3">
+            <label className={labelCls}>
+              {t("Owner / PIC")}
+              <EmployeePicker value={form.assignee} onChange={(v) => setForm((f) => ({ ...f, assignee: v }))} placeholderFallback={t("e.g. Rani K.")} className={inputCls} />
+            </label>
+            <label className={labelCls}>
+              {t("Requester")}
+              <EmployeePicker value={form.requester} onChange={(v) => setForm((f) => ({ ...f, requester: v }))} placeholderFallback={t("e.g. Arif W.")} className={inputCls} />
+            </label>
+          </div>
+
+          {/* Target Sprint/Periode · Tanggal Target · Status */}
+          <div className="grid grid-cols-3 gap-3">
+            <label className={labelCls}>
+              {t("Target Sprint / Period")}
+              <select value={form.sprint} onChange={(e) => setForm((f) => ({ ...f, sprint: e.target.value }))} className={`${inputCls} text-[var(--text)]`}>
+                <option value="">{t("— Select —")}</option>
+                {periodOptions(new Date().getFullYear()).map((p) => (<option key={p} value={p}>{p}</option>))}
+              </select>
+            </label>
+            <label className={labelCls}>
+              {t("Target Date")}
+              <input type="date" value={form.due} onChange={(e) => setForm((f) => ({ ...f, due: e.target.value }))} className={`${inputCls} text-[var(--text)]`} />
+            </label>
+            <label className={labelCls}>
+              {t("Status")}
+              <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as TaskStatus }))} className={`${inputCls} text-[var(--text)]`}>
+                {taskColumns.map((s) => (<option key={s} value={s}>{t(s)}</option>))}
+              </select>
+            </label>
+          </div>
+
+          {/* Program · Milestone */}
           <div className="grid grid-cols-2 gap-3">
             <label className={labelCls}>
               {t("Program")}
@@ -591,6 +725,22 @@ export default function TasksPage() {
               </select>
             </label>
           </div>
+
+          {/* Dependensi — multi-select of other tasks */}
+          <label className={labelCls}>
+            {t("Dependencies")}
+            <select
+              multiple
+              value={form.dependencies}
+              onChange={(e) => setForm((f) => ({ ...f, dependencies: Array.from(e.target.selectedOptions, (o) => o.value) }))}
+              className={`${inputCls} h-24 text-[var(--text)]`}
+            >
+              {items.filter((x) => x.id !== form.id).map((x) => (<option key={x.id} value={x.id}>{x.id} — {x.title}</option>))}
+            </select>
+            <span className="mt-1 block text-[10px] text-[var(--muted)]">{t("Ctrl/Cmd-click to select multiple")}</span>
+          </label>
+
+          {/* Tags */}
           <label className={labelCls}>
             {t("Tags")}
             <input value={form.tags} onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))} placeholder={t("e.g. KPI, Q3")} className={inputCls} />

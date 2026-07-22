@@ -1561,20 +1561,31 @@ export interface Task {
   title: string;
   status: TaskStatus;
   priority: Priority;
-  assignee: string;
+  assignee: string; // Owner / PIC
   avatar: string;
-  due: string;
+  due: string; // Tanggal Target
   program: string;
   milestoneId?: string; // linked Milestone (milestones.id); undefined = additional task
   checklist: { total: number; done: number };
   subtasks?: Subtask[]; // Task → Subtask → Checklist hierarchy
-  evidence?: Evidence[]; // attached files / links, pinned to the task
+  evidence?: Evidence[]; // Lampiran Dokumen — attached files / links, pinned to the task
   comments: number;
   tags: string[];
+  // --- Backlog attributes (Task.png) — all optional for backward compatibility ---
+  description?: string; // Deskripsi
+  category?: string; // Kategori — one of TASK_CATEGORIES (picked, not typed)
+  businessValue?: string; // Business Value — one of BUSINESS_VALUES (picked, not typed)
+  effortValue?: number; // Estimasi Effort (angka)
+  effortUnit?: string; // "Jam" | "Hari"
+  requester?: string; // Requester (nama karyawan)
+  sprint?: string; // Target Sprint / Periode (picked from periodOptions)
+  dependencies?: string[]; // Dependensi — id task lain
+  createdAt?: string; // Tanggal Dibuat (YYYY-MM-DD, auto)
 }
 
 export const tasks: Task[] = [
   { id: "T-101", title: "Draft Q3 KPI cascade for Performance team", status: "In Progress", priority: "High", assignee: "Sinta L.", avatar: "SL", due: "2026-07-10", program: "PRG-03", milestoneId: "mst-301", checklist: { total: 6, done: 4 }, comments: 3, tags: ["KPI", "Q3"],
+    description: "Susun cascade KPI korporat → unit kerja untuk periode Q3.", category: "Project", businessValue: "Productivity", effortValue: 16, effortUnit: "Jam", requester: "Arif W.", sprint: "Q3 2026", createdAt: "2026-06-28",
     subtasks: [
       { id: "st-1011", title: "Collect team OKRs", done: true, checklist: [
         { id: "cl-10111", text: "Export current OKRs", done: true },
@@ -1590,7 +1601,7 @@ export const tasks: Task[] = [
       { id: "ev-1011", kind: "link", name: "KPI cascade worksheet", url: "https://docs.google.com/spreadsheets/kpi-cascade" },
     ],
   },
-  { id: "T-102", title: "Competency gap analysis — Analytics", status: "Review", priority: "Critical", assignee: "Rani K.", avatar: "RK", due: "2026-07-08", program: "PRG-01", milestoneId: "mst-102", checklist: { total: 8, done: 8 }, comments: 5, tags: ["Competency"] },
+  { id: "T-102", title: "Competency gap analysis — Analytics", status: "Review", priority: "Critical", assignee: "Rani K.", avatar: "RK", due: "2026-07-08", program: "PRG-01", milestoneId: "mst-102", checklist: { total: 8, done: 8 }, comments: 5, tags: ["Competency"], description: "Analisis gap kompetensi tim Analytics vs matriks target.", category: "Improvement", businessValue: "Data Quality", effortValue: 3, effortUnit: "Hari", requester: "Bagus H.", sprint: "Jul 2026", dependencies: ["T-101"], createdAt: "2026-06-30" },
   { id: "T-103", title: "Finalize Leadership curriculum module 3", status: "Backlog", priority: "Medium", assignee: "Dimas P.", avatar: "DP", due: "2026-07-18", program: "PRG-02", milestoneId: "mst-201", checklist: { total: 5, done: 1 }, comments: 1, tags: ["Training"] },
   { id: "T-104", title: "Migrate SOP library to new KM system", status: "In Progress", priority: "Medium", assignee: "Rani K.", avatar: "RK", due: "2026-07-14", program: "PRG-05", milestoneId: "mst-501", checklist: { total: 10, done: 7 }, comments: 2, tags: ["Knowledge"] },
   { id: "T-105", title: "Configure SLA rules for service requests", status: "Done", priority: "High", assignee: "Sinta L.", avatar: "SL", due: "2026-07-02", program: "PRG-03", milestoneId: "mst-302", checklist: { total: 4, done: 4 }, comments: 0, tags: ["SLA"] },

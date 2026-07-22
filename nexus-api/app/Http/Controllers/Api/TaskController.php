@@ -5,12 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TaskResource;
 use App\Models\Activity;
-use App\Models\Program;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class TaskController extends Controller
 {
@@ -44,6 +42,13 @@ class TaskController extends Controller
             'checklist_total' => ['nullable', 'integer', 'min:0'],
             'checklist_done' => ['nullable', 'integer', 'min:0'],
             'tags' => ['nullable', 'array'],
+            'category' => ['nullable', 'string', 'max:64'],
+            'business_value' => ['nullable', 'string', 'max:64'],
+            'effort_value' => ['nullable', 'integer', 'min:0'],
+            'effort_unit' => ['nullable', 'in:Jam,Hari'],
+            'requester' => ['nullable', 'string', 'max:255'],
+            'sprint' => ['nullable', 'string', 'max:64'],
+            'dependencies' => ['nullable', 'array'],
         ]);
 
         $data['code'] = 'T-'.(Task::withTrashed()->max('id') + 101);
@@ -71,6 +76,13 @@ class TaskController extends Controller
             'checklist_total' => ['sometimes', 'integer', 'min:0'],
             'checklist_done' => ['sometimes', 'integer', 'min:0'],
             'tags' => ['nullable', 'array'],
+            'category' => ['nullable', 'string', 'max:64'],
+            'business_value' => ['nullable', 'string', 'max:64'],
+            'effort_value' => ['nullable', 'integer', 'min:0'],
+            'effort_unit' => ['nullable', 'in:Jam,Hari'],
+            'requester' => ['nullable', 'string', 'max:255'],
+            'sprint' => ['nullable', 'string', 'max:64'],
+            'dependencies' => ['nullable', 'array'],
         ]);
 
         $task->update($data);

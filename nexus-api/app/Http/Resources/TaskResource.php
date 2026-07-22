@@ -26,6 +26,16 @@ class TaskResource extends JsonResource
             ],
             'comments' => $this->comments_count,
             'tags' => $this->tags ?? [],
+            // Backlog attributes (Task.png / BusinessValue.png)
+            'description' => $this->description,
+            'category' => $this->category,
+            'businessValue' => $this->business_value,
+            'effortValue' => $this->effort_value,
+            'effortUnit' => $this->effort_unit,
+            'requester' => $this->requester,
+            'sprint' => $this->sprint,
+            'dependencies' => $this->dependencies ?? [],
+            'createdAt' => optional($this->created_at)->format('Y-m-d'),
         ];
     }
 }
