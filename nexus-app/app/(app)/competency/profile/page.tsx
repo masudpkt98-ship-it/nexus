@@ -2,9 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, Badge, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
+import { exportCompetencyProfile, type CompetencyExportData } from "@/lib/competencyExport";
 import { technicalCompetencyLevels as levels, type DictionaryCompetency, type Employee } from "@/lib/data";
 import { competencyDictionarySeed } from "@/lib/competencyDictionarySeed";
 import { jobCompetencyProfiles } from "@/lib/jobCompetencyProfiles";
@@ -48,6 +49,7 @@ export default function JobCompetencyProfilePage() {
   const [jabQ, setJabQ] = useState("");
   const [empQ, setEmpQ] = useState("");
   const [empNote, setEmpNote] = useState<string | null>(null);
+  const [matchedEmp, setMatchedEmp] = useState<{ name: string; npk: string } | null>(null);
   const [openC, setOpenC] = useState<Record<string, boolean>>({});
   const jab = jabKey ? jabByKey.get(jabKey) ?? null : null;
 
@@ -85,6 +87,7 @@ export default function JobCompetencyProfilePage() {
       jabByKey.get(np) ||
       jabatanCompetencyProfiles.find((p) => p.key.includes(np) || np.includes(p.key));
     setEmpQ("");
+    setMatchedEmp({ name: e.name, npk: String(e.npk ?? "") });
     if (match) {
       setJabKey(match.key); setJabQ("");
       setEmpNote(`${e.name} · ${e.position} → ${match.jabatan}`);
@@ -93,6 +96,21 @@ export default function JobCompetencyProfilePage() {
       setEmpNote(`${e.name} · ${e.position} — ${t("No competency profile found for this employee's position.")}`);
     }
   };
+
+  const buildExport = (): CompetencyExportData | null => {
+    if (!jab) return null;
+    return {
+      employeeName: matchedEmp?.name,
+      employeeNpk: matchedEmp?.npk || undefined,
+      jabatan: jab.jabatan, band: jab.band, jobStream: jab.jobStream, sf: jab.sf,
+      technical: jab.tech.map((tc) => {
+        const c = tc.c ? techById.get(tc.c) : undefined;
+        return { code: c?.code ?? (tc.c ? `TC-${tc.c}` : "—"), name: c?.name ?? tc.n ?? `#${tc.c}`, level: tc.l, levelName: levelName(tc.l) };
+      }),
+      behavioral: jab.beh.map((b) => ({ name: behByName.get(norm(b.n))?.name ?? b.n, tier: b.t })),
+    };
+  };
+  const doExport = (kind: "excel" | "pdf") => { const d = buildExport(); if (d) exportCompetencyProfile(kind, d); };
 
   const toggleC = (id: string) => setOpenC((o) => ({ ...o, [id]: !o[id] }));
 
@@ -148,7 +166,7 @@ export default function JobCompetencyProfilePage() {
             {jabMatches.length > 0 && jabQ && (
               <div className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border bg-[rgb(var(--surface))] shadow-glass">
                 {jabMatches.map((p) => (
-                  <button key={p.key} onClick={() => { setJabKey(p.key); setJabQ(""); setEmpNote(null); }} className="block w-full truncate px-3 py-1.5 text-left text-[12px] hover:bg-black/5 dark:hover:bg-white/5">
+                  <button key={p.key} onClick={() => { setJabKey(p.key); setJabQ(""); setEmpNote(null); setMatchedEmp(null); }} className="block w-full truncate px-3 py-1.5 text-left text-[12px] hover:bg-black/5 dark:hover:bg-white/5">
                     {p.jabatan} <span className="text-[var(--muted)]">· {p.band}</span>
                   </button>
                 ))}
@@ -163,11 +181,20 @@ export default function JobCompetencyProfilePage() {
       {jab && (
         <div className="mb-6">
           <Card className="mb-3">
-            <div className="text-base font-semibold">{jab.jabatan}</div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-[var(--muted)]">
-              {jab.band && <Badge tone="blue">{jab.band}</Badge>}
-              {jab.sf && <Badge tone="gray">{jab.sf}</Badge>}
-              {jab.jobStream && <span>· {jab.jobStream}</span>}
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0">
+                {matchedEmp && <div className="text-[12px] text-[var(--muted)]">{matchedEmp.name}</div>}
+                <div className="text-base font-semibold">{jab.jabatan}</div>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-[var(--muted)]">
+                  {jab.band && <Badge tone="blue">{jab.band}</Badge>}
+                  {jab.sf && <Badge tone="gray">{jab.sf}</Badge>}
+                  {jab.jobStream && <span>· {jab.jobStream}</span>}
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Btn variant="ghost" onClick={() => doExport("excel")}><Icon.document className="h-3.5 w-3.5" /> {t("Export Excel")}</Btn>
+                <Btn variant="ghost" onClick={() => doExport("pdf")}><Icon.document className="h-3.5 w-3.5" /> {t("Export PDF")}</Btn>
+              </div>
             </div>
           </Card>
 
