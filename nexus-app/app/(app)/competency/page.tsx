@@ -178,6 +178,32 @@ export default function CompetencyPage() {
         </Link>
       </div>
 
+      {/* COMPASS — Competency Development Platform */}
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{t("COMPASS · Competency Development Platform")}</div>
+      <div className="mb-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {([
+          ["/competency/job-profile", "Job Profile", "Informasi lengkap jabatan"],
+          ["/competency/gap", "Competency Gap Analysis", "Required vs current · gap"],
+          ["/competency/blueprint", "Role Learning Blueprint", "Kurikulum per jabatan"],
+          ["/competency/journey", "Learning Journey", "Urutan belajar · progress"],
+          ["/competency/lms", "Learning Modules (LMS)", "Katalog materi pembelajaran"],
+          ["/competency/ojt", "OJT & Job Shadowing", "Belajar di tempat kerja"],
+          ["/competency/mentoring", "Mentoring & Coaching", "Pendampingan & action plan"],
+          ["/competency/assessment", "Assessment", "Pembuktian kompetensi"],
+          ["/competency/certification", "Certification", "Sertifikasi kompetensi"],
+          ["/competency/passport", "Competency Passport", "Riwayat kompetensi karyawan"],
+        ] as const).map(([href, title, sub]) => (
+          <Link key={href} href={href} className="flex items-center gap-2.5 rounded-xl border px-3 py-2.5 transition hover:border-royal-500/40 hover:bg-royal-500/5">
+            <Icon.competency className="h-4 w-4 shrink-0 text-royal-400" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[13px] font-medium">{t(title)}</div>
+              <div className="truncate text-[10px] text-[var(--muted)]">{t(sub)}</div>
+            </div>
+            <Icon.chevron className="h-3.5 w-3.5 shrink-0 text-[var(--muted)]" />
+          </Link>
+        ))}
+      </div>
+
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Card>
           <div className="text-xs text-[var(--muted)]">{t("Competency Index")}</div>

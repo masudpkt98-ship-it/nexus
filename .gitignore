@@ -25,3 +25,6 @@ Thumbs.db
 
 # temp scratch scripts
 nexus-app/_*
+
+# Source spec documents (not committed)
+*.docx

@@ -48,8 +48,18 @@ export const navItems: NavItem[] = [
     section: "People & Performance",
     children: [
       { label: "Competency Dictionary", href: "/competency/dictionary" },
+      { label: "Job Profile", href: "/competency/job-profile" },
       { label: "Job Competency Profile", href: "/competency/profile" },
       { label: "Competency Matrix", href: "/competency/matrix" },
+      { label: "Competency Gap Analysis", href: "/competency/gap" },
+      { label: "Role Learning Blueprint", href: "/competency/blueprint" },
+      { label: "Learning Journey", href: "/competency/journey" },
+      { label: "Learning Modules (LMS)", href: "/competency/lms" },
+      { label: "OJT & Job Shadowing", href: "/competency/ojt" },
+      { label: "Mentoring & Coaching", href: "/competency/mentoring" },
+      { label: "Assessment", href: "/competency/assessment" },
+      { label: "Certification", href: "/competency/certification" },
+      { label: "Competency Passport", href: "/competency/passport" },
     ],
   },
   {

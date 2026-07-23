@@ -41,6 +41,9 @@ export const ADMIN: Session = { name: "Administrator", npk: "", role: "Admin", s
 export const PARTNER_NAV = new Set<string>([
   "/dashboard", "/dashboard/performance", "/dashboard/competency", "/dashboard/eligibility",
   "/people", "/competency", "/competency/dictionary", "/competency/profile", "/competency/matrix",
+  "/competency/job-profile", "/competency/gap", "/competency/blueprint", "/competency/journey",
+  "/competency/lms", "/competency/ojt", "/competency/mentoring", "/competency/assessment",
+  "/competency/certification", "/competency/passport",
   "/performance", "/performance/dictionary", "/performance/planning",
   "/performance/planning/korporat", "/performance/planning/direktorat", "/performance/planning/manajemen",
   "/performance/planning/unit-kerja", "/performance/planning/individu",
