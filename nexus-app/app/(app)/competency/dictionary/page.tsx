@@ -7,12 +7,12 @@ import { Card, Badge, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import {
   competencyCategories,
-  technicalCompetencies as seedComps,
   technicalCompetencyLevels as seedLevels,
   type CompetencyCategory,
   type DictionaryCompetency,
   type CompetencyLevelDef,
 } from "@/lib/data";
+import { competencyDictionarySeed as seedComps } from "@/lib/competencyDictionarySeed";
 import { parseKamus, parseDaftarGrouping, parseProficiency, applyGrouping, mergeLevels } from "@/lib/importCompetencies";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
@@ -60,7 +60,7 @@ const tabLabel = (tab: Tab, cat: string) => `${tab} ${cat}`;
 
 export default function CompetencyDictionaryPage() {
   const { t } = useI18n();
-  const [comps, setComps] = useLocalState<DictionaryCompetency[]>("technical-competencies", seedComps);
+  const [comps, setComps] = useLocalState<DictionaryCompetency[]>("competency-dictionary", seedComps);
   const [levels, setLevels] = useLocalState<CompetencyLevelDef[]>("technical-competency-levels", seedLevels);
   const [cat, setCat] = useState<CompetencyCategory>(competencyCategories[0]);
   const [tab, setTab] = useState<Tab>("Daftar");
@@ -233,7 +233,7 @@ export default function CompetencyDictionaryPage() {
                     <td className="max-w-[280px] px-4 py-3"><div className="font-medium">{c.name}</div><div className="line-clamp-1 text-[11px] text-[var(--muted)]">{c.definition || "—"}</div></td>
                     <td className="px-4 py-3 text-xs text-[var(--muted)]">{c.jobFamilyName || "—"}</td>
                     <td className="px-4 py-3 text-xs text-[var(--muted)]">{c.functionName || "—"}</td>
-                    <td className="px-4 py-3 text-xs text-[var(--muted)]">{c.indicators.filter((i) => i.indicator.trim()).length}/{levels.length}</td>
+                    <td className="px-4 py-3 text-xs text-[var(--muted)]">{c.keyActions?.length ? `${c.keyActions.length} ${t("key actions")}` : `${c.indicators.filter((i) => i.indicator.trim()).length}/${levels.length}`}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2 text-[11px] opacity-0 transition group-hover:opacity-100">
                         <button onClick={() => openEdit(c)} title={t("Edit")} className="font-medium text-[var(--muted)] hover:text-royal-400">{t("Edit")}</button>
@@ -279,25 +279,38 @@ export default function CompetencyDictionaryPage() {
                   <Icon.chevron className={cn("h-4 w-4 shrink-0 text-[var(--muted)] transition", isOpen && "rotate-90")} />
                   <Badge tone="blue">{c.code}</Badge>
                   <span className="min-w-0 flex-1 truncate font-semibold">{c.name}</span>
-                  <span className="shrink-0 text-[10px] text-[var(--muted)]">{c.indicators.filter((i) => i.indicator.trim()).length} {t("indicators")}</span>
+                  <span className="shrink-0 text-[10px] text-[var(--muted)]">{c.keyActions?.length ? `${c.keyActions.length} ${t("key actions")}` : `${c.indicators.filter((i) => i.indicator.trim()).length} ${t("indicators")}`}</span>
                 </button>
                 {isOpen && (
                   <div className="mt-3 border-t pt-3">
                     <p className="text-[13px] text-[var(--muted)]">{c.definition || "—"}</p>
-                    <div className="mt-3 space-y-2">
-                      {levels.map((l) => {
-                        const ind = c.indicators.find((i) => i.level === l.level)?.indicator?.trim();
-                        return (
-                          <div key={l.level} className="flex gap-3 rounded-lg border p-2.5">
-                            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-royal-500/15 text-[11px] font-bold text-royal-400">{l.level}</div>
-                            <div className="min-w-0 flex-1">
-                              <div className="text-[11px] font-semibold text-[var(--muted)]">{l.name}</div>
-                              <div className="text-[13px]">{ind || <span className="text-[var(--muted)]">—</span>}</div>
+                    {c.keyActions?.length ? (
+                      <div className="mt-3">
+                        <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{t("Key Actions")}</div>
+                        <ul className="space-y-1.5">
+                          {c.keyActions.map((a, i) => (
+                            <li key={i} className="flex gap-2 rounded-lg border p-2.5 text-[13px]">
+                              <span className="text-royal-400">•</span><span className="min-w-0 flex-1">{a}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        {levels.map((l) => {
+                          const ind = c.indicators.find((i) => i.level === l.level)?.indicator?.trim();
+                          return (
+                            <div key={l.level} className="flex gap-3 rounded-lg border p-2.5">
+                              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-royal-500/15 text-[11px] font-bold text-royal-400">{l.level}</div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[11px] font-semibold text-[var(--muted)]">{l.name}</div>
+                                <div className="whitespace-pre-line text-[13px]">{ind || <span className="text-[var(--muted)]">—</span>}</div>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
               </Card>

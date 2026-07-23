@@ -7,7 +7,6 @@ import { Card, Badge, Avatar, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { EmployeePicker } from "@/components/EmployeePicker";
 import {
-  technicalCompetencies as seedComps,
   technicalCompetencyLevels as seedLevels,
   type DictionaryCompetency,
   type CompetencyLevelDef,
@@ -15,6 +14,7 @@ import {
   type CompetencyAssessments,
   type MatrixEmployee,
 } from "@/lib/data";
+import { competencyDictionarySeed as seedComps } from "@/lib/competencyDictionarySeed";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 
@@ -36,7 +36,7 @@ type Tab = "Standar" | "Matriks";
 
 export default function CompetencyMatrixPage() {
   const { t } = useI18n();
-  const [comps] = useLocalState<DictionaryCompetency[]>("technical-competencies", seedComps);
+  const [comps] = useLocalState<DictionaryCompetency[]>("competency-dictionary", seedComps);
   const [levels] = useLocalState<CompetencyLevelDef[]>("technical-competency-levels", seedLevels);
   const [standards, setStandards] = useLocalState<CompetencyStandards>("competency-standards", {});
   const [assessments, setAssessments] = useLocalState<CompetencyAssessments>("competency-assessments", {});
