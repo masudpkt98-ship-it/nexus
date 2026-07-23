@@ -40,7 +40,7 @@ export const ADMIN: Session = { name: "Administrator", npk: "", role: "Admin", s
 // Nexian (team roster + "View as") is Admin-only, so it's intentionally absent.
 export const PARTNER_NAV = new Set<string>([
   "/dashboard", "/dashboard/performance", "/dashboard/competency", "/dashboard/eligibility",
-  "/people", "/competency", "/competency/dictionary", "/competency/matrix",
+  "/people", "/competency", "/competency/dictionary", "/competency/profile", "/competency/matrix",
   "/performance", "/performance/dictionary", "/performance/planning",
   "/performance/planning/korporat", "/performance/planning/direktorat", "/performance/planning/manajemen",
   "/performance/planning/unit-kerja", "/performance/planning/individu",
