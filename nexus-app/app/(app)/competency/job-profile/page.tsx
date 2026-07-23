@@ -8,18 +8,28 @@ import { Icon } from "@/components/Icons";
 import { EmployeeSearch } from "@/components/EmployeeSearch";
 import { matchJabatan, resolveTech, behByName, norm, tierTone, levelTone } from "@/lib/compass";
 import { importJobProfile } from "@/lib/importJobProfile";
+import { downloadKpiTemplate, parseKpiExcel, exportJobKpiExcel, type Responsibility } from "@/lib/jobKpi";
 import { useLocalState } from "@/lib/useLocalState";
 import { type Employee, type JabatanCompetencyProfile } from "@/lib/data";
 import { useI18n } from "@/lib/i18n";
 
 interface JobDesc {
+  jabatanName?: string;
   kodeJabatan?: string; direktorat?: string; kompartemen?: string; departemen?: string;
-  purpose: string; responsibilities: string; dimensi?: string; authority?: string; relations?: string;
-  qualifications: string; certifications: string; risks: string; kpi: string;
+  purpose: string; responsibilities: Responsibility[]; dimensi?: string; authority?: string; relations?: string;
+  qualifications: string; certifications: string; risks: string;
 }
-const emptyDesc: JobDesc = { purpose: "", responsibilities: "", qualifications: "", certifications: "", risks: "", kpi: "" };
+const emptyDesc: JobDesc = { purpose: "", responsibilities: [], qualifications: "", certifications: "", risks: "" };
 const areaCls = "mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500";
 const lblCls = "block text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]";
+
+// Old stored data may have responsibilities as a string — coerce to a list.
+const respList = (d?: JobDesc): Responsibility[] => {
+  const r = d?.responsibilities as unknown;
+  if (Array.isArray(r)) return r as Responsibility[];
+  if (typeof r === "string") return r.split("\n").map((s) => s.trim()).filter(Boolean).map((text) => ({ text, kpis: [] }));
+  return [];
+};
 
 export default function JobProfilePage() {
   const { t } = useI18n();
@@ -31,41 +41,80 @@ export default function JobProfilePage() {
   const [edit, setEdit] = useState(false);
   const [draft, setDraft] = useState<JobDesc>(emptyDesc);
   const [note, setNote] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const docxRef = useRef<HTMLInputElement>(null);
+  const xlsxRef = useRef<HTMLInputElement>(null);
 
+  const showJabatan = (name: string, key: string) => {
+    setEmp(null); setSel(matchJabatan(name)); setTitle(name); setDescKey(key); setEdit(false);
+  };
   const pick = (e: Employee) => {
     const m = matchJabatan(e.position || "");
     setEmp(e); setSel(m); setTitle(m?.jabatan || e.position || ""); setDescKey(m?.key ?? norm(e.position || "")); setEdit(false); setNote(null);
   };
 
-  const onImport = async (file: File) => {
-    setNote(null);
-    try {
-      const p = await importJobProfile(file);
-      if (!p.namaJabatan) { setNote(t("Could not read a job profile from this file.")); return; }
-      const m = matchJabatan(p.namaJabatan);
-      const key = m?.key ?? norm(p.namaJabatan);
-      const desc: JobDesc = {
-        kodeJabatan: p.kodeJabatan, direktorat: p.direktorat, kompartemen: p.kompartemen, departemen: p.departemen,
-        purpose: p.purpose, responsibilities: p.responsibilities, dimensi: p.dimensi, authority: p.authority,
-        relations: p.relations, qualifications: p.qualifications, certifications: "", risks: p.risks, kpi: "",
-      };
-      setDescs((mp) => ({ ...mp, [key]: desc }));
-      setEmp(null); setSel(m); setTitle(p.namaJabatan); setDescKey(key); setEdit(false);
-      setNote(`${t("Imported")}: ${p.namaJabatan}${m ? "" : ` · ${t("(competencies unavailable — no matching profile)")}`}`);
-    } catch {
-      setNote(t("Could not read the file. Make sure it is a valid .docx."));
-    } finally {
-      if (fileRef.current) fileRef.current.value = "";
+  // ---- .docx import (one or many) ----
+  const onImportDocx = async (files: FileList) => {
+    setNote(null); setBusy(true);
+    const added: Record<string, JobDesc> = {};
+    let ok = 0, matched = 0, failed = 0, lastKey = "", lastName = "";
+    for (const file of Array.from(files)) {
+      try {
+        const p = await importJobProfile(file);
+        if (!p.namaJabatan) { failed++; continue; }
+        const m = matchJabatan(p.namaJabatan);
+        const key = m?.key ?? norm(p.namaJabatan);
+        const prev = descs[key];
+        added[key] = {
+          jabatanName: p.namaJabatan, kodeJabatan: p.kodeJabatan, direktorat: p.direktorat, kompartemen: p.kompartemen, departemen: p.departemen,
+          purpose: p.purpose,
+          responsibilities: p.responsibilities.split("\n").map((s) => s.trim()).filter(Boolean).map((text) => ({ text, kpis: [] })),
+          dimensi: p.dimensi, authority: p.authority, relations: p.relations, qualifications: p.qualifications,
+          certifications: prev?.certifications ?? "", risks: p.risks,
+        };
+        ok++; if (m) matched++; lastKey = key; lastName = p.namaJabatan;
+      } catch { failed++; }
     }
+    if (ok) { setDescs((mp) => ({ ...mp, ...added })); showJabatan(lastName, lastKey); }
+    setNote(ok || failed ? [`${ok} ${t("job profiles imported")}`, `${matched} ${t("matched to competency profiles")}`, ...(failed ? [`${failed} ${t("failed")}`] : [])].join(" · ") : t("Could not read a job profile from this file."));
+    setBusy(false); if (docxRef.current) docxRef.current.value = "";
   };
 
-  const desc = descKey ? (descs[descKey] ?? emptyDesc) : emptyDesc;
-  const tech = useMemo(() => (sel ? resolveTech(sel) : []), [sel]);
-  const startEdit = () => { setDraft(desc); setEdit(true); };
-  const save = () => { if (descKey) setDescs((m) => ({ ...m, [descKey]: draft })); setEdit(false); };
+  // ---- KPI Excel import ----
+  const onImportKpi = async (file: File) => {
+    setNote(null); setBusy(true);
+    try {
+      const map = await parseKpiExcel(file);
+      if (map.size === 0) { setNote(t("No KPI rows found. Use the template columns: Jabatan · Tanggung Jawab · KPI.")); setBusy(false); if (xlsxRef.current) xlsxRef.current.value = ""; return; }
+      const upd: Record<string, JobDesc> = {}; let lastKey = "", lastName = "", nk = 0;
+      for (const [jabatan, resps] of map) {
+        const m = matchJabatan(jabatan); const key = m?.key ?? norm(jabatan);
+        const prev = descs[key] ?? { ...emptyDesc };
+        upd[key] = { ...prev, jabatanName: jabatan, responsibilities: resps };
+        lastKey = key; lastName = jabatan; nk += resps.reduce((s, r) => s + r.kpis.length, 0);
+      }
+      setDescs((mp) => ({ ...mp, ...upd }));
+      showJabatan(lastName, lastKey);
+      setNote(`${map.size} ${t("jobs")} · ${nk} KPI ${t("imported")}`);
+    } catch { setNote(t("Could not read the file. Make sure it is a valid .xlsx.")); }
+    setBusy(false); if (xlsxRef.current) xlsxRef.current.value = "";
+  };
 
-  const field = (label: string, key: keyof JobDesc, rows = 2) => (
+  const doExportExcel = () => {
+    if (!title) return;
+    exportJobKpiExcel({ jabatan: title, kodeJabatan: desc.kodeJabatan, direktorat: desc.direktorat, kompartemen: desc.kompartemen, departemen: desc.departemen, responsibilities: resps });
+  };
+
+  const imported = useMemo(() => Object.entries(descs).filter(([, d]) => d.jabatanName).map(([key, d]) => ({ key, name: d.jabatanName! })).sort((a, b) => a.name.localeCompare(b.name)), [descs]);
+
+  const desc = descKey ? (descs[descKey] ?? emptyDesc) : emptyDesc;
+  const resps = respList(desc);
+  const tech = useMemo(() => (sel ? resolveTech(sel) : []), [sel]);
+  const totalKpi = resps.reduce((s, r) => s + r.kpis.length, 0);
+
+  const startEdit = () => { setDraft({ ...emptyDesc, ...desc, responsibilities: resps }); setEdit(true); };
+  const save = () => { if (descKey) setDescs((m) => ({ ...m, [descKey]: draft })); setEdit(false); };
+  const field = (label: string, key: "purpose" | "authority" | "relations" | "dimensi" | "qualifications" | "certifications" | "risks", rows = 3) => (
     <div>
       <div className={lblCls}>{label}</div>
       {edit ? (
@@ -84,11 +133,15 @@ export default function JobProfilePage() {
       </Link>
       <PageHeader
         title="Job Profile"
-        subtitle="COMPASS · Informasi lengkap jabatan sebagai dasar pengembangan kompetensi"
+        subtitle="COMPASS · Informasi jabatan · Tanggung Jawab diterjemahkan menjadi KPI"
         actions={
           <>
-            <input ref={fileRef} type="file" accept=".docx" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onImport(f); }} />
-            <Btn variant="ghost" onClick={() => fileRef.current?.click()}><Icon.document className="h-4 w-4" /> {t("Import Job Profile (.docx)")}</Btn>
+            <input ref={docxRef} type="file" accept=".docx" multiple className="hidden" onChange={(e) => { if (e.target.files?.length) onImportDocx(e.target.files); }} />
+            <input ref={xlsxRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onImportKpi(f); }} />
+            <Btn variant="ghost" onClick={() => docxRef.current?.click()}><Icon.document className="h-4 w-4" /> {busy ? t("Importing…") : t("Import .docx")}</Btn>
+            <Btn variant="ghost" onClick={() => downloadKpiTemplate()}><Icon.document className="h-4 w-4" /> {t("KPI Template")}</Btn>
+            <Btn variant="ghost" onClick={() => xlsxRef.current?.click()}><Icon.document className="h-4 w-4" /> {t("Import KPI (Excel)")}</Btn>
+            <Btn variant="primary" onClick={doExportExcel}><Icon.document className="h-4 w-4" /> {t("Export Excel")}</Btn>
           </>
         }
       />
@@ -96,16 +149,27 @@ export default function JobProfilePage() {
       {note && <div className="mb-4 rounded-xl border border-royal-500/30 bg-royal-500/10 px-4 py-2.5 text-[13px] text-royal-300">{note}</div>}
 
       <Card className="mb-4">
-        <label className="block text-[11px] font-medium text-[var(--muted)]">
-          {t("Find by employee")}
-          <div className="mt-1"><EmployeeSearch onSelect={pick} /></div>
-        </label>
-        <p className="mt-2 text-[11px] text-[var(--muted)]">{t("…or import a PROFIL JABATAN (.docx) like VP.docx using the button above.")}</p>
+        <div className="flex flex-wrap items-end gap-4">
+          <label className="block text-[11px] font-medium text-[var(--muted)]">
+            {t("Find by employee")}
+            <div className="mt-1"><EmployeeSearch onSelect={pick} /></div>
+          </label>
+          {imported.length > 0 && (
+            <label className="block text-[11px] font-medium text-[var(--muted)]">
+              {t("Imported job profiles")} ({imported.length})
+              <select value={descKey && imported.some((i) => i.key === descKey) ? descKey : ""} onChange={(e) => { if (e.target.value) { const it = imported.find((i) => i.key === e.target.value); if (it) showJabatan(it.name, it.key); } }} className="mt-1 block w-64 rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500">
+                <option value="">{t("— Select —")}</option>
+                {imported.map((i) => (<option key={i.key} value={i.key}>{i.name}</option>))}
+              </select>
+            </label>
+          )}
+        </div>
+        <p className="mt-2 text-[11px] text-[var(--muted)]">{t("Import PROFIL JABATAN (.docx) for the narrative, and the KPI Excel (from the template) to break each responsibility into KPIs.")}</p>
       </Card>
 
       {!title ? (
         <Card className="flex min-h-[160px] items-center justify-center text-center text-[13px] text-[var(--muted)]">
-          {t("Search an employee or import a job profile document.")}
+          {t("Search an employee, or import a job profile / KPI file.")}
         </Card>
       ) : (
         <div className="space-y-4">
@@ -124,7 +188,6 @@ export default function JobProfilePage() {
                   {info(t("Direktorat"), desc.direktorat)}
                   {info(t("Kompartemen"), desc.kompartemen)}
                   {info(t("Departemen"), desc.departemen)}
-                  {emp?.unit && !desc.departemen && info(t("Unit"), emp.unit)}
                 </div>
               </div>
               {edit ? (
@@ -136,10 +199,56 @@ export default function JobProfilePage() {
                 <button onClick={startEdit} className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-[var(--muted)] hover:text-royal-400">{t("Edit")}</button>
               )}
             </div>
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
-              {field(t("Job Purpose"), "purpose", 3)}
-              {field("KPI", "kpi", 3)}
-              {field(t("Responsibilities"), "responsibilities", 4)}
+            {(desc.purpose || edit) && <div className="mt-3">{field(t("Job Purpose"), "purpose", 3)}</div>}
+          </Card>
+
+          {/* Tanggung Jawab → KPI */}
+          <Card>
+            <div className="mb-3 flex items-center gap-2">
+              <div className={lblCls}>{t("Responsibilities")} → KPI</div>
+              <span className="rounded-full bg-black/5 px-2 py-0.5 text-[11px] text-[var(--muted)] dark:bg-white/10">{resps.length} · {totalKpi} KPI</span>
+            </div>
+            {resps.length === 0 ? (
+              <p className="text-[13px] text-[var(--muted)]">{t("No responsibilities yet. Import the .docx and/or the KPI Excel template.")}</p>
+            ) : (
+              <div className="space-y-3">
+                {resps.map((r, i) => (
+                  <div key={i} className="rounded-lg border p-3">
+                    <div className="flex gap-2">
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-royal-500/15 text-[11px] font-bold text-royal-400">{i + 1}</div>
+                      <p className="flex-1 text-[13px] font-medium">{r.text}</p>
+                    </div>
+                    {r.kpis.length > 0 && (
+                      <div className="mt-2 overflow-x-auto pl-8">
+                        <table className="w-full text-[12px]">
+                          <thead className="text-left text-[10px] uppercase tracking-wide text-[var(--muted)]">
+                            <tr><th className="py-1 pr-2 font-medium">KPI</th><th className="py-1 pr-2 font-medium">{t("Unit")}</th><th className="py-1 pr-2 font-medium">Target</th><th className="py-1 pr-2 font-medium">{t("Weight")}</th><th className="py-1 font-medium">{t("Perspective")}</th></tr>
+                          </thead>
+                          <tbody>
+                            {r.kpis.map((k, j) => (
+                              <tr key={j} className="border-t">
+                                <td className="py-1 pr-2">{k.name}</td>
+                                <td className="py-1 pr-2 text-[var(--muted)]">{k.uom || "—"}</td>
+                                <td className="py-1 pr-2 text-[var(--muted)]">{k.target || "—"}</td>
+                                <td className="py-1 pr-2 text-[var(--muted)]">{k.weight ? `${k.weight}%` : "—"}</td>
+                                <td className="py-1"><span className="text-[var(--muted)]">{k.perspective || "—"}</span></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {r.kpis.length === 0 && <div className="mt-1 pl-8 text-[11px] text-[var(--muted)]">{t("No KPI yet — add via the KPI Excel template.")}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="mt-3 text-[11px] text-[var(--muted)]">{t("These KPIs can be picked as KPI Items in Performance Planning.")}</p>
+          </Card>
+
+          {/* Other narrative fields */}
+          <Card>
+            <div className="grid gap-4 sm:grid-cols-2">
               {field(t("Job Authority"), "authority", 4)}
               {field(t("Work Relationships"), "relations", 3)}
               {field(t("Dimensions"), "dimensi", 3)}

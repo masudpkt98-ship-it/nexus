@@ -56,8 +56,9 @@ const textOf = (el: Element): string => {
     if (t.localName === "t") s += t.textContent || "";
     else if (t.localName === "tab") s += " ";
     else if (t.localName === "br" || t.localName === "cr") s += "\n";
+    else if (t.localName === "p") s += "\n"; // separate paragraphs (list points) inside a cell
   }
-  return s.replace(/[ \t]+/g, " ").trim();
+  return s.replace(/[ \t]+/g, " ").replace(/\n{2,}/g, "\n").replace(/[ \t]*\n[ \t]*/g, "\n").trim();
 };
 
 /** Parse a .docx into an ordered list of paragraph / table blocks. */
