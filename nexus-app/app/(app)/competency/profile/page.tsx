@@ -9,6 +9,7 @@ import { technicalCompetencyLevels as levels, type DictionaryCompetency, type Em
 import { competencyDictionarySeed } from "@/lib/competencyDictionarySeed";
 import { jobCompetencyProfiles } from "@/lib/jobCompetencyProfiles";
 import { jabatanCompetencyProfiles } from "@/lib/jabatanCompetencyProfiles";
+import { jabatanTitleMap } from "@/lib/jabatanTitleMap";
 import { useI18n } from "@/lib/i18n";
 
 const selCls = "rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none focus:border-royal-500";
@@ -74,8 +75,13 @@ export default function JobCompetencyProfilePage() {
     setEmpNote(null);
     const pos = (e.position || "").trim();
     if (!pos) return;
+    // Employee Directory uses the new PI job-title naming ("Auditor …"); the
+    // profiles use the old PKT naming ("Staf Muda …"). Bridge via the title map,
+    // then fall back to direct / contains matching.
     const np = norm(pos);
+    const mapped = jabatanTitleMap[np];
     const match =
+      (mapped ? jabByKey.get(mapped) : undefined) ||
       jabByKey.get(np) ||
       jabatanCompetencyProfiles.find((p) => p.key.includes(np) || np.includes(p.key));
     setEmpQ("");
