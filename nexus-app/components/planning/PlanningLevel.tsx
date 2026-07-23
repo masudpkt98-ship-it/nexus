@@ -11,6 +11,7 @@ import { exportPlanning, PERUSAHAAN, type ExportKind } from "@/lib/perfExport";
 import { useApiAuthed } from "@/lib/auth";
 import { apiListPlanningKpis, apiSavePlanningKpi, apiDeletePlanningKpi, apiListPlanningOwners, apiSavePlanningOwner } from "@/lib/api";
 import { KpiFormModal } from "@/components/planning/KpiFormModal";
+import { JobKpiPicker } from "@/components/planning/JobKpiPicker";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import { strategicGoals as seedGoals, type PlanningKpi, type StrategicGoal, type Employee } from "@/lib/data";
@@ -40,6 +41,7 @@ export function PlanningLevel({ level }: { level: PlanLevel }) {
   const [editOwner, setEditOwner] = useState<string | null>(null);
   const [ownerDraft, setOwnerDraft] = useState<KpiOwner>({ jabatan: "", name: "", npk: "" });
   const [modal, setModal] = useState<{ unitKey: string; kpi: PlanningKpi | null } | null>(null);
+  const [jpUnit, setJpUnit] = useState<string | null>(null);
 
   const periods = useMemo(() => {
     const all = new Set<string>([period, "2026", "2027"]);
@@ -233,7 +235,10 @@ export function PlanningLevel({ level }: { level: PlanLevel }) {
                           <div className="border-t bg-black/[0.02] px-4 py-3 dark:bg-white/[0.02]">
                             <div className="mb-2 flex items-center gap-2">
                               <div className="text-[12px] font-semibold uppercase tracking-wide text-[var(--muted)]">KPI · {u.name}</div>
-                              <div className="ml-auto"><Btn variant="primary" onClick={() => setModal({ unitKey: u.key, kpi: null })}><Icon.plus className="h-4 w-4" /> {t("Add KPI")}</Btn></div>
+                              <div className="ml-auto flex gap-2">
+                                <Btn variant="ghost" onClick={() => setJpUnit(u.key)}><Icon.document className="h-4 w-4" /> {t("From Job Profile")}</Btn>
+                                <Btn variant="primary" onClick={() => setModal({ unitKey: u.key, kpi: null })}><Icon.plus className="h-4 w-4" /> {t("Add KPI")}</Btn>
+                              </div>
                             </div>
                             {kpis.length === 0 ? (
                               <div className="py-6 text-center text-[12px] text-[var(--muted)]">{t("No KPIs yet. Add one.")}</div>
@@ -296,6 +301,15 @@ export function PlanningLevel({ level }: { level: PlanLevel }) {
           defaultGroup={groupForLevel(level)}
           onSave={(k) => { saveKpi(modal.unitKey, k); setModal(null); }}
           onClose={() => setModal(null)}
+        />
+      )}
+
+      {jpUnit && (
+        <JobKpiPicker
+          period={period}
+          group={groupForLevel(level)}
+          onAdd={(kpis) => { const u = jpUnit; kpis.forEach((k) => saveKpi(u, k)); }}
+          onClose={() => setJpUnit(null)}
         />
       )}
     </>

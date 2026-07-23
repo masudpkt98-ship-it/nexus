@@ -25,7 +25,7 @@ let seq = 0;
 export const newKpiId = () => { try { return `pk-${crypto.randomUUID().slice(0, 6)}`; } catch { return `pk-${++seq}${Math.round(performance.now())}`; } };
 
 type Form = Omit<PlanningKpi, "id"> & { id: string | null };
-const emptyForm = (period: string, group: string): Form => ({
+export const emptyForm = (period: string, group: string): Form => ({
   id: null, group, perspective: "Financial", strategicGoalId: "", strategicGoalText: undefined, name: "", definition: "", purpose: "",
   type: "Strategis", weight: 0, formula: "", hasConversion: false, conversions: [], hasFormulaDetail: false, formulaBlocks: [], measurement: "Exact", polarity: "Maximize",
   frequency: "Monthly", cascadeType: "Fully A", consolidation: "Take Last Known", monthlyTargets: {}, annualTarget: 0,
