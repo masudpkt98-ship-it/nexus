@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, Badge, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
-import { EmployeePicker } from "@/components/EmployeePicker";
 import { technicalCompetencyLevels as levels, type DictionaryCompetency, type Employee } from "@/lib/data";
 import { competencyDictionarySeed } from "@/lib/competencyDictionarySeed";
 import { jobCompetencyProfiles } from "@/lib/jobCompetencyProfiles";
@@ -46,9 +45,24 @@ export default function JobCompetencyProfilePage() {
   }, []);
   const [jabKey, setJabKey] = useState<string | null>(null);
   const [jabQ, setJabQ] = useState("");
+  const [empQ, setEmpQ] = useState("");
   const [empNote, setEmpNote] = useState<string | null>(null);
   const [openC, setOpenC] = useState<Record<string, boolean>>({});
   const jab = jabKey ? jabByKey.get(jabKey) ?? null : null;
+
+  // Employee Directory (read-only, from the imported/scoped `nexus-employees`).
+  const [emps, setEmps] = useState<Employee[]>([]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("nexus-employees");
+      if (raw) setEmps(JSON.parse(raw) as Employee[]);
+    } catch { /* ignore */ }
+  }, []);
+  const empMatches = useMemo(() => {
+    const q = empQ.trim().toLowerCase();
+    if (q.length < 2) return [];
+    return emps.filter((e) => (e.name || "").toLowerCase().includes(q)).slice(0, 40);
+  }, [empQ, emps]);
 
   const jabMatches = useMemo(() => {
     const q = jabQ.trim().toLowerCase();
@@ -64,12 +78,13 @@ export default function JobCompetencyProfilePage() {
     const match =
       jabByKey.get(np) ||
       jabatanCompetencyProfiles.find((p) => p.key.includes(np) || np.includes(p.key));
+    setEmpQ("");
     if (match) {
       setJabKey(match.key); setJabQ("");
       setEmpNote(`${e.name} · ${e.position} → ${match.jabatan}`);
     } else {
       setJabKey(null);
-      setEmpNote(t("No competency profile found for this employee's position."));
+      setEmpNote(`${e.name} · ${e.position} — ${t("No competency profile found for this employee's position.")}`);
     }
   };
 
@@ -101,9 +116,25 @@ export default function JobCompetencyProfilePage() {
       {/* Search: by employee or by jabatan */}
       <Card className="mb-4">
         <div className="flex flex-wrap items-end gap-4">
-          <label className="block text-[11px] font-medium text-[var(--muted)]">
+          <label className="relative block text-[11px] font-medium text-[var(--muted)]">
             {t("Find by employee")}
-            <EmployeePicker value="" onChange={() => {}} onPick={pickEmployee} placeholderFallback={t("Type an employee name…")} className="mt-1 w-64 rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500" />
+            <div className="relative mt-1 w-72">
+              <Icon.search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+              <input value={empQ} onChange={(e) => setEmpQ(e.target.value)} placeholder={emps.length ? t("Type an employee name…") : t("Sign in to load the employee directory")} className="w-full rounded-lg border bg-[rgb(var(--surface))] py-1.5 pl-8 pr-2.5 text-[13px] outline-none focus:border-royal-500" />
+            </div>
+            {empMatches.length > 0 && (
+              <div className="absolute z-30 mt-1 max-h-72 w-72 overflow-y-auto rounded-lg border bg-[rgb(var(--surface))] shadow-glass">
+                {empMatches.map((e) => (
+                  <button key={e.npk || e.name} onClick={() => pickEmployee(e)} className="block w-full px-3 py-1.5 text-left hover:bg-black/5 dark:hover:bg-white/5">
+                    <div className="truncate text-[12px] font-medium">{e.name}</div>
+                    <div className="truncate text-[10px] text-[var(--muted)]">{e.position}{e.unit ? ` · ${e.unit}` : ""}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+            {empQ.trim().length >= 2 && empMatches.length === 0 && emps.length > 0 && (
+              <div className="absolute z-30 mt-1 w-72 rounded-lg border bg-[rgb(var(--surface))] px-3 py-2 text-[12px] text-[var(--muted)] shadow-glass">{t("No employee matches.")}</div>
+            )}
           </label>
           <label className="relative block text-[11px] font-medium text-[var(--muted)]">
             {t("or search a job title")}
