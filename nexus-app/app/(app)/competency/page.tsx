@@ -151,12 +151,20 @@ export default function CompetencyPage() {
         }
       />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+      <div className="mb-4 grid gap-3 sm:grid-cols-3">
         <Link href="/competency/dictionary" className="flex items-center gap-3 rounded-xl border border-royal-500/30 bg-royal-500/5 px-4 py-3 transition hover:border-royal-500/50 hover:bg-royal-500/10">
           <Icon.knowledge className="h-5 w-5 shrink-0 text-royal-400" />
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold">{t("Kamus Kompetensi")}</div>
             <div className="text-[11px] text-[var(--muted)]">{t("Daftar, Level & Kamus Kompetensi Teknis")}</div>
+          </div>
+          <Icon.chevron className="h-4 w-4 shrink-0 text-[var(--muted)]" />
+        </Link>
+        <Link href="/competency/profile" className="flex items-center gap-3 rounded-xl border border-royal-500/30 bg-royal-500/5 px-4 py-3 transition hover:border-royal-500/50 hover:bg-royal-500/10">
+          <Icon.users className="h-5 w-5 shrink-0 text-royal-400" />
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold">{t("Job Competency Profile")}</div>
+            <div className="text-[11px] text-[var(--muted)]">{t("Kompetensi per jabatan · Job Family")}</div>
           </div>
           <Icon.chevron className="h-4 w-4 shrink-0 text-[var(--muted)]" />
         </Link>

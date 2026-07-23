@@ -1477,6 +1477,22 @@ export interface MatrixEmployee {
 }
 export type CompetencyAssessments = Record<string, MatrixEmployee[]>; // group -> assessed employees
 
+// ---- Job Competency Profile (Success Profile) ----
+// Required technical competency levels for a specific job, keyed by
+// Job Family → Function → Stream → Band → Title (from Job Family.xlsx).
+// Behavioral standards are band/job-stream based and live outside this file.
+export interface JobCompetencyProfile {
+  id: string;
+  jobFamily: string;
+  jobFunction: string;
+  jobStream: string;
+  type: string; // Struktural | Fungsional | ""
+  band: string; // BOD-1 … BOD-6
+  title: string;
+  managerial: string;
+  tech: { c: number; l: number }[]; // c = TC numeric id (→ TC-<c> / tc-<c>); l = required level 1..5
+}
+
 // Kamus Kompetensi Teknis & Perilaku (165 + 50) live in ./competencyDictionarySeed
 // (imported straight by the competency pages so the ~550 KB dataset code-splits to
 // those routes instead of this shared module). Import { competencyDictionarySeed }.

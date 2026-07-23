@@ -48,6 +48,7 @@ export const navItems: NavItem[] = [
     section: "People & Performance",
     children: [
       { label: "Competency Dictionary", href: "/competency/dictionary" },
+      { label: "Job Competency Profile", href: "/competency/profile" },
       { label: "Competency Matrix", href: "/competency/matrix" },
     ],
   },
