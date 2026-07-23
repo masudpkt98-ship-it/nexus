@@ -1493,6 +1493,19 @@ export interface JobCompetencyProfile {
   tech: { c: number; l: number }[]; // c = TC numeric id (→ TC-<c> / tc-<c>); l = required level 1..5
 }
 
+// Per real-jabatan competency profile (from DataORG.xlsx) — matches an employee
+// by their position/jabatan. Technical carries a proficiency level; behavioral
+// carries a tier (Inti/Primer/Sekunder). Role standards, not personal data.
+export interface JabatanCompetencyProfile {
+  key: string; // normalized jabatan (match key)
+  jabatan: string;
+  band: string;
+  jobStream: string;
+  sf: string; // Struktural | Fungsional
+  tech: { c: number; l: number; n?: string }[]; // c = TC id (0 = unmatched → use n); l = level 1..5
+  beh: { n: string; t: string }[]; // n = behavioral competency name; t = tier (Inti|Primer|Sekunder)
+}
+
 // Kamus Kompetensi Teknis & Perilaku (165 + 50) live in ./competencyDictionarySeed
 // (imported straight by the competency pages so the ~550 KB dataset code-splits to
 // those routes instead of this shared module). Import { competencyDictionarySeed }.
