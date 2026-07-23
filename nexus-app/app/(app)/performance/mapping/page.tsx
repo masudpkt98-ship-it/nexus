@@ -13,6 +13,7 @@ import {
 import { KPI_TEKNIS_KEY, type KpiTeknis } from "@/lib/kpiTeknis";
 import { jobProfiles as seedProfiles, type JobProfile } from "@/lib/data";
 import { MAPPING_SUBMIT_KEY, type SubmittedMap, toSubmittedKpi, exportSubmitted } from "@/lib/mappingSubmit";
+import { JobKpiMappingPicker } from "@/components/mapping/JobKpiMappingPicker";
 
 const SOURCES: MapSource[] = ["Korporat", "Matrix", "KatalogAP"];
 const sourceTone: Record<MapSource, "green" | "amber" | "blue" | "purple" | "red"> = { Korporat: "green", Matrix: "amber", KatalogAP: "blue", Manual: "purple", Teknis: "red" };
@@ -345,6 +346,7 @@ function ManajemenTab({ state, setState }: { state: MappingState; setState: (u: 
   const [dir, setDir] = useState<Direktur>(DIREKTUR[0]);
   const [src, setSrc] = useState<"direktur" | "katalog">("direktur");
   const [showForm, setShowForm] = useState(false);
+  const [showJp, setShowJp] = useState(false);
   const svps = SVP_BY_DIREKTUR[dir];
   const svpCascade = state.svpCascade ?? {};
 
@@ -408,12 +410,14 @@ function ManajemenTab({ state, setState }: { state: MappingState; setState: (u: 
           {DIREKTUR.map((d) => <option key={d} value={d}>{d}</option>)}
         </select>
         <Badge tone="blue">{fmt(rows.length)} {t("KPI to cascade")}</Badge>
-        <div className="ml-auto">
+        <div className="ml-auto flex gap-2">
+          <Btn variant="ghost" onClick={() => setShowJp(true)}><Icon.document className="h-4 w-4" /> {t("From Job Profile")}</Btn>
           <Btn variant="primary" onClick={() => setShowForm(true)}><Icon.plus className="h-4 w-4" /> {t("Add KPI")}</Btn>
         </div>
       </div>
 
       {showForm && <AddManualKpiForm title={t("Add KPI SVP")} targetLabel="SVP" targets={svps} contextLabel={dir} onClose={() => setShowForm(false)} onSave={(f, svp) => { addManual(f, svp); setShowForm(false); }} />}
+      {showJp && <JobKpiMappingPicker targetLabel="SVP" targets={svps} contextLabel={dir} onAdd={(f, svp) => addManual(f, svp)} onClose={() => setShowJp(false)} />}
 
       {rows.length === 0 ? (
         <Card className="text-center text-[13px] text-[var(--muted)]">
@@ -481,6 +485,7 @@ function IndividuTab({ state, setState, teknisKpis }: { state: MappingState; set
   const curSvp = svpsOfDir.includes(svp) ? svp : svpsOfDir[0];
   const [src, setSrc] = useState<"svp" | "teknis">("svp");
   const [showForm, setShowForm] = useState(false);
+  const [showJp, setShowJp] = useState(false);
   const vps = VP_BY_SVP[curSvp] ?? [];
   const vpCascade = state.vpCascade ?? {};
 
@@ -535,10 +540,14 @@ function IndividuTab({ state, setState, teknisKpis }: { state: MappingState; set
           {svpsOfDir.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
         <Badge tone="blue">{fmt(rows.length)} {t("KPI to cascade")}</Badge>
-        <div className="ml-auto"><Btn variant="primary" onClick={() => setShowForm(true)}><Icon.plus className="h-4 w-4" /> {t("Add KPI")}</Btn></div>
+        <div className="ml-auto flex gap-2">
+          {vps.length > 0 && <Btn variant="ghost" onClick={() => setShowJp(true)}><Icon.document className="h-4 w-4" /> {t("From Job Profile")}</Btn>}
+          <Btn variant="primary" onClick={() => setShowForm(true)}><Icon.plus className="h-4 w-4" /> {t("Add KPI")}</Btn>
+        </div>
       </div>
 
       {showForm && vps.length > 0 && <AddManualKpiForm title={t("Add KPI VP")} targetLabel="VP" targets={vps} contextLabel={curSvp} onClose={() => setShowForm(false)} onSave={(f, vp) => { addManual(f, vp); setShowForm(false); }} />}
+      {showJp && vps.length > 0 && <JobKpiMappingPicker targetLabel="VP" targets={vps} contextLabel={curSvp} onAdd={(f, vp) => addManual(f, vp)} onClose={() => setShowJp(false)} />}
 
       {vps.length === 0 ? (
         <Card className="text-center text-[13px] text-[var(--muted)]">{t("This SVP has no VP under it in the org chart.")}</Card>
@@ -596,6 +605,7 @@ function AvpTab({ state, setState, teknisKpis }: { state: MappingState; setState
   const [vp, setVp] = useState(ALL_VP[0]);
   const [src, setSrc] = useState<"vp" | "teknis">("vp");
   const [showForm, setShowForm] = useState(false);
+  const [showJp, setShowJp] = useState(false);
   const avps = targetsForVp(vp); // VP → Staf when no AVP (unique per VP)
   const avpCascade = state.avpCascade ?? {};
 
@@ -643,10 +653,14 @@ function AvpTab({ state, setState, teknisKpis }: { state: MappingState; setState
         </select>
         <Badge tone="blue">{fmt(rows.length)} {t("KPI to cascade")}</Badge>
         {AVP_BY_VP[vp]?.length === 0 && <Badge tone="amber">{t("No AVP → Staf")}</Badge>}
-        <div className="ml-auto"><Btn variant="primary" onClick={() => setShowForm(true)}><Icon.plus className="h-4 w-4" /> {t("Add KPI")}</Btn></div>
+        <div className="ml-auto flex gap-2">
+          <Btn variant="ghost" onClick={() => setShowJp(true)}><Icon.document className="h-4 w-4" /> {t("From Job Profile")}</Btn>
+          <Btn variant="primary" onClick={() => setShowForm(true)}><Icon.plus className="h-4 w-4" /> {t("Add KPI")}</Btn>
+        </div>
       </div>
 
       {showForm && <AddManualKpiForm title={t("Add KPI AVP")} targetLabel={AVP_BY_VP[vp]?.length ? "AVP" : "Staf"} targets={avps} contextLabel={vp} onClose={() => setShowForm(false)} onSave={(f, avp) => { addManual(f, avp); setShowForm(false); }} />}
+      {showJp && <JobKpiMappingPicker targetLabel={AVP_BY_VP[vp]?.length ? "AVP" : "Staf"} targets={avps} contextLabel={vp} onAdd={(f, avp) => addManual(f, avp)} onClose={() => setShowJp(false)} />}
 
       {rows.length === 0 ? (
         <Card className="text-center text-[13px] text-[var(--muted)]">
@@ -704,6 +718,7 @@ function IndividuFinalTab({ state, setState }: { state: MappingState; setState: 
   const [avp, setAvp] = useState(targets[0]);
   const curAvp = targets.includes(avp) ? avp : targets[0];
   const [showForm, setShowForm] = useState(false);
+  const [showJp, setShowJp] = useState(false);
   const avpCascade = state.avpCascade ?? {};
   const list = state.kpis.filter((k) => (avpCascade[k.id] ?? []).includes(curAvp));
 
@@ -729,10 +744,14 @@ function IndividuFinalTab({ state, setState }: { state: MappingState; setState: 
           {targets.map((a) => <option key={a} value={a}>{a}</option>)}
         </select>
         <Badge tone="green">{fmt(list.length)} {t("KPI")}</Badge>
-        <div className="ml-auto"><Btn variant="primary" onClick={() => setShowForm(true)}><Icon.plus className="h-4 w-4" /> {t("Add KPI")}</Btn></div>
+        <div className="ml-auto flex gap-2">
+          <Btn variant="ghost" onClick={() => setShowJp(true)}><Icon.document className="h-4 w-4" /> {t("From Job Profile")}</Btn>
+          <Btn variant="primary" onClick={() => setShowForm(true)}><Icon.plus className="h-4 w-4" /> {t("Add KPI")}</Btn>
+        </div>
       </div>
 
       {showForm && <AddManualKpiForm title={t("Add KPI Individu")} targetLabel={AVP_BY_VP[vp]?.length ? "AVP" : "Staf"} targets={targets} contextLabel={vp} onClose={() => setShowForm(false)} onSave={(f, target) => { addManual(f, target); setShowForm(false); }} />}
+      {showJp && <JobKpiMappingPicker targetLabel={AVP_BY_VP[vp]?.length ? "AVP" : "Staf"} targets={targets} contextLabel={vp} onAdd={(f, target) => addManual(f, target)} onClose={() => setShowJp(false)} />}
 
       <div className="mb-4 flex items-center gap-2 rounded-lg border border-royal-500/25 bg-royal-500/5 px-3 py-2 text-[12px]">
         <Icon.users className="h-4 w-4 text-royal-400" />
