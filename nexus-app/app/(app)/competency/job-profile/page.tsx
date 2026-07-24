@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, Badge } from "@/components/ui";
@@ -9,6 +9,7 @@ import { EmployeeSearch } from "@/components/EmployeeSearch";
 import { matchJabatan, resolveTech, behByName, norm, tierTone, levelTone } from "@/lib/compass";
 import { importJobProfile } from "@/lib/importJobProfile";
 import { downloadKpiTemplate, parseKpiExcel, exportJobKpiExcel, type Responsibility } from "@/lib/jobKpi";
+import { usedKpiNames, isKpiUsed } from "@/lib/kpiUsage";
 import { useLocalState } from "@/lib/useLocalState";
 import { type Employee, type JabatanCompetencyProfile } from "@/lib/data";
 import { useI18n } from "@/lib/i18n";
@@ -107,10 +108,20 @@ export default function JobProfilePage() {
 
   const imported = useMemo(() => Object.entries(descs).filter(([, d]) => d.jabatanName).map(([key, d]) => ({ key, name: d.jabatanName! })).sort((a, b) => a.name.localeCompare(b.name)), [descs]);
 
+  // KPIs already used in Planning / Mapping (matched by name) → marked "Terpakai".
+  const [used, setUsed] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const refresh = () => setUsed(usedKpiNames());
+    refresh();
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, [descKey]);
+
   const desc = descKey ? (descs[descKey] ?? emptyDesc) : emptyDesc;
   const resps = respList(desc);
   const tech = useMemo(() => (sel ? resolveTech(sel) : []), [sel]);
   const totalKpi = resps.reduce((s, r) => s + r.kpis.length, 0);
+  const usedKpi = resps.reduce((s, r) => s + r.kpis.filter((k) => isKpiUsed(used, k.name)).length, 0);
 
   const startEdit = () => { setDraft({ ...emptyDesc, ...desc, responsibilities: resps }); setEdit(true); };
   const save = () => { if (descKey) setDescs((m) => ({ ...m, [descKey]: draft })); setEdit(false); };
@@ -207,6 +218,7 @@ export default function JobProfilePage() {
             <div className="mb-3 flex items-center gap-2">
               <div className={lblCls}>{t("Responsibilities")} → KPI</div>
               <span className="rounded-full bg-black/5 px-2 py-0.5 text-[11px] text-[var(--muted)] dark:bg-white/10">{resps.length} · {totalKpi} KPI</span>
+              {usedKpi > 0 && <Badge tone="green">{usedKpi} {t("used")}</Badge>}
             </div>
             {resps.length === 0 ? (
               <p className="text-[13px] text-[var(--muted)]">{t("No responsibilities yet. Import the .docx and/or the KPI Excel template.")}</p>
@@ -222,18 +234,22 @@ export default function JobProfilePage() {
                       <div className="mt-2 overflow-x-auto pl-8">
                         <table className="w-full text-[12px]">
                           <thead className="text-left text-[10px] uppercase tracking-wide text-[var(--muted)]">
-                            <tr><th className="py-1 pr-2 font-medium">KPI</th><th className="py-1 pr-2 font-medium">{t("Unit")}</th><th className="py-1 pr-2 font-medium">Target</th><th className="py-1 pr-2 font-medium">{t("Weight")}</th><th className="py-1 font-medium">{t("Perspective")}</th></tr>
+                            <tr><th className="py-1 pr-2 font-medium">KPI</th><th className="py-1 pr-2 font-medium">{t("Unit")}</th><th className="py-1 pr-2 font-medium">Target</th><th className="py-1 pr-2 font-medium">{t("Weight")}</th><th className="py-1 pr-2 font-medium">{t("Perspective")}</th><th className="py-1 font-medium">{t("Status")}</th></tr>
                           </thead>
                           <tbody>
-                            {r.kpis.map((k, j) => (
+                            {r.kpis.map((k, j) => {
+                              const inUse = isKpiUsed(used, k.name);
+                              return (
                               <tr key={j} className="border-t">
                                 <td className="py-1 pr-2">{k.name}</td>
                                 <td className="py-1 pr-2 text-[var(--muted)]">{k.uom || "—"}</td>
                                 <td className="py-1 pr-2 text-[var(--muted)]">{k.target || "—"}</td>
                                 <td className="py-1 pr-2 text-[var(--muted)]">{k.weight ? `${k.weight}%` : "—"}</td>
-                                <td className="py-1"><span className="text-[var(--muted)]">{k.perspective || "—"}</span></td>
+                                <td className="py-1 pr-2"><span className="text-[var(--muted)]">{k.perspective || "—"}</span></td>
+                                <td className="py-1">{inUse ? <Badge tone="green">✓ {t("Used")}</Badge> : <span className="text-[var(--muted)]">—</span>}</td>
                               </tr>
-                            ))}
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
