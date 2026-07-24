@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sidebar } from "@/components/Sidebar";
+import { Sidebar, SidebarFallback } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { cn } from "@/components/ui";
 import { AuthProvider, useApiAuthed } from "@/lib/auth";
@@ -37,7 +37,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden">
       {/* Desktop sidebar */}
       <div className="hidden lg:block">
-        <Suspense fallback={<aside className="h-full w-[264px] glass border-r" />}>
+        <Suspense fallback={<SidebarFallback />}>
           <Sidebar />
         </Suspense>
       </div>
@@ -62,7 +62,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             open ? "translate-x-0" : "-translate-x-full"
           )}
         >
-          <Suspense fallback={<aside className="h-full w-[264px] glass border-r" />}>
+          <Suspense fallback={<SidebarFallback />}>
             <Sidebar onNavigate={() => setOpen(false)} />
           </Suspense>
         </div>

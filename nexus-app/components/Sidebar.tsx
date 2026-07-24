@@ -10,6 +10,29 @@ import { cn } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
 import { useAuth, navAllowed } from "@/lib/auth";
 
+// The brand header, shared by the Sidebar and its Suspense fallback so the logo
+// never vanishes while the Sidebar is suspended (it reads useSearchParams).
+export function SidebarBrand() {
+  return (
+    <div className="flex items-center gap-2.5 px-5 py-5">
+      <LogoMark size={34} />
+      <div className="leading-none">
+        <div className="text-[15px] font-bold tracking-[0.2em] brand-gradient">NEXUS</div>
+        <div className="mt-0.5 text-[9px] tracking-[0.15em] text-[var(--muted)]">PERFORMANCE OS</div>
+      </div>
+    </div>
+  );
+}
+
+// Suspense fallback for <Sidebar> — same shell + brand so nothing flickers.
+export function SidebarFallback() {
+  return (
+    <aside className="flex h-full w-[264px] flex-col glass border-r">
+      <SidebarBrand />
+    </aside>
+  );
+}
+
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -180,15 +203,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <aside className="flex h-full w-[264px] flex-col glass border-r">
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <LogoMark size={34} />
-        <div className="leading-none">
-          <div className="text-[15px] font-bold tracking-[0.2em] brand-gradient">NEXUS</div>
-          <div className="mt-0.5 text-[9px] tracking-[0.15em] text-[var(--muted)]">
-            PERFORMANCE OS
-          </div>
-        </div>
-      </div>
+      <SidebarBrand />
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 pb-4">
         {navSections.map((section) => {
