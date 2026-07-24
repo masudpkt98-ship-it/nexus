@@ -8,6 +8,7 @@ import { Icon } from "@/components/Icons";
 import { emptyForm, newKpiId } from "@/components/planning/KpiFormModal";
 import { kpiPerspectives, type PlanningKpi } from "@/lib/data";
 import { type Responsibility } from "@/lib/jobKpi";
+import { usedKpiNames, isKpiUsed } from "@/lib/kpiUsage";
 import { useI18n } from "@/lib/i18n";
 
 type JobDescLite = { jabatanName?: string; responsibilities?: Responsibility[] | string };
@@ -36,10 +37,12 @@ export function JobKpiPicker({ period, group, onAdd, onClose }: { period: string
   const job = jobs.find((j) => j.key === jobKey);
   const [sel, setSel] = useState<Set<string>>(new Set());
 
+  const used = useMemo(() => usedKpiNames(), []);
   const flat = job ? job.resps.flatMap((r, ri) => r.kpis.map((k, ki) => ({ r, k, id: `${ri}-${ki}` }))) : [];
+  const unusedIds = flat.filter((x) => !isKpiUsed(used, x.k.name)).map((x) => x.id);
   const toggle = (id: string) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const allOn = flat.length > 0 && sel.size === flat.length;
-  const toggleAll = () => setSel(allOn ? new Set() : new Set(flat.map((x) => x.id)));
+  const allOn = unusedIds.length > 0 && unusedIds.every((id) => sel.has(id));
+  const toggleAll = () => setSel(allOn ? new Set() : new Set(unusedIds));
 
   const add = () => {
     const chosen = flat.filter((x) => sel.has(x.id));
@@ -97,7 +100,8 @@ export function JobKpiPicker({ period, group, onAdd, onClose }: { period: string
                           return (
                             <label key={ki} className={cn("flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-[12px] transition hover:bg-black/5 dark:hover:bg-white/5", sel.has(id) && "bg-royal-500/10")}>
                               <input type="checkbox" checked={sel.has(id)} onChange={() => toggle(id)} className="h-3.5 w-3.5 accent-royal-500" />
-                              <span className="min-w-0 flex-1 truncate">{k.name}</span>
+                              <span className={cn("min-w-0 flex-1 truncate", isKpiUsed(used, k.name) && "text-[var(--muted)]")}>{k.name}</span>
+                              {isKpiUsed(used, k.name) && <Badge tone="green">✓ {t("Used")}</Badge>}
                               {k.uom && <Badge tone="gray">{k.uom}</Badge>}
                               {k.target && <span className="text-[var(--muted)]">T: {k.target}</span>}
                               {!!k.weight && <Badge tone="blue">{k.weight}%</Badge>}
