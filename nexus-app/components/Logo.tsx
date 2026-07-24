@@ -1,21 +1,42 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 
 // The genuine NEXUS emblem — the blue→gold connection ring with four nodes and
-// the interlocked "N", lifted straight from the brand artwork with its metallic
-// shading, depth and glow intact (transparent background, so it blends on any
-// theme). Preserving the original render keeps the mark exclusive rather than a
-// flattened re-drawing.
+// the interlocked "N", lifted straight from the brand artwork (transparent
+// background, so it blends on any theme).
+//
+// The `?v=` cache-bust changes the URL key so a corrupted/stale browser-cache
+// entry can never keep serving a broken image; `onError` falls back to a
+// gradient "N" monogram so the brand is never fully missing.
+const MARK_SRC = "/nexus-mark.png?v=2";
+
 export function LogoMark({ size = 36 }: { size?: number }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div
+        aria-label="NEXUS"
+        className="flex select-none items-center justify-center rounded-full bg-gradient-to-br from-royal-500 to-gold-400 font-bold text-white"
+        style={{ width: size, height: size, fontSize: size * 0.52 }}
+      >
+        N
+      </div>
+    );
+  }
+
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/nexus-mark.png"
+      src={MARK_SRC}
       alt="NEXUS"
       width={size}
       height={size}
       className="select-none"
       style={{ width: size, height: size, objectFit: "contain" }}
       draggable={false}
+      onError={() => setFailed(true)}
     />
   );
 }
