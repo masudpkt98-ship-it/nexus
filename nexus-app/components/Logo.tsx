@@ -1,15 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
+import { NEXUS_MARK } from "@/lib/logoData";
 
 // The genuine NEXUS emblem — the blue→gold connection ring with four nodes and
-// the interlocked "N", lifted straight from the brand artwork (transparent
-// background, so it blends on any theme).
+// the interlocked "N", from the brand artwork (transparent background).
 //
-// The `?v=` cache-bust changes the URL key so a corrupted/stale browser-cache
-// entry can never keep serving a broken image; `onError` falls back to a
-// gradient "N" monogram so the brand is never fully missing.
-const MARK_SRC = "/nexus-mark.png?v=2";
+// Served as an inlined data URI (lib/logoData) so the mark never depends on a
+// separate image request — this sidesteps the Next dev-server cache quirk where
+// a 304 revalidation returns an empty body and breaks the image on localhost
+// (production served the file fine). `onError` still falls back to a gradient
+// "N" monogram as a last resort.
+const MARK_SRC = NEXUS_MARK;
 
 export function LogoMark({ size = 36 }: { size?: number }) {
   const [failed, setFailed] = useState(false);
