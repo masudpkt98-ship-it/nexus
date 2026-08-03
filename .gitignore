@@ -26,5 +26,8 @@ Thumbs.db
 # temp scratch scripts
 nexus-app/_*
 
+# local dev launcher (personal, not shared)
+/start-dev.sh
+
 # Source spec documents (not committed)
 *.docx
