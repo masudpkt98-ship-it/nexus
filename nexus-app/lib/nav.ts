@@ -40,6 +40,7 @@ export const navItems: NavItem[] = [
   { label: "Program Management", href: "/programs", icon: "program", section: "Plan & Execute" },
   { label: "Task Management", href: "/tasks", icon: "task", section: "Plan & Execute", badge: "8" },
   { label: "Cascade", href: "/cascade", icon: "target", section: "Plan & Execute" },
+  { label: "Cost Optimization", href: "/cost-optimization", icon: "analytics", section: "Plan & Execute" },
 
   {
     label: "Competency Management",

@@ -47,7 +47,7 @@ export const PARTNER_NAV = new Set<string>([
   "/performance", "/performance/dictionary", "/performance/planning",
   "/performance/planning/korporat", "/performance/planning/direktorat", "/performance/planning/manajemen",
   "/performance/planning/unit-kerja", "/performance/planning/individu",
-  "/development", "/notifications",
+  "/development", "/notifications", "/cost-optimization",
 ]);
 
 export function scopeAllows(s: Session, directorate?: string, unit?: string): boolean {
