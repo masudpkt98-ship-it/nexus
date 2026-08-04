@@ -1,5 +1,5 @@
 # ---- NEXUS API (production: nginx + PHP-FPM + OPcache) ----
-FROM php:8.4-fpm
+FROM php:8.5-fpm
 
 # Robust PHP extension installer
 COPY --from=mlocati/php-extension-installer:latest /usr/bin/install-php-extensions /usr/local/bin/
