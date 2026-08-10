@@ -210,6 +210,39 @@ export async function apiDeleteCorporateKpi(id: string): Promise<void> {
   await apiSend("DELETE", `/corporate-kpis/${encodeURIComponent(id)}`);
 }
 
+// ---- KPI Teknis (Dictionary — technical KPIs per Job Profile) --------------
+export async function apiListKpiTeknis(): Promise<import("./kpiTeknis").KpiTeknis[]> {
+  return apiGet<import("./kpiTeknis").KpiTeknis[]>("/kpi-teknis");
+}
+/** Upsert one KPI Teknis by its client id. Needs performance.manage. */
+export async function apiSaveKpiTeknis(k: import("./kpiTeknis").KpiTeknis): Promise<void> {
+  const { id, jobProfileId, ...rest } = k;
+  await apiSend("POST", "/kpi-teknis", { kpi_id: id, job_profile_id: jobProfileId, ...rest });
+}
+export async function apiDeleteKpiTeknis(id: string): Promise<void> {
+  await apiSend("DELETE", `/kpi-teknis/${encodeURIComponent(id)}`);
+}
+
+// ---- Job Profiles (Dictionary — role master) -------------------------------
+export async function apiListJobProfiles(): Promise<import("./data").JobProfile[]> {
+  return apiGet<import("./data").JobProfile[]>("/job-profiles");
+}
+/** Upsert one Job Profile by its client id. Needs performance.manage. */
+export async function apiSaveJobProfile(p: import("./data").JobProfile): Promise<void> {
+  await apiSend("POST", "/job-profiles", {
+    profile_id: p.id,
+    role: p.role,
+    level: p.level,
+    unit: p.unit,
+    purpose: p.purpose,
+    responsibilities: p.responsibilities ?? [],
+    kpi_ids: p.kpiIds ?? [],
+  });
+}
+export async function apiDeleteJobProfile(id: string): Promise<void> {
+  await apiSend("DELETE", `/job-profiles/${encodeURIComponent(id)}`);
+}
+
 // ---- Performance Planning — KPIs + Owners (server-enforced, unit-scoped) ---
 export interface PlanningKpiDTO {
   kpi_id: string;

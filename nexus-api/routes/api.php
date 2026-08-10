@@ -11,6 +11,8 @@ use App\Http\Controllers\Api\ChatThreadController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\CompetencyController;
 use App\Http\Controllers\Api\CorporateKpiController;
+use App\Http\Controllers\Api\JobProfileController;
+use App\Http\Controllers\Api\KpiTeknisController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\NexianController;
@@ -111,6 +113,16 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/corporate-kpis', [CorporateKpiController::class, 'index'])->middleware('permission:performance.view');
     Route::post('/corporate-kpis', [CorporateKpiController::class, 'upsert'])->middleware('permission:performance.manage');
     Route::delete('/corporate-kpis/{kpiId}', [CorporateKpiController::class, 'destroy'])->middleware('permission:performance.manage');
+
+    // KPI Teknis (Dictionary) — technical KPIs per Job Profile.
+    Route::get('/kpi-teknis', [KpiTeknisController::class, 'index'])->middleware('permission:performance.view');
+    Route::post('/kpi-teknis', [KpiTeknisController::class, 'upsert'])->middleware('permission:performance.manage');
+    Route::delete('/kpi-teknis/{kpiId}', [KpiTeknisController::class, 'destroy'])->middleware('permission:performance.manage');
+
+    // Job Profiles (Dictionary) — role master for mapping/cascade.
+    Route::get('/job-profiles', [JobProfileController::class, 'index'])->middleware('permission:performance.view');
+    Route::post('/job-profiles', [JobProfileController::class, 'upsert'])->middleware('permission:performance.manage');
+    Route::delete('/job-profiles/{profileId}', [JobProfileController::class, 'destroy'])->middleware('permission:performance.manage');
 
     // Performance
     Route::get('/performance-kpis', [PerformanceKpiController::class, 'index'])->middleware('permission:performance.view');
