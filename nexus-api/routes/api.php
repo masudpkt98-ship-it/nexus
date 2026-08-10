@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatThreadController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\CompetencyController;
+use App\Http\Controllers\Api\CorporateKpiController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\NexianController;
@@ -104,6 +105,12 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/competency', [CompetencyController::class, 'store'])->middleware('permission:competency.manage');
     Route::put('/competency/{competency}', [CompetencyController::class, 'update'])->middleware('permission:competency.manage');
     Route::delete('/competency/{competency}', [CompetencyController::class, 'destroy'])->middleware('permission:competency.manage');
+
+    // Corporate KPI catalogue (Performance Dictionary) — top of the KPI cascade,
+    // global (not unit-scoped); performance.manage to write.
+    Route::get('/corporate-kpis', [CorporateKpiController::class, 'index'])->middleware('permission:performance.view');
+    Route::post('/corporate-kpis', [CorporateKpiController::class, 'upsert'])->middleware('permission:performance.manage');
+    Route::delete('/corporate-kpis/{kpiId}', [CorporateKpiController::class, 'destroy'])->middleware('permission:performance.manage');
 
     // Performance
     Route::get('/performance-kpis', [PerformanceKpiController::class, 'index'])->middleware('permission:performance.view');

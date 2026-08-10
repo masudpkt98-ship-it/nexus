@@ -19,6 +19,8 @@ import {
 } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
+import { useApiAuthed } from "@/lib/auth";
+import { apiListCorporateKpis, apiSaveCorporateKpi, apiDeleteCorporateKpi } from "@/lib/api";
 import { KPI_TEKNIS_KEY, emptyKpiTeknis, type KpiTeknis } from "@/lib/kpiTeknis";
 
 const inputCls = "mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500";
@@ -67,6 +69,19 @@ function PerformanceDictionaryPage() {
   const [profiles, setProfiles] = useLocalState<JobProfile[]>("job-profiles", seedProfiles);
   const [goals] = useLocalState<StrategicGoal[]>("strategy-goals-2026", seedGoals); // pulled from Strategic Planning
   const [teknis, setTeknis] = useLocalState<KpiTeknis[]>(KPI_TEKNIS_KEY, []);
+  const authed = useApiAuthed();
+  // Corporate KPI catalogue is server-backed (top of the cascade). Load the
+  // shared catalogue from the server when signed in; local acts as the cache.
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiListCorporateKpis().then((data) => { if (alive && data.length) setKpis(data); }).catch(() => { /* offline → keep local */ });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed]);
+  const kOnErr = (e: { status?: number }) => alert(e?.status === 403
+    ? "Ditolak server: hanya peran dengan performance.manage yang dapat mengubah katalog KPI Korporat."
+    : "Gagal menyimpan ke server; perubahan tersimpan lokal saja.");
   const [tab, setTab] = useState<Tab>("Corporate KPI");
   // Open the tab requested by a sidebar deep-link (e.g. ?tab=teknis → KPI Teknis).
   useEffect(() => {
@@ -106,11 +121,16 @@ function PerformanceDictionaryPage() {
     const name = kForm.name.trim();
     if (!name) return;
     const body = { code: kForm.code.trim() || "—", name, perspective: kForm.perspective, unit: kForm.unit.trim(), target: kForm.target.trim(), strategicGoalId: kForm.strategicGoalId || undefined, cascadableTo: kForm.cascadableTo };
-    if (kForm.id == null) setKpis((l) => [...l, { id: newId("ck"), ...body }]);
-    else setKpis((l) => l.map((x) => (x.id === kForm.id ? { ...x, ...body } : x)));
+    const full: CorporateKpi = kForm.id == null ? { id: newId("ck"), ...body } : { id: kForm.id, ...body };
+    setKpis((l) => (l.some((x) => x.id === full.id) ? l.map((x) => (x.id === full.id ? full : x)) : [...l, full]));
+    if (authed) apiSaveCorporateKpi(full).catch(kOnErr);
     setKForm(emptyK);
   };
-  const removeK = (k: CorporateKpi) => { if (confirm(`${t("Delete")} “${k.name}”?`)) setKpis((l) => l.filter((x) => x.id !== k.id)); };
+  const removeK = (k: CorporateKpi) => {
+    if (!confirm(`${t("Delete")} “${k.name}”?`)) return;
+    setKpis((l) => l.filter((x) => x.id !== k.id));
+    if (authed) apiDeleteCorporateKpi(k.id).catch(kOnErr);
+  };
   const toggleCascade = (lvl: string) => setKForm((f) => ({ ...f, cascadableTo: f.cascadableTo.includes(lvl) ? f.cascadableTo.filter((x) => x !== lvl) : [...f.cascadableTo, lvl] }));
 
   // --- Job Profile CRUD ---

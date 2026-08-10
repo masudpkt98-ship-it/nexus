@@ -188,6 +188,28 @@ export async function apiClearEmployees(period?: string): Promise<void> {
   await apiSend("DELETE", `/employees${qs}`);
 }
 
+// ---- Corporate KPI catalogue (Performance Dictionary, top of the cascade) --
+/** The corporate KPI catalogue — global, shared by every level's planning. */
+export async function apiListCorporateKpis(): Promise<import("./data").CorporateKpi[]> {
+  return apiGet<import("./data").CorporateKpi[]>("/corporate-kpis");
+}
+/** Create/update one corporate KPI (upsert by its client id). Needs performance.manage. */
+export async function apiSaveCorporateKpi(kpi: import("./data").CorporateKpi): Promise<void> {
+  await apiSend("POST", "/corporate-kpis", {
+    kpi_id: kpi.id,
+    code: kpi.code,
+    name: kpi.name,
+    perspective: kpi.perspective,
+    unit: kpi.unit,
+    target: kpi.target,
+    strategic_goal_id: kpi.strategicGoalId ?? null,
+    cascadable_to: kpi.cascadableTo ?? [],
+  });
+}
+export async function apiDeleteCorporateKpi(id: string): Promise<void> {
+  await apiSend("DELETE", `/corporate-kpis/${encodeURIComponent(id)}`);
+}
+
 // ---- Performance Planning — KPIs + Owners (server-enforced, unit-scoped) ---
 export interface PlanningKpiDTO {
   kpi_id: string;
