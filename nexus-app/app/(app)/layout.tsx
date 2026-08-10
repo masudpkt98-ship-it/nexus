@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar, SidebarFallback } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
+import { StorageGuard } from "@/components/StorageGuard";
 import { cn } from "@/components/ui";
 import { AuthProvider, useApiAuthed } from "@/lib/auth";
 import { getStoredUser, apiListEmployees } from "@/lib/api";
@@ -74,6 +75,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="mx-auto max-w-[1400px] animate-fade-up">{children}</div>
         </main>
       </div>
+      <StorageGuard />
     </div>
     </AuthProvider>
   );

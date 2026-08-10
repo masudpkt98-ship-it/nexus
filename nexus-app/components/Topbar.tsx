@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icons";
+import { BackupMenu } from "@/components/BackupMenu";
 import { useTheme } from "@/components/ThemeProvider";
 import { useI18n, LANGS } from "@/lib/i18n";
 import { Avatar, cn } from "@/components/ui";
@@ -113,6 +114,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
             </>
           )}
         </div>
+        <BackupMenu />
         <button
           onClick={toggle}
           className="rounded-lg p-2 text-[var(--muted)] transition hover:bg-black/5 hover:text-[var(--text)] dark:hover:bg-white/5"

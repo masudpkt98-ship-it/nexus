@@ -39,8 +39,13 @@ export function useLocalState<T>(key: string, initial: T): [T, React.Dispatch<Re
         const next = typeof value === "function" ? (value as (p: T) => T)(prev) : value;
         try {
           localStorage.setItem(storageKey, JSON.stringify(next));
-        } catch {
-          /* quota exceeded or unavailable storage → keep in-memory value */
+        } catch (err) {
+          // Quota exceeded or storage unavailable. The in-memory value is kept,
+          // but it is NOT persisted — surface it instead of losing data silently
+          // (StorageGuard listens for this and warns the user).
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("nexus:storage-error", { detail: { key: storageKey, error: err } }));
+          }
         }
         return next;
       });
