@@ -96,8 +96,9 @@ export default function PerformancePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [syncErr, setSyncErr] = useState<string | null>(null);
   const sync = (method: "POST" | "PUT" | "DELETE", path: string, body?: unknown) => {
-    if (hasSession()) apiSend(method, path, body).catch(() => {});
+    if (hasSession()) apiSend(method, path, body).catch(() => setSyncErr(t("Could not save to the server — your change is kept locally and may be lost on reload.")));
   };
 
   // --- KPI CRUD ---
@@ -114,9 +115,19 @@ export default function PerformancePage() {
     const body = { name: form.name.trim(), level: form.level, weight: form.weight, target: form.target, actual: form.actual, unit: form.unit.trim(), sourceCode: form.sourceCode || undefined, sourceKpiId: form.sourceKpiId || undefined };
     if (!body.name) return;
     if (form.id == null) {
-      const k: Kpi = { id: newId("kpi"), ...body };
+      const localId = newId("kpi");
+      const k: Kpi = { id: localId, ...body };
       setRows((r) => [...r, k]);
-      sync("POST", "/performance-kpis", k);
+      // The server assigns a stable code (e.g. KPI-001) and returns it as `id`.
+      // Adopt it locally so later edits/deletes target the right server row —
+      // otherwise the client keeps its temp id and every update 404s silently.
+      if (hasSession()) {
+        apiSend<Kpi>("POST", "/performance-kpis", k)
+          .then((saved) => {
+            if (saved?.id) setRows((r) => r.map((x) => (x.id === localId ? { ...x, id: String(saved.id) } : x)));
+          })
+          .catch(() => setSyncErr(t("Could not save to the server — your change is kept locally and may be lost on reload.")));
+      }
     } else {
       setRows((r) => r.map((x) => (x.id === form.id ? { ...x, ...body } : x)));
       sync("PUT", `/performance-kpis/${form.id}`, body);
@@ -170,6 +181,14 @@ export default function PerformancePage() {
           </>
         }
       />
+
+      {syncErr && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2.5 text-[13px] text-rose-400">
+          <Icon.alert className="h-4 w-4 shrink-0" />
+          <span className="flex-1">{syncErr}</span>
+          <button onClick={() => setSyncErr(null)} className="text-[var(--muted)] hover:text-rose-400">✕</button>
+        </div>
+      )}
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2">
         <Link href="/performance/dictionary" className="flex items-center gap-3 rounded-xl border border-royal-500/30 bg-royal-500/5 px-4 py-3 transition hover:border-royal-500/50 hover:bg-royal-500/10">
