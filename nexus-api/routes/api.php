@@ -68,7 +68,10 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->middleware('permission:audit.view');
 
     // Employee Directory (PII) — scoped reads; admin-only bulk import.
+    // Quarterly-versioned: reads default to the latest Triwulan; history spans all.
     Route::get('/employees', [EmployeeController::class, 'index'])->middleware('permission:people.view');
+    Route::get('/employees/periods', [EmployeeController::class, 'periods'])->middleware('permission:people.view');
+    Route::get('/employees/{npk}/history', [EmployeeController::class, 'history'])->middleware('permission:people.view');
     Route::post('/employees/import', [EmployeeController::class, 'import'])->middleware(['permission:people.manage', 'throttle:sensitive']);
     Route::delete('/employees', [EmployeeController::class, 'clear'])->middleware('permission:people.manage');
 

@@ -157,18 +157,35 @@ export async function apiListAudit(opts: { deniedOnly?: boolean; action?: string
 }
 
 // ---- Employee Directory (PII, server-enforced, unit-scoped) ----------------
-/** Employees the caller may see (scoped by unit/directorate). Returns the raw
- *  Employee records, ready to hydrate the client cache. */
-export async function apiListEmployees(): Promise<import("./data").Employee[]> {
-  return apiGet<import("./data").Employee[]>("/employees");
+/** Employees the caller may see for one quarter (scoped by unit/directorate).
+ *  Omit `period` to get the latest available quarter. */
+export async function apiListEmployees(period?: string): Promise<import("./data").Employee[]> {
+  const qs = period ? `?period=${encodeURIComponent(period)}` : "";
+  return apiGet<import("./data").Employee[]>(`/employees${qs}`);
 }
-/** Bulk import the directory (admin only). `replace` clears first (send on the
- *  first chunk). */
-export async function apiImportEmployees(employees: unknown[], replace = false): Promise<{ imported: number; total: number }> {
-  return apiSend("POST", "/employees/import", { employees, replace });
+/** The Triwulan periods available within the caller's scope, newest first. */
+export async function apiListEmployeePeriods(): Promise<string[]> {
+  return apiGet<string[]>("/employees/periods");
 }
-export async function apiClearEmployees(): Promise<void> {
-  await apiSend("DELETE", "/employees");
+/** One employee's record across every quarter — job history over time. */
+export async function apiEmployeeHistory(
+  npk: string,
+): Promise<{ period: string; payload: import("./data").Employee }[]> {
+  return apiGet(`/employees/${encodeURIComponent(npk)}/history`);
+}
+/** Bulk import ONE quarter's directory (admin only). `replace` clears only that
+ *  period first (send on the first chunk); other quarters are never touched. */
+export async function apiImportEmployees(
+  employees: unknown[],
+  period: string,
+  replace = false,
+): Promise<{ imported: number; total: number; period: string }> {
+  return apiSend("POST", "/employees/import", { employees, period, replace });
+}
+/** Clear the directory. With `period`, clears only that quarter; without it, all. */
+export async function apiClearEmployees(period?: string): Promise<void> {
+  const qs = period ? `?period=${encodeURIComponent(period)}` : "";
+  await apiSend("DELETE", `/employees${qs}`);
 }
 
 // ---- Performance Planning — KPIs + Owners (server-enforced, unit-scoped) ---

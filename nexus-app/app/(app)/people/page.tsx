@@ -9,12 +9,18 @@ import { rowsToEmployees } from "@/lib/importEmployees";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
 import { useAuth, scopeAllows, useApiAuthed } from "@/lib/auth";
-import { apiListEmployees, apiImportEmployees, apiClearEmployees, ApiError } from "@/lib/api";
+import { apiListEmployees, apiListEmployeePeriods, apiEmployeeHistory, apiImportEmployees, apiClearEmployees, ApiError } from "@/lib/api";
 
 const PAGE_SIZE = 50;
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).map((s) => s[0]).slice(0, 2).join("").toUpperCase() || "?";
 const distinct = (list: Employee[], key: keyof Employee) =>
   Array.from(new Set(list.map((e) => String(e[key]).trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+
+// Triwulan (quarter) period helpers. Format: "TW1-2026" (Triwulan first).
+const PERIOD_RE = /^TW[1-4]-\d{4}$/;
+const currentQuarter = () => { const d = new Date(); return `TW${Math.floor(d.getMonth() / 3) + 1}-${d.getFullYear()}`; };
+// Chronological sort key so TW4-2025 < TW1-2026 (string sort alone is wrong).
+const periodSortKey = (p: string) => { const m = /TW(\d)-(\d{4})/.exec(p); return m ? Number(m[2]) * 10 + Number(m[1]) : 0; };
 
 export default function PeoplePage() {
   const { t } = useI18n();
@@ -25,17 +31,49 @@ export default function PeoplePage() {
   const setRows = setRowsRaw;
   const authed = useApiAuthed();
 
-  // When API-authed, the directory comes from the backend (server returns ONLY
-  // this user's scoped rows) — PII is no longer a client-side bulk import.
+  // Quarterly (Triwulan) versioning: the directory is a snapshot per period.
+  const [periods, setPeriods] = useState<string[]>([]);
+  const [period, setPeriod] = useState<string>("");
+  // Per-employee position history across quarters (drawer).
+  const [histFor, setHistFor] = useState<Employee | null>(null);
+  const [histRows, setHistRows] = useState<{ period: string; payload: Employee }[]>([]);
+  const [histLoading, setHistLoading] = useState(false);
+
+  // When API-authed, load the available quarters and default to the newest.
   useEffect(() => {
     if (!authed) return;
     let alive = true;
-    apiListEmployees().then((list) => {
-      if (alive && list.length) setRows(list);
+    apiListEmployeePeriods().then((ps) => {
+      if (!alive) return;
+      const sorted = [...ps].sort((a, b) => periodSortKey(b) - periodSortKey(a));
+      setPeriods(sorted);
+      setPeriod((cur) => cur || sorted[0] || "");
+    }).catch(() => { /* offline → keep local cache */ });
+    return () => { alive = false; };
+  }, [authed]);
+
+  // Load the directory for the selected quarter (server returns ONLY this user's
+  // scoped rows). On an explicit period this replaces the view, including empty.
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiListEmployees(period || undefined).then((list) => {
+      if (alive) setRows(list);
     }).catch(() => { /* offline → keep local cache */ });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authed]);
+  }, [authed, period]);
+
+  const openHistory = (e: Employee) => {
+    if (!authed) return; // history is a server feature
+    setHistFor(e);
+    setHistRows([]);
+    setHistLoading(true);
+    apiEmployeeHistory(e.npk)
+      .then((rows) => setHistRows(rows))
+      .catch(() => setHistRows([]))
+      .finally(() => setHistLoading(false));
+  };
   const [q, setQ] = useState("");
   const [fDir, setFDir] = useState("");
   const [fLoc, setFLoc] = useState("");
@@ -83,24 +121,43 @@ export default function PeoplePage() {
       if (emps.length === 0) {
         setNote(t("No rows found. Check the sheet has an NPK / Nama column."));
       } else {
-        setRows(emps);
         resetPage();
         // When API-authed, push the directory to the backend (admin-only) in
-        // chunks — the raw xlsx PII lands on the server, not in every browser.
+        // chunks, INTO a chosen Triwulan — importing one quarter never touches
+        // the others, so each employee keeps a position history across periods.
         if (authed) {
+          const target = (window.prompt(
+            "Import untuk Triwulan mana? (format TW1-2026)",
+            period || currentQuarter(),
+          ) || "").trim().toUpperCase();
+          if (!target) { setNote("Impor dibatalkan."); return; }
+          if (!PERIOD_RE.test(target)) {
+            setNote(`Format Triwulan tidak valid: “${target}”. Contoh yang benar: TW1-2026.`);
+            return;
+          }
           try {
             const CHUNK = 300;
             for (let i = 0; i < emps.length; i += CHUNK) {
-              await apiImportEmployees(emps.slice(i, i + CHUNK), i === 0 /* replace on first chunk */);
+              // replace clears ONLY this quarter on the first chunk.
+              await apiImportEmployees(emps.slice(i, i + CHUNK), target, i === 0);
             }
-            setNote(`${t("Imported")} ${emps.length} ${t("employees")} → server (${t("from sheet")} “${name}”).`);
+            // Refresh the quarter list, switch to the imported one, and reload
+            // its rows from the server (explicit reload covers target === period,
+            // where a setPeriod with an unchanged value wouldn't retrigger the effect).
+            setPeriods((prev) => Array.from(new Set([target, ...prev])).sort((a, b) => periodSortKey(b) - periodSortKey(a)));
+            setPeriod(target);
+            const fresh = await apiListEmployees(target).catch(() => emps as Employee[]);
+            setRows(fresh);
+            setNote(`${t("Imported")} ${emps.length} ${t("employees")} → server · ${target} (${t("from sheet")} “${name}”).`);
           } catch (e) {
+            setRows(emps); // server failed → at least show what we parsed locally
             const msg = e instanceof ApiError && e.status === 403
               ? "Impor ke server ditolak (khusus admin). Data tersimpan lokal saja."
               : "Gagal mengunggah ke server; data tersimpan lokal saja.";
             setNote(msg);
           }
         } else {
+          setRows(emps);
           setNote(`${t("Imported")} ${emps.length} ${t("employees")} — ${t("from sheet")} “${name}”.`);
         }
       }
@@ -113,6 +170,18 @@ export default function PeoplePage() {
   };
 
   const clearData = () => {
+    // When authed, only the CURRENTLY VIEWED quarter is cleared — earlier
+    // Triwulan (and their history) are preserved on the server.
+    if (authed && period) {
+      if (!confirm(`Hapus data karyawan untuk ${period}? Triwulan lain tetap tersimpan.`)) return;
+      setRows([]);
+      resetPage();
+      setNote(null);
+      apiClearEmployees(period)
+        .then(() => setPeriods((prev) => prev.filter((p) => p !== period)))
+        .catch(() => { /* offline / not admin → local clear only */ });
+      return;
+    }
     if (!confirm(t("Remove all imported employee data from this browser?"))) return;
     setRows([]);
     resetPage();
@@ -140,9 +209,17 @@ export default function PeoplePage() {
         subtitle="Master data karyawan — import dari Excel, cari & filter"
         actions={
           <>
+            {authed && periods.length > 0 && (
+              <label className="flex items-center gap-1.5 text-[13px] text-[var(--muted)]">
+                <Icon.clock className="h-4 w-4" />
+                <select value={period} onChange={(e) => { setPeriod(e.target.value); resetPage(); }} className={selCls}>
+                  {periods.map((p) => (<option key={p} value={p}>{p}</option>))}
+                </select>
+              </label>
+            )}
             {rows.length > 0 && (
               <Btn variant="ghost" onClick={clearData}>
-                {t("Clear data")}
+                {authed && period ? `${t("Clear data")} · ${period}` : t("Clear data")}
               </Btn>
             )}
             <input
@@ -232,7 +309,13 @@ export default function PeoplePage() {
                 </thead>
                 <tbody>
                   {shown.map((e) => (
-                    <tr key={e.npk} dir="auto" className="border-b last:border-0 hover:bg-black/5 dark:hover:bg-white/5">
+                    <tr
+                      key={e.npk}
+                      dir="auto"
+                      onClick={authed ? () => openHistory(e) : undefined}
+                      title={authed ? t("View position history across quarters") : undefined}
+                      className={`border-b last:border-0 hover:bg-black/5 dark:hover:bg-white/5${authed ? " cursor-pointer" : ""}`}
+                    >
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
                           <Avatar initials={initials(e.name)} />
@@ -269,6 +352,57 @@ export default function PeoplePage() {
             </div>
           </Card>
         </>
+      )}
+
+      {histFor && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setHistFor(null)}
+        >
+          <div className="w-full max-w-lg" onClick={(ev) => ev.stopPropagation()}>
+          <Card className="max-h-[80vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Avatar initials={initials(histFor.name)} />
+                <div>
+                  <div className="font-semibold">{histFor.name}</div>
+                  <div className="text-[11px] text-[var(--muted)]">{histFor.npk}</div>
+                </div>
+              </div>
+              <Btn variant="ghost" onClick={() => setHistFor(null)}>{t("Close")}</Btn>
+            </div>
+
+            <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[var(--muted)]">
+              <Icon.clock className="h-4 w-4" /> {t("Position history across quarters")}
+            </div>
+
+            {histLoading ? (
+              <div className="py-8 text-center text-[13px] text-[var(--muted)]">{t("Loading…")}</div>
+            ) : histRows.length === 0 ? (
+              <div className="py-8 text-center text-[13px] text-[var(--muted)]">{t("No history yet.")}</div>
+            ) : (
+              <ol className="mt-3 space-y-2">
+                {histRows.map((h, i) => {
+                  const prev = histRows[i + 1]?.payload; // older quarter
+                  const changed = prev && prev.position !== h.payload.position;
+                  return (
+                    <li key={h.period} className="rounded-lg border p-3">
+                      <div className="flex items-center justify-between">
+                        <Badge tone="blue">{h.period}</Badge>
+                        {changed && <span className="text-[10px] font-medium text-amber-500">{t("Position changed")}</span>}
+                      </div>
+                      <div className="mt-1 text-sm font-medium">{h.payload.position || "—"}</div>
+                      <div className="text-[11px] text-[var(--muted)]">
+                        {[h.payload.unit, h.payload.directorate].filter(Boolean).join(" · ") || "—"}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </Card>
+          </div>
+        </div>
       )}
     </>
   );
