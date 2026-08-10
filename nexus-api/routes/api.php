@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\PerformanceKpiController;
 use App\Http\Controllers\Api\ProgramController;
 use App\Http\Controllers\Api\ProgressController;
 use App\Http\Controllers\Api\ServiceRequestController;
+use App\Http\Controllers\Api\StrategyController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\WorkspaceController;
 use Illuminate\Support\Facades\Route;
@@ -96,6 +97,15 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/exports/kpis', [ExportController::class, 'kpis'])->middleware('permission:performance.view');
     Route::get('/exports/competencies', [ExportController::class, 'competencies'])->middleware('permission:competency.view');
     Route::get('/exports/report', [ExportController::class, 'report'])->middleware('permission:analytics.view');
+
+    // Strategy — corporate strategy artifact (Vision/Mission/Values/SWOT/Goals),
+    // global; gated on the OKR (objectives) permission.
+    Route::get('/strategy', [StrategyController::class, 'index'])->middleware('permission:objectives.view');
+    Route::put('/strategy/vision', [StrategyController::class, 'putVision'])->middleware('permission:objectives.manage');
+    Route::post('/strategy/items', [StrategyController::class, 'itemUpsert'])->middleware('permission:objectives.manage');
+    Route::delete('/strategy/items/{id}', [StrategyController::class, 'itemDestroy'])->middleware('permission:objectives.manage');
+    Route::post('/strategy/goals', [StrategyController::class, 'goalUpsert'])->middleware('permission:objectives.manage');
+    Route::delete('/strategy/goals/{id}', [StrategyController::class, 'goalDestroy'])->middleware('permission:objectives.manage');
 
     Route::get('/objectives', [ObjectiveController::class, 'index'])->middleware('permission:objectives.view');
     Route::post('/objectives', [ObjectiveController::class, 'store'])->middleware('permission:objectives.manage');

@@ -17,7 +17,12 @@ import {
 import { useApiData } from "@/lib/useApi";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
-import { apiSend, hasSession } from "@/lib/api";
+import { useApiAuthed } from "@/lib/auth";
+import {
+  apiSend, hasSession, apiGetStrategy,
+  apiSaveStrategyVision, apiSaveStrategyItem, apiDeleteStrategyItem,
+  apiSaveStrategyGoal, apiDeleteStrategyGoal,
+} from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
 
 const flow = ["Vision", "Mission", "Core Values", "Strategic Goals", "SWOT", "OKR", "Milestones"];
@@ -36,6 +41,12 @@ const nextId = (prefix: string) => {
     return `${prefix}-new-${++seq}-${Date.now()}`;
   }
 };
+
+// Surface a failed server sync instead of losing it silently (localStorage keeps
+// the change; this tells the user it did not reach the server).
+const strategyErr = (e: { status?: number }) => alert(e?.status === 403
+  ? "Ditolak server: hanya peran dengan objectives.manage yang dapat mengubah Strategy."
+  : "Gagal menyimpan ke server; perubahan tersimpan lokal saja.");
 
 // ---------------------------------------------------------------------------
 // Shared modal shell — mirrors the existing OKR modal styling.
@@ -115,11 +126,22 @@ function Vision() {
   const { t } = useI18n();
   const [vision, setVision] = useLocalState("strategy-vision", mockVision);
   const [form, setForm] = useState<{ open: boolean; vision: string }>({ open: false, vision: "" });
+  const authed = useApiAuthed();
+
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiGetStrategy().then((d) => { if (alive && d.vision) setVision(d.vision); }).catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed]);
 
   const open = () => setForm({ open: true, vision });
   const close = () => setForm((f) => ({ ...f, open: false }));
   const save = () => {
-    setVision(form.vision.trim());
+    const v = form.vision.trim();
+    setVision(v);
+    if (authed) apiSaveStrategyVision(v).catch(strategyErr);
     close();
   };
 
@@ -168,6 +190,15 @@ function MissionList() {
   const { t } = useI18n();
   const [rows, setRows] = useLocalState<Mission[]>("strategy-mission", mockMission);
   const [form, setForm] = useState(emptyMission);
+  const authed = useApiAuthed();
+
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiGetStrategy().then((d) => { if (alive && d.mission.length) setRows(d.mission); }).catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed]);
 
   const openCreate = () => setForm({ ...emptyMission, open: true });
   const openEdit = (m: Mission) => setForm({ open: true, id: m.id, text: m.text });
@@ -175,14 +206,15 @@ function MissionList() {
   const save = () => {
     const text = form.text.trim();
     if (!text) return;
-    if (form.id == null) {
-      setRows((r) => [...r, { id: nextId("ms"), text }]);
-    } else {
-      setRows((r) => r.map((x) => (x.id === form.id ? { ...x, text } : x)));
-    }
+    const full: Mission = form.id == null ? { id: nextId("ms"), text } : { id: form.id, text };
+    setRows((r) => (r.some((x) => x.id === full.id) ? r.map((x) => (x.id === full.id ? full : x)) : [...r, full]));
+    if (authed) apiSaveStrategyItem("mission", full).catch(strategyErr);
     close();
   };
-  const remove = (m: Mission) => setRows((r) => r.filter((x) => x.id !== m.id));
+  const remove = (m: Mission) => {
+    setRows((r) => r.filter((x) => x.id !== m.id));
+    if (authed) apiDeleteStrategyItem(m.id).catch(strategyErr);
+  };
 
   return (
     <Card>
@@ -240,6 +272,15 @@ function CoreValues() {
   const { t } = useI18n();
   const [rows, setRows] = useLocalState<Value[]>("strategy-values", mockValues);
   const [form, setForm] = useState(emptyValue);
+  const authed = useApiAuthed();
+
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiGetStrategy().then((d) => { if (alive && d.values.length) setRows(d.values as Value[]); }).catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed]);
 
   const openCreate = () => setForm({ ...emptyValue, open: true });
   const openEdit = (v: Value) => setForm({ open: true, id: v.id, letter: v.letter ?? "", title: v.title, description: v.description });
@@ -250,14 +291,15 @@ function CoreValues() {
     const description = form.description.trim();
     // Letter defaults to the value's initial when left blank.
     const letter = (form.letter.trim() || title.charAt(0)).slice(0, 2).toUpperCase();
-    if (form.id == null) {
-      setRows((r) => [...r, { id: nextId("cv"), letter, title, description }]);
-    } else {
-      setRows((r) => r.map((x) => (x.id === form.id ? { ...x, letter, title, description } : x)));
-    }
+    const full: Value = form.id == null ? { id: nextId("cv"), letter, title, description } : { id: form.id, letter, title, description };
+    setRows((r) => (r.some((x) => x.id === full.id) ? r.map((x) => (x.id === full.id ? full : x)) : [...r, full]));
+    if (authed) apiSaveStrategyItem("value", full).catch(strategyErr);
     close();
   };
-  const remove = (v: Value) => setRows((r) => r.filter((x) => x.id !== v.id));
+  const remove = (v: Value) => {
+    setRows((r) => r.filter((x) => x.id !== v.id));
+    if (authed) apiDeleteStrategyItem(v.id).catch(strategyErr);
+  };
 
   return (
     <Card>
@@ -350,6 +392,15 @@ function StrategicGoals() {
   const [form, setForm] = useState<GoalForm>(emptyGoal);
   const [query, setQuery] = useState("");
   const [division, setDivision] = useState("All");
+  const authed = useApiAuthed();
+
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiGetStrategy().then((d) => { if (alive && d.goals.length) setRows(d.goals); }).catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed]);
 
   const divisions = ["All", ...Array.from(new Set(rows.map((g) => g.division)))];
   const q = query.trim().toLowerCase();
@@ -393,14 +444,15 @@ function StrategicGoals() {
       owner: division || "You",
       strategies,
     };
-    if (form.id == null) {
-      setRows((r) => [...r, { id: nextId("sg"), ...body }]);
-    } else {
-      setRows((r) => r.map((x) => (x.id === form.id ? { ...x, ...body } : x)));
-    }
+    const full: StrategicGoal = form.id == null ? { id: nextId("sg"), ...body } : { id: form.id, ...body };
+    setRows((r) => (r.some((x) => x.id === full.id) ? r.map((x) => (x.id === full.id ? full : x)) : [...r, full]));
+    if (authed) apiSaveStrategyGoal(full).catch(strategyErr);
     close();
   };
-  const remove = (g: StrategicGoal) => setRows((r) => r.filter((x) => x.id !== g.id));
+  const remove = (g: StrategicGoal) => {
+    setRows((r) => r.filter((x) => x.id !== g.id));
+    if (authed) apiDeleteStrategyGoal(g.id).catch(strategyErr);
+  };
 
   return (
     <div className="mt-4">
@@ -574,6 +626,15 @@ function Swot() {
   const { t } = useI18n();
   const [rows, setRows] = useLocalState<Swot[]>("strategy-swot", mockSwot);
   const [form, setForm] = useState(emptySwot);
+  const authed = useApiAuthed();
+
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiGetStrategy().then((d) => { if (alive && d.swot.length) setRows(d.swot as Swot[]); }).catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed]);
 
   const openCreate = (type: SwotType) => setForm({ ...emptySwot, open: true, type });
   const openEdit = (s: Swot) => setForm({ open: true, id: s.id, type: s.type, text: s.text });
@@ -581,14 +642,15 @@ function Swot() {
   const save = () => {
     const text = form.text.trim();
     if (!text) return;
-    if (form.id == null) {
-      setRows((r) => [...r, { id: nextId("sw"), type: form.type, text }]);
-    } else {
-      setRows((r) => r.map((x) => (x.id === form.id ? { ...x, type: form.type, text } : x)));
-    }
+    const full: Swot = form.id == null ? { id: nextId("sw"), type: form.type, text } : { id: form.id, type: form.type, text };
+    setRows((r) => (r.some((x) => x.id === full.id) ? r.map((x) => (x.id === full.id ? full : x)) : [...r, full]));
+    if (authed) apiSaveStrategyItem("swot", full).catch(strategyErr);
     close();
   };
-  const remove = (s: Swot) => setRows((r) => r.filter((x) => x.id !== s.id));
+  const remove = (s: Swot) => {
+    setRows((r) => r.filter((x) => x.id !== s.id));
+    if (authed) apiDeleteStrategyItem(s.id).catch(strategyErr);
+  };
 
   return (
     <div className="mt-4">

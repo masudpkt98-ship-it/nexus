@@ -243,6 +243,45 @@ export async function apiDeleteJobProfile(id: string): Promise<void> {
   await apiSend("DELETE", `/job-profiles/${encodeURIComponent(id)}`);
 }
 
+// ---- Strategy (corporate artifact: vision / mission / values / swot / goals) --
+type StrategyMission = { id: string; text: string };
+type StrategyValue = { id: string; letter: string; title: string; description: string };
+type StrategySwot = { id: string; type: string; text: string };
+export interface StrategyDoc {
+  vision: string;
+  mission: StrategyMission[];
+  values: StrategyValue[];
+  swot: StrategySwot[];
+  goals: import("./data").StrategicGoal[];
+}
+/** One call hydrates the whole Strategy page. */
+export async function apiGetStrategy(): Promise<StrategyDoc> {
+  return apiGet<StrategyDoc>("/strategy");
+}
+export async function apiSaveStrategyVision(vision: string): Promise<void> {
+  await apiSend("PUT", "/strategy/vision", { vision });
+}
+/** Upsert a mission / core value / SWOT item. `kind` picks the shape. */
+export async function apiSaveStrategyItem(
+  kind: "mission" | "value" | "swot",
+  item: StrategyMission | StrategyValue | StrategySwot,
+): Promise<void> {
+  const it = item as StrategyMission & StrategyValue & StrategySwot;
+  await apiSend("POST", "/strategy/items", {
+    kind, id: it.id, text: it.text, letter: it.letter,
+    title: it.title, description: it.description, type: it.type,
+  });
+}
+export async function apiDeleteStrategyItem(id: string): Promise<void> {
+  await apiSend("DELETE", `/strategy/items/${encodeURIComponent(id)}`);
+}
+export async function apiSaveStrategyGoal(goal: import("./data").StrategicGoal): Promise<void> {
+  await apiSend("POST", "/strategy/goals", { ...goal, id: goal.id });
+}
+export async function apiDeleteStrategyGoal(id: string): Promise<void> {
+  await apiSend("DELETE", `/strategy/goals/${encodeURIComponent(id)}`);
+}
+
 // ---- Performance Planning — KPIs + Owners (server-enforced, unit-scoped) ---
 export interface PlanningKpiDTO {
   kpi_id: string;
