@@ -12,15 +12,17 @@ class Task extends Model
 
     protected $fillable = [
         'code', 'title', 'description', 'status', 'priority', 'assignee_id',
-        'program_id', 'due_date', 'checklist_total', 'checklist_done',
-        'comments_count', 'tags',
+        'assignee_name', 'avatar', 'program_id', 'program_ref', 'milestone_id', 'due_date',
+        'checklist_total', 'checklist_done', 'comments_count', 'tags',
         'category', 'business_value', 'effort_value', 'effort_unit',
-        'requester', 'sprint', 'dependencies',
+        'requester', 'sprint', 'dependencies', 'subtasks', 'evidence',
     ];
 
     protected $casts = [
         'tags' => 'array',
         'dependencies' => 'array',
+        'subtasks' => 'array',
+        'evidence' => 'array',
         'due_date' => 'date:Y-m-d',
         'checklist_total' => 'integer',
         'checklist_done' => 'integer',

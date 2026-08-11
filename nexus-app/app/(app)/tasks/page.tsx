@@ -35,6 +35,14 @@ const taskToApi = (t: Partial<Task>) => ({
   requester: t.requester ?? null,
   sprint: t.sprint ?? null,
   dependencies: t.dependencies ?? [],
+  // Fields the relational columns can't represent — persisted verbatim so they
+  // survive the load path (which replaces the client cache with the server).
+  assignee_name: t.assignee ?? null,
+  avatar: t.avatar ?? null,
+  program_ref: t.program ?? null,
+  milestone_id: t.milestoneId ?? null,
+  subtasks: t.subtasks ?? [],
+  evidence: t.evidence ?? [],
 });
 
 const inputCls = "mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500";
@@ -347,10 +355,17 @@ export default function TasksPage() {
     if (form.id == null) {
       const task: Task = { id: newId(), createdAt: new Date().toISOString().slice(0, 10), ...body };
       setItems((prev) => [task, ...prev]);
-      sync("POST", "/tasks", taskToApi(task));
+      // The server assigns a stable code (T-101) and returns it as `id`. Adopt it
+      // so later edits/moves/deletes (bound by code) hit the right row.
+      if (hasSession()) {
+        apiSend<{ id?: string }>("POST", "/tasks", taskToApi(task))
+          .then((saved) => { if (saved?.id) setItems((prev) => prev.map((x) => (x.id === task.id ? { ...x, id: String(saved.id) } : x))); })
+          .catch(() => {});
+      }
     } else {
+      const next = items.find((x) => x.id === form.id);
       setItems((p) => p.map((x) => (x.id === form.id ? { ...x, ...body } : x)));
-      sync("PUT", `/tasks/${form.id}`, taskToApi(body));
+      if (next) sync("PUT", `/tasks/${form.id}`, taskToApi({ ...next, ...body }));
     }
     close();
   };
@@ -371,7 +386,16 @@ export default function TasksPage() {
   // --- expandable rows + Task → Subtask → Checklist + Evidence CRUD ---
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const toggleExpand = (id: string) => setExpanded((e) => ({ ...e, [id]: !e[id] }));
-  const updateTask = (id: string, fn: (t: Task) => Task) => setItems((prev) => prev.map((x) => (x.id === id ? fn(x) : x)));
+  // Apply a change to one task AND persist it. Compute the next value once (some
+  // callers mint ids), write it, then sync the whole task so subtasks / checklist
+  // / evidence reach the server instead of being lost on the next load.
+  const updateTask = (id: string, fn: (t: Task) => Task) => {
+    const current = items.find((x) => x.id === id);
+    if (!current) return;
+    const updated = fn(current);
+    setItems((prev) => prev.map((x) => (x.id === id ? updated : x)));
+    if (hasSession()) sync("PUT", `/tasks/${id}`, taskToApi(updated));
+  };
   const mapSub = (subs: Subtask[] | undefined, subId: string, fn: (s: Subtask) => Subtask) => (subs ?? []).map((s) => (s.id === subId ? fn(s) : s));
 
   const addSubtask = (taskId: string, title: string) => {

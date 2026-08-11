@@ -49,6 +49,12 @@ class TaskController extends Controller
             'requester' => ['nullable', 'string', 'max:255'],
             'sprint' => ['nullable', 'string', 'max:64'],
             'dependencies' => ['nullable', 'array'],
+            'assignee_name' => ['nullable', 'string', 'max:255'],
+            'avatar' => ['nullable', 'string', 'max:8'],
+            'program_ref' => ['nullable', 'string', 'max:255'],
+            'milestone_id' => ['nullable', 'string', 'max:255'],
+            'subtasks' => ['nullable', 'array'],
+            'evidence' => ['nullable', 'array'],
         ]);
 
         $data['code'] = 'T-'.(Task::withTrashed()->max('id') + 101);
@@ -83,6 +89,12 @@ class TaskController extends Controller
             'requester' => ['nullable', 'string', 'max:255'],
             'sprint' => ['nullable', 'string', 'max:64'],
             'dependencies' => ['nullable', 'array'],
+            'assignee_name' => ['nullable', 'string', 'max:255'],
+            'avatar' => ['nullable', 'string', 'max:8'],
+            'program_ref' => ['nullable', 'string', 'max:255'],
+            'milestone_id' => ['nullable', 'string', 'max:255'],
+            'subtasks' => ['nullable', 'array'],
+            'evidence' => ['nullable', 'array'],
         ]);
 
         $task->update($data);

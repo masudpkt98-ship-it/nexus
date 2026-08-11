@@ -16,10 +16,11 @@ class TaskResource extends JsonResource
             'description' => $this->description,
             'status' => $this->status,
             'priority' => $this->priority,
-            'assignee' => $this->assignee?->name,
-            'avatar' => $this->assignee?->avatar,
+            'assignee' => $this->assignee_name ?? $this->assignee?->name,
+            'avatar' => $this->avatar ?? $this->assignee?->avatar,
             'due' => optional($this->due_date)->format('Y-m-d'),
-            'program' => $this->program?->code,
+            'program' => $this->program_ref ?? $this->program?->code,
+            'milestoneId' => $this->milestone_id,
             'checklist' => [
                 'total' => $this->checklist_total,
                 'done' => $this->checklist_done,
@@ -35,6 +36,8 @@ class TaskResource extends JsonResource
             'requester' => $this->requester,
             'sprint' => $this->sprint,
             'dependencies' => $this->dependencies ?? [],
+            'subtasks' => $this->subtasks ?? [],
+            'evidence' => $this->evidence ?? [],
             'createdAt' => optional($this->created_at)->format('Y-m-d'),
         ];
     }

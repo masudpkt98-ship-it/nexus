@@ -62,9 +62,10 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     // Tasks
     Route::get('/tasks', [TaskController::class, 'index'])->middleware('permission:tasks.view');
     Route::post('/tasks', [TaskController::class, 'store'])->middleware('permission:tasks.manage');
-    Route::put('/tasks/{task}', [TaskController::class, 'update'])->middleware('permission:tasks.manage');
-    Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->middleware('permission:tasks.manage');
-    Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->middleware('permission:tasks.manage');
+    // Bind by `code` (T-101) — that is the id the client holds (TaskResource.id).
+    Route::put('/tasks/{task:code}', [TaskController::class, 'update'])->middleware('permission:tasks.manage');
+    Route::patch('/tasks/{task:code}/status', [TaskController::class, 'updateStatus'])->middleware('permission:tasks.manage');
+    Route::delete('/tasks/{task:code}', [TaskController::class, 'destroy'])->middleware('permission:tasks.manage');
 
     // Strategy / OKR
     // Data exports (Excel / PowerPoint)
