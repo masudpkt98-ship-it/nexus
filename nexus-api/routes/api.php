@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\CorporateKpiController;
 use App\Http\Controllers\Api\JobProfileController;
 use App\Http\Controllers\Api\KpiTeknisController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\NexianController;
 use App\Http\Controllers\Api\PlanningController;
@@ -174,6 +175,13 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/ai/artifacts', [ArtifactController::class, 'store'])->middleware('permission:ai.view');
     Route::get('/ai/artifacts/{id}', [ArtifactController::class, 'show'])->middleware('permission:ai.view');
     Route::delete('/ai/artifacts/{id}', [ArtifactController::class, 'destroy'])->middleware('permission:ai.view');
+
+    // Document Management — global catalogue; gated on the Workspace read
+    // permission every role holds (the module is ungated in the UI).
+    Route::get('/documents', [DocumentController::class, 'index'])->middleware('permission:knowledge.view');
+    Route::post('/documents', [DocumentController::class, 'store'])->middleware('permission:knowledge.view');
+    Route::put('/documents/{docId}', [DocumentController::class, 'update'])->middleware('permission:knowledge.view');
+    Route::delete('/documents/{docId}', [DocumentController::class, 'destroy'])->middleware('permission:knowledge.view');
 
     // Workspace
     Route::get('/meetings', [WorkspaceController::class, 'meetings'])->middleware('permission:meetings.view');

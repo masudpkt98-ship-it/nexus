@@ -113,7 +113,10 @@ export default function DocumentsPage() {
     let active = true;
     apiGet<DocItem[]>("/documents")
       .then((res) => {
-        if (active && Array.isArray(res)) {
+        // Replace the local cache only when the server actually has documents —
+        // an empty server (fresh table) must NOT wipe existing local-only docs;
+        // those migrate up as they're next edited (sync upserts by id).
+        if (active && Array.isArray(res) && res.length) {
           setDocs(res);
           setLive(true);
         }
