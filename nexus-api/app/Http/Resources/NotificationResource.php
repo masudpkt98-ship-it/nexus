@@ -14,6 +14,8 @@ class NotificationResource extends JsonResource
             'channel' => $this->channel,
             'kind' => $this->kind,
             'title' => $this->title,
+            // Where the notification points, when it is about something specific.
+            'link' => $this->link,
             'time' => $this->time_label,
             'read' => (bool) $this->read,
         ];

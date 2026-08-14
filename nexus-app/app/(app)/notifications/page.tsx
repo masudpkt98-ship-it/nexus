@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, Badge } from "@/components/ui";
 import { Icon } from "@/components/Icons";
@@ -126,7 +127,16 @@ export default function NotificationsPage() {
                     <Badge tone={channelTone[n.channel]}>{n.channel}</Badge>
                     <span className="text-[11px] capitalize text-[var(--muted)]">{n.kind}</span>
                   </div>
-                  <p className={`mt-1 text-[14px] ${unread ? "font-semibold" : "text-[var(--muted)]"}`}>{n.title}</p>
+                  {/* Notifications about a specific record carry a link — follow it
+                      instead of leaving the reader to hunt for what it refers to. */}
+                  {n.link ? (
+                    <Link href={n.link} className={`mt-1 block text-[14px] transition hover:text-royal-400 ${unread ? "font-semibold" : "text-[var(--muted)]"}`}>
+                      {n.title}
+                      <span className="ml-1 text-royal-400">→</span>
+                    </Link>
+                  ) : (
+                    <p className={`mt-1 text-[14px] ${unread ? "font-semibold" : "text-[var(--muted)]"}`}>{n.title}</p>
+                  )}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">
                   <span className="inline-flex items-center gap-1 text-[11px] text-[var(--muted)]">

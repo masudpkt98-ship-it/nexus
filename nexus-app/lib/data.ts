@@ -1730,6 +1730,8 @@ export interface Notification {
   time: string;
   read: boolean;
   kind: "deadline" | "approval" | "training" | "birthday" | "system";
+  /** Where this notification points, when it is about something specific. */
+  link?: string | null;
 }
 
 export const notifications: Notification[] = [

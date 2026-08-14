@@ -12,9 +12,15 @@ use Illuminate\Http\Request;
 
 class WorkspaceController extends Controller
 {
+    /**
+     * The caller's notifications: those addressed to them, plus department-wide
+     * announcements (user_id null), which is how every notification behaved
+     * before approval routing started addressing people individually.
+     */
     public function notifications(Request $request)
     {
-        $query = NotificationItem::query();
+        $query = NotificationItem::query()
+            ->where(fn ($q) => $q->whereNull('user_id')->orWhere('user_id', $request->user()?->id));
 
         if ($request->filled('channel') && $request->string('channel') !== 'All') {
             $query->where('channel', $request->string('channel'));
@@ -23,9 +29,12 @@ class WorkspaceController extends Controller
         return NotificationResource::collection($query->orderByDesc('id')->get());
     }
 
-    public function markAllRead(): JsonResponse
+    /** Marks only what the caller can actually see. */
+    public function markAllRead(Request $request): JsonResponse
     {
-        NotificationItem::where('read', false)->update(['read' => true]);
+        NotificationItem::where('read', false)
+            ->where(fn ($q) => $q->whereNull('user_id')->orWhere('user_id', $request->user()?->id))
+            ->update(['read' => true]);
 
         return response()->json(['message' => 'All notifications marked as read.']);
     }

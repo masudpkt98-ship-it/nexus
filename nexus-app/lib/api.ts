@@ -313,6 +313,12 @@ export async function apiDeleteTrainingSession(id: string): Promise<void> {
   await apiSend("DELETE", `/training-sessions/${encodeURIComponent(id)}`);
 }
 
+// ---- Cost approval queue ---------------------------------------------------
+/** Activities awaiting a decision. Needs cost.manage. */
+export async function apiListPendingCostActivities(): Promise<import("./costOpt").Activity[]> {
+  return apiGet<import("./costOpt").Activity[]>("/cost-activities/pending");
+}
+
 // ---- COMPASS tracking modules ----------------------------------------------
 // Five catalogues with identical mechanics (list · upsert by client id · delete),
 // so they share one set of helpers rather than fifteen near-identical functions.

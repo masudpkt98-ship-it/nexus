@@ -93,6 +93,25 @@ class User extends Authenticatable
         return in_array('*', $perms, true) || in_array($permission, $perms, true);
     }
 
+    /**
+     * Everyone who holds a permission, via their role.
+     *
+     * Permissions live in the ROLE_PERMISSIONS map rather than the database, so
+     * this resolves the qualifying roles first and then queries by role — used to
+     * route an approval request to the people who can actually decide it.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, static>
+     */
+    public static function withPermission(string $permission): \Illuminate\Database\Eloquent\Collection
+    {
+        $roles = array_keys(array_filter(
+            self::ROLE_PERMISSIONS,
+            fn (array $perms) => in_array('*', $perms, true) || in_array($permission, $perms, true)
+        ));
+
+        return static::whereIn('role', $roles)->get();
+    }
+
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class, 'assignee_id');

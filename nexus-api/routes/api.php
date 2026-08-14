@@ -75,6 +75,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     // Cost Optimization — activity budgets, realisasi and LPJ. cost.manage is a
     // deliberate separation of duty: approving spending is not programs.manage.
     Route::get('/cost-activities', [CostActivityController::class, 'index'])->middleware('permission:cost.view');
+    // The approval queue: only what is actually awaiting a decision.
+    Route::get('/cost-activities/pending', [CostActivityController::class, 'pending'])->middleware('permission:cost.manage');
     Route::post('/cost-activities', [CostActivityController::class, 'upsert'])->middleware('permission:cost.manage');
     Route::delete('/cost-activities/{activityId}', [CostActivityController::class, 'destroy'])->middleware('permission:cost.manage');
 

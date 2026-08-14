@@ -9,7 +9,8 @@ class CostActivity extends Model
     protected $fillable = [
         'activity_id', 'ref_no', 'nama', 'jenis', 'tujuan', 'latar_belakang', 'output',
         'tanggal', 'lokasi', 'penanggung_jawab', 'peserta', 'budget', 'travel',
-        'attachments', 'realizations', 'evidence', 'lpj', 'status', 'created_at_label', 'updated_by',
+        'attachments', 'realizations', 'evidence', 'lpj', 'status', 'created_at_label',
+        'created_by', 'updated_by',
     ];
 
     protected $casts = [

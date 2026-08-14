@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, Badge, ProgressBar, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
@@ -76,6 +77,7 @@ export default function CostOptimizationPage() {
   const kpiValues = [95, 96, evidenceAvg, avgVariance, outstandingLpj, 0];
 
   const shown = activities.filter((a) => filter === "All" || a.status === filter);
+  const awaitingCount = activities.filter((a) => a.status === "Waiting Approval" || a.status === "LPJ Review").length;
 
   return (
     <>
@@ -83,9 +85,22 @@ export default function CostOptimizationPage() {
         title="Cost Optimization"
         subtitle="Sistem Pengelolaan Kegiatan & Biaya — Simple Process, Complete Evidence"
         actions={
-          <Btn variant="primary" onClick={() => setCreating(true)}>
-            <Icon.plus className="h-4 w-4" /> {t("New Activity")}
-          </Btn>
+          <>
+            {/* Surfaces the queue only when something is actually waiting. */}
+            {awaitingCount > 0 && (
+              <Link
+                href="/cost-optimization/approvals"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-[12px] font-medium text-amber-500 transition hover:bg-amber-500/20"
+              >
+                <Icon.check className="h-4 w-4" />
+                {t("Menunggu Persetujuan")}
+                <span className="rounded-full bg-amber-500/25 px-1.5 py-0.5 text-[10px] font-bold">{awaitingCount}</span>
+              </Link>
+            )}
+            <Btn variant="primary" onClick={() => setCreating(true)}>
+              <Icon.plus className="h-4 w-4" /> {t("New Activity")}
+            </Btn>
+          </>
         }
       />
 
