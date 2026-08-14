@@ -17,6 +17,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \App\Http\Middleware\EnsurePermission::class,
         ]);
 
+        // Never redirect a guest to a login page — this backend has none (the UI
+        // is the separate Next.js app, and the only web route is the welcome
+        // page, which is public). Laravel's default guest redirect calls
+        // route('login'), so any unauthenticated request that does NOT send
+        // `Accept: application/json` — a browser opening an API URL, an uptime
+        // probe, curl — raised RouteNotFoundException and returned 500 instead of
+        // 401. Returning null leaves AuthenticationException to render as a 401.
+        $middleware->redirectGuestsTo(fn () => null);
+
         // Promote the httpOnly nexus_token cookie to a Bearer header before the
         // Sanctum guard runs (so the token stays unreadable by client JS).
         $middleware->prependToGroup('api', \App\Http\Middleware\AuthenticateWithCookie::class);
