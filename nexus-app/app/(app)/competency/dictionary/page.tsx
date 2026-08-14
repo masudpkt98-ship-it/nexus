@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, Badge, cn } from "@/components/ui";
@@ -15,6 +15,15 @@ import {
 import { competencyDictionarySeed as seedComps } from "@/lib/competencyDictionarySeed";
 import { parseKamus, parseDaftarGrouping, parseProficiency, applyGrouping, mergeLevels } from "@/lib/importCompetencies";
 import { useLocalState } from "@/lib/useLocalState";
+import {
+  apiListCompetencyDictionary,
+  apiSaveDictionaryCompetency,
+  apiDeleteDictionaryCompetency,
+  apiReplaceDictionaryCategory,
+  apiListCompetencyLevels,
+  apiPutCompetencyLevels,
+} from "@/lib/api";
+import { useApiAuthed } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 
 const inputCls = "mt-1 w-full rounded-lg border bg-[rgb(var(--surface))] px-2.5 py-1.5 text-[13px] outline-none focus:border-royal-500";
@@ -62,6 +71,25 @@ export default function CompetencyDictionaryPage() {
   const { t } = useI18n();
   const [comps, setComps] = useLocalState<DictionaryCompetency[]>("competency-dictionary", seedComps);
   const [levels, setLevels] = useLocalState<CompetencyLevelDef[]>("technical-competency-levels", seedLevels);
+  const authed = useApiAuthed();
+  // The Kamus is server-backed — one catalogue the Matrix, Gap Analysis and Job
+  // Profile pages all resolve against. Load it when signed in; local is the
+  // offline cache. An empty server table never replaces local (a fresh install
+  // must not wipe a catalogue that only exists in this browser).
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiListCompetencyDictionary().then((d) => { if (alive && d.length) setComps(d); }).catch(() => {});
+    apiListCompetencyLevels().then((d) => { if (alive && d.length) setLevels(d); }).catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed]);
+  const cOnErr = (e: { status?: number }) =>
+    alert(
+      e?.status === 403
+        ? "Ditolak server: hanya peran dengan competency.manage yang dapat mengubah Kamus Kompetensi."
+        : "Gagal menyimpan ke server; perubahan tersimpan lokal saja."
+    );
   const [cat, setCat] = useState<CompetencyCategory>(competencyCategories[0]);
   const [tab, setTab] = useState<Tab>("Daftar");
   const switchCat = (c: CompetencyCategory) => { setCat(c); setQ(""); setFJf(""); setOpen({}); };
@@ -113,11 +141,21 @@ export default function CompetencyDictionaryPage() {
       if (grouping) next = applyGrouping(next, grouping);
       if (importedComps || grouping) {
         setComps(next);
+        // Push the import to the server as a whole-category replace — a per-row
+        // upsert would be one request per competency (~165) and a partial failure
+        // would leave the catalogue half-imported. Grouping can retag rows in any
+        // category, so in that case every category is resent.
+        if (authed) {
+          const cats = grouping ? Array.from(new Set(next.map((c) => c.category))) : [cat];
+          Promise.all(cats.map((c) => apiReplaceDictionaryCategory(c, next.filter((x) => x.category === c)))).catch(cOnErr);
+        }
         if (importedComps) msgs.push(`${importedComps.length} ${t("competencies")} · ${cat}`);
         if (grouping) msgs.push(`${grouping.size} ${t("mapped to Job Family")}`);
       }
       if (parsedLevels) {
-        setLevels((base) => mergeLevels(base, parsedLevels!));
+        const nextLevels = mergeLevels(levels, parsedLevels);
+        setLevels(nextLevels);
+        if (authed) apiPutCompetencyLevels(nextLevels).catch(cOnErr);
         msgs.push(`${parsedLevels.length} ${t("levels")}`);
       }
       setNote(msgs.length ? `${t("Imported")}: ${msgs.join(" · ")}.` : t("No recognizable competency sheet found in the file(s)."));
@@ -141,20 +179,27 @@ export default function CompetencyDictionaryPage() {
     const name = form.name.trim();
     if (!name) return;
     const body = { code: form.code.trim() || "—", name, category: cat, definition: form.definition.trim(), indicators: form.indicators.map((i) => ({ ...i, indicator: i.indicator.trim() })) };
-    if (form.id == null) setComps((list) => [...list, { id: newId("tc"), ...body }]);
-    else setComps((list) => list.map((c) => (c.id === form.id ? { ...c, ...body } : c)));
+    // Spread the existing row first so fields the form doesn't cover (keyActions,
+    // jobFamily, functionName — set by the Excel import) survive an edit.
+    const existing = form.id == null ? undefined : comps.find((c) => c.id === form.id);
+    const full: DictionaryCompetency = { ...existing, ...body, id: form.id ?? newId("tc") };
+    setComps((list) => (list.some((c) => c.id === full.id) ? list.map((c) => (c.id === full.id ? full : c)) : [...list, full]));
+    if (authed) apiSaveDictionaryCompetency(full).catch(cOnErr);
     setForm({ open: false, id: null, code: "", name: "", definition: "", indicators: [] });
   };
   const removeComp = (c: DictionaryCompetency) => {
     if (!confirm(`${t("Delete")} “${c.name}”?`)) return;
     setComps((list) => list.filter((x) => x.id !== c.id));
+    if (authed) apiDeleteDictionaryCompetency(c.id).catch(cOnErr);
   };
   const setIndicator = (level: number, v: string) => setForm((f) => ({ ...f, indicators: f.indicators.map((i) => (i.level === level ? { ...i, indicator: v } : i)) }));
 
   // --- level CRUD (edit name/description) ---
   const openLevelEdit = (l: CompetencyLevelDef) => setLForm({ open: true, level: l.level, name: l.name, description: l.description });
   const saveLevel = () => {
-    setLevels((list) => list.map((l) => (l.level === lForm.level ? { ...l, name: lForm.name.trim() || l.name, description: lForm.description.trim() } : l)));
+    const next = levels.map((l) => (l.level === lForm.level ? { ...l, name: lForm.name.trim() || l.name, description: lForm.description.trim() } : l));
+    setLevels(next);
+    if (authed) apiPutCompetencyLevels(next).catch(cOnErr);
     setLForm({ open: false, level: 0, name: "", description: "" });
   };
 

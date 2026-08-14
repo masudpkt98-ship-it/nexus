@@ -243,6 +243,142 @@ export async function apiDeleteJobProfile(id: string): Promise<void> {
   await apiSend("DELETE", `/job-profiles/${encodeURIComponent(id)}`);
 }
 
+// ---- Kamus Kompetensi (competency catalogue + proficiency scale) -----------
+type DictComp = import("./data").DictionaryCompetency;
+const dictBody = (c: DictComp) => ({
+  comp_id: c.id,
+  code: c.code,
+  name: c.name,
+  category: c.category,
+  definition: c.definition ?? "",
+  indicators: c.indicators ?? [],
+  key_actions: c.keyActions ?? [],
+  job_family: c.jobFamily ?? null,
+  job_family_name: c.jobFamilyName ?? null,
+  function_name: c.functionName ?? null,
+});
+export async function apiListCompetencyDictionary(): Promise<DictComp[]> {
+  return apiGet<DictComp[]>("/competency-dictionary");
+}
+/** Upsert one dictionary competency by its client id. Needs competency.manage. */
+export async function apiSaveDictionaryCompetency(c: DictComp): Promise<void> {
+  await apiSend("POST", "/competency-dictionary", dictBody(c));
+}
+export async function apiDeleteDictionaryCompetency(id: string): Promise<void> {
+  await apiSend("DELETE", `/competency-dictionary/${encodeURIComponent(id)}`);
+}
+/** Replace every competency in one category — the Excel import path (one round trip). */
+export async function apiReplaceDictionaryCategory(category: string, items: DictComp[]): Promise<void> {
+  await apiSend("PUT", "/competency-dictionary/bulk", { category, items: items.map(dictBody) });
+}
+export async function apiListCompetencyLevels(): Promise<import("./data").CompetencyLevelDef[]> {
+  return apiGet<import("./data").CompetencyLevelDef[]>("/competency-levels");
+}
+/** Replace the whole proficiency scale. Needs competency.manage. */
+export async function apiPutCompetencyLevels(levels: import("./data").CompetencyLevelDef[]): Promise<void> {
+  await apiSend("PUT", "/competency-levels", { levels });
+}
+
+// ---- COMPASS (gap levels · job descriptions · OJT) -------------------------
+/** Current assessed levels as the Gap Analysis page's flat `npk|code` map. */
+export async function apiGetCurrentLevels(): Promise<Record<string, number>> {
+  return (await apiGet<Record<string, number>>("/competency-current-levels")) ?? {};
+}
+export async function apiSaveCurrentLevel(npk: string, code: string, level: number): Promise<void> {
+  await apiSend("POST", "/competency-current-levels", { npk, comp_code: code, level });
+}
+/** Job descriptions as the Job Profile page's `jabatanKey` → JobDesc map. */
+export async function apiGetJobDescriptions<T = unknown>(): Promise<Record<string, T>> {
+  return (await apiGet<Record<string, T>>("/job-descriptions")) ?? {};
+}
+/** The Job Profile page's JobDesc, as far as persistence cares. */
+export interface JobDescFields {
+  jabatanName?: string;
+  kodeJabatan?: string;
+  direktorat?: string;
+  kompartemen?: string;
+  departemen?: string;
+  purpose?: string;
+  responsibilities?: unknown[];
+  dimensi?: string;
+  authority?: string;
+  relations?: string;
+  qualifications?: string;
+  certifications?: string;
+  risks?: string;
+}
+/** Upsert one or many job descriptions — an import saves the whole batch at once. */
+export async function apiSaveJobDescriptions(entries: Record<string, JobDescFields>): Promise<void> {
+  const items = Object.entries(entries).map(([key, d]) => ({
+    desc_key: key,
+    jabatan_name: d.jabatanName ?? null,
+    kode_jabatan: d.kodeJabatan ?? null,
+    direktorat: d.direktorat ?? null,
+    kompartemen: d.kompartemen ?? null,
+    departemen: d.departemen ?? null,
+    purpose: d.purpose ?? "",
+    responsibilities: d.responsibilities ?? [],
+    dimensi: d.dimensi ?? null,
+    authority: d.authority ?? null,
+    relations: d.relations ?? null,
+    qualifications: d.qualifications ?? "",
+    certifications: d.certifications ?? "",
+    risks: d.risks ?? "",
+  }));
+  if (!items.length) return;
+  await apiSend("PUT", "/job-descriptions", { items });
+}
+export async function apiListOjtItems<T = unknown>(): Promise<T[]> {
+  return apiGet<T[]>("/ojt-items");
+}
+/** Upsert one OJT / Job Shadowing item by its client id. */
+export async function apiSaveOjtItem(o: { id: string; employee: string; role?: string; kind: string; activity?: string; mentor?: string; status: string }): Promise<void> {
+  const { id, ...rest } = o;
+  await apiSend("POST", "/ojt-items", { item_id: id, ...rest });
+}
+
+// ---- Competency Matrix (standards + assessed levels per group) -------------
+export interface CompetencyMatrixDoc {
+  standards: import("./data").CompetencyStandards;
+  assessments: import("./data").CompetencyAssessments;
+}
+/** One call hydrates the whole Matrix page. */
+export async function apiGetCompetencyMatrix(): Promise<CompetencyMatrixDoc> {
+  const d = await apiGet<Partial<CompetencyMatrixDoc>>("/competency-matrix");
+  return { standards: d?.standards ?? {}, assessments: d?.assessments ?? {} };
+}
+/** Set the required level for one competency in one group. Needs competency.manage. */
+export async function apiSaveCompetencyStandard(groupKey: string, compId: string, level: number): Promise<void> {
+  await apiSend("POST", "/competency-standards", { group_key: groupKey, comp_id: compId, required_level: level });
+}
+/** Upsert one assessed employee (whole level map) inside a group. */
+export async function apiSaveCompetencyAssessment(groupKey: string, e: import("./data").MatrixEmployee): Promise<void> {
+  await apiSend("POST", "/competency-assessments", { group_key: groupKey, npk: e.npk, name: e.name, levels: e.levels ?? {} });
+}
+export async function apiDeleteCompetencyAssessment(groupKey: string, npk: string): Promise<void> {
+  const q = new URLSearchParams({ group_key: groupKey, npk });
+  await apiSend("DELETE", `/competency-assessments?${q.toString()}`);
+}
+
+// ---- Development plans (IDP — Competency hub) ------------------------------
+export interface DevPlanDTO {
+  id: string;
+  employee: string;
+  avatar: string;
+  role: string;
+  readiness: number;
+  gaps: number;
+  nextStep: string;
+}
+/** Upsert one development plan by its client id. Needs competency.manage. */
+export async function apiSaveDevelopmentPlan(p: DevPlanDTO): Promise<void> {
+  const { id, ...rest } = p;
+  await apiSend("POST", "/development-plans", { plan_id: id, ...rest });
+}
+export async function apiDeleteDevelopmentPlan(id: string): Promise<void> {
+  await apiSend("DELETE", `/development-plans/${encodeURIComponent(id)}`);
+}
+
 // ---- Strategy (corporate artifact: vision / mission / values / swot / goals) --
 type StrategyMission = { id: string; text: string };
 type StrategyValue = { id: string; letter: string; title: string; description: string };

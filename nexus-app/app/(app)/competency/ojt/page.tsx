@@ -1,11 +1,13 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, Badge, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { useLocalState } from "@/lib/useLocalState";
+import { apiListOjtItems, apiSaveOjtItem } from "@/lib/api";
+import { useApiAuthed } from "@/lib/auth";
 import { ojtSeed, type OjtItem, type OjtStatus } from "@/lib/compassSeed";
 import { useI18n } from "@/lib/i18n";
 
@@ -15,7 +17,30 @@ const CYCLE: OjtStatus[] = ["Belum", "Berjalan", "Selesai"];
 export default function OjtPage() {
   const { t } = useI18n();
   const [items, setItems] = useLocalState<OjtItem[]>("compass-ojt", ojtSeed);
-  const cycle = (id: string) => setItems((list) => list.map((x) => (x.id === id ? { ...x, status: CYCLE[(CYCLE.indexOf(x.status) + 1) % CYCLE.length] } : x)));
+  const authed = useApiAuthed();
+  // Progress is server-backed so a status advanced here is not lost with the tab.
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiListOjtItems<OjtItem>().then((d) => { if (alive && d.length) setItems(d); }).catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed]);
+  const cycle = (id: string) => {
+    const item = items.find((x) => x.id === id);
+    if (!item) return;
+    const next = { ...item, status: CYCLE[(CYCLE.indexOf(item.status) + 1) % CYCLE.length] };
+    setItems((list) => list.map((x) => (x.id === id ? next : x)));
+    if (authed) {
+      apiSaveOjtItem(next).catch((e: { status?: number }) =>
+        alert(
+          e?.status === 403
+            ? "Ditolak server: hanya peran dengan competency.manage yang dapat mengubah status OJT."
+            : "Gagal menyimpan ke server; perubahan tersimpan lokal saja."
+        )
+      );
+    }
+  };
 
   const groups: OjtItem["kind"][] = ["OJT", "Job Shadowing"];
   return (

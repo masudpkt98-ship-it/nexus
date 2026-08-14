@@ -9,7 +9,10 @@ use App\Http\Controllers\Api\ArtifactController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatThreadController;
 use App\Http\Controllers\Api\ExportController;
+use App\Http\Controllers\Api\CompassController;
 use App\Http\Controllers\Api\CompetencyController;
+use App\Http\Controllers\Api\CompetencyDictionaryController;
+use App\Http\Controllers\Api\CompetencyMatrixController;
 use App\Http\Controllers\Api\CorporateKpiController;
 use App\Http\Controllers\Api\JobProfileController;
 use App\Http\Controllers\Api\KpiTeknisController;
@@ -119,6 +122,32 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/competency', [CompetencyController::class, 'store'])->middleware('permission:competency.manage');
     Route::put('/competency/{competency}', [CompetencyController::class, 'update'])->middleware('permission:competency.manage');
     Route::delete('/competency/{competency}', [CompetencyController::class, 'destroy'])->middleware('permission:competency.manage');
+    // Development plans (IDP) — listed by GET /competency, written here. Upsert is
+    // keyed by the client plan id so hub edits survive a reload.
+    Route::post('/development-plans', [CompetencyController::class, 'planUpsert'])->middleware('permission:competency.manage');
+    Route::delete('/development-plans/{planId}', [CompetencyController::class, 'planDestroy'])->middleware('permission:competency.manage');
+
+    // Kamus Kompetensi — global catalogue + proficiency scale; competency.manage to write.
+    Route::get('/competency-dictionary', [CompetencyDictionaryController::class, 'index'])->middleware('permission:competency.view');
+    Route::post('/competency-dictionary', [CompetencyDictionaryController::class, 'upsert'])->middleware('permission:competency.manage');
+    Route::put('/competency-dictionary/bulk', [CompetencyDictionaryController::class, 'replaceCategory'])->middleware('permission:competency.manage');
+    Route::delete('/competency-dictionary/{compId}', [CompetencyDictionaryController::class, 'destroy'])->middleware('permission:competency.manage');
+    Route::get('/competency-levels', [CompetencyDictionaryController::class, 'levels'])->middleware('permission:competency.view');
+    Route::put('/competency-levels', [CompetencyDictionaryController::class, 'putLevels'])->middleware('permission:competency.manage');
+
+    // Competency Matrix — required standards + assessed levels per group.
+    Route::get('/competency-matrix', [CompetencyMatrixController::class, 'index'])->middleware('permission:competency.view');
+    Route::post('/competency-standards', [CompetencyMatrixController::class, 'putStandard'])->middleware('permission:competency.manage');
+    Route::post('/competency-assessments', [CompetencyMatrixController::class, 'putAssessment'])->middleware('permission:competency.manage');
+    Route::delete('/competency-assessments', [CompetencyMatrixController::class, 'destroyAssessment'])->middleware('permission:competency.manage');
+
+    // COMPASS — Gap Analysis levels, Job Profile descriptions, OJT progress.
+    Route::get('/competency-current-levels', [CompassController::class, 'currentLevels'])->middleware('permission:competency.view');
+    Route::post('/competency-current-levels', [CompassController::class, 'putCurrentLevel'])->middleware('permission:competency.manage');
+    Route::get('/job-descriptions', [CompassController::class, 'jobDescriptions'])->middleware('permission:competency.view');
+    Route::put('/job-descriptions', [CompassController::class, 'putJobDescriptions'])->middleware('permission:competency.manage');
+    Route::get('/ojt-items', [CompassController::class, 'ojt'])->middleware('permission:competency.view');
+    Route::post('/ojt-items', [CompassController::class, 'putOjt'])->middleware('permission:competency.manage');
 
     // Corporate KPI catalogue (Performance Dictionary) — top of the KPI cascade,
     // global (not unit-scoped); performance.manage to write.

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, Badge, Avatar, cn } from "@/components/ui";
@@ -16,6 +16,15 @@ import {
 } from "@/lib/data";
 import { competencyDictionarySeed as seedComps } from "@/lib/competencyDictionarySeed";
 import { useLocalState } from "@/lib/useLocalState";
+import {
+  apiListCompetencyDictionary,
+  apiListCompetencyLevels,
+  apiGetCompetencyMatrix,
+  apiSaveCompetencyStandard,
+  apiSaveCompetencyAssessment,
+  apiDeleteCompetencyAssessment,
+} from "@/lib/api";
+import { useApiAuthed } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).map((s) => s[0]).slice(0, 2).join("").toUpperCase() || "?";
@@ -36,10 +45,36 @@ type Tab = "Standar" | "Matriks";
 
 export default function CompetencyMatrixPage() {
   const { t } = useI18n();
-  const [comps] = useLocalState<DictionaryCompetency[]>("competency-dictionary", seedComps);
-  const [levels] = useLocalState<CompetencyLevelDef[]>("technical-competency-levels", seedLevels);
+  const [comps, setComps] = useLocalState<DictionaryCompetency[]>("competency-dictionary", seedComps);
+  const [levels, setLevels] = useLocalState<CompetencyLevelDef[]>("technical-competency-levels", seedLevels);
   const [standards, setStandards] = useLocalState<CompetencyStandards>("competency-standards", {});
   const [assessments, setAssessments] = useLocalState<CompetencyAssessments>("competency-assessments", {});
+  const authed = useApiAuthed();
+
+  // Standards and assessments are server-backed, and the catalogue they are keyed
+  // against comes from the same Kamus the Dictionary page writes — so both are
+  // pulled here rather than trusting whatever this browser happens to cache.
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiListCompetencyDictionary().then((d) => { if (alive && d.length) setComps(d); }).catch(() => {});
+    apiListCompetencyLevels().then((d) => { if (alive && d.length) setLevels(d); }).catch(() => {});
+    apiGetCompetencyMatrix()
+      .then((d) => {
+        if (!alive) return;
+        if (Object.keys(d.standards).length) setStandards(d.standards);
+        if (Object.keys(d.assessments).length) setAssessments(d.assessments);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed]);
+  const mOnErr = (e: { status?: number }) =>
+    alert(
+      e?.status === 403
+        ? "Ditolak server: hanya peran dengan competency.manage yang dapat mengubah matriks kompetensi."
+        : "Gagal menyimpan ke server; perubahan tersimpan lokal saja."
+    );
 
   const groups = useMemo(() => Array.from(new Set(comps.map(groupOf))).sort(), [comps]);
   const [group, setGroup] = useState<string>("");
@@ -53,29 +88,41 @@ export default function CompetencyMatrixPage() {
   const groupEmps = assessments[activeGroup] ?? [];
 
   // --- standards ---
-  const setRequired = (compId: string, level: number) =>
+  const setRequired = (compId: string, level: number) => {
     setStandards((s) => ({ ...s, [activeGroup]: { ...(s[activeGroup] ?? {}), [compId]: level } }));
+    if (authed) apiSaveCompetencyStandard(activeGroup, compId, level).catch(mOnErr);
+  };
 
   // --- assessment ---
+  // Each write sends the employee's whole level map: the server stores one row
+  // per (group, employee), so a full-row upsert stays idempotent and two cells
+  // edited in quick succession can't race each other.
   const addEmployee = (name: string, npk?: string) => {
     const nm = name.trim();
     if (!nm) return;
     const id = npk || nm;
+    if (groupEmps.some((e) => e.npk === id)) return setAddName(""); // no duplicates
+    const emp: MatrixEmployee = { npk: id, name: nm, levels: {} };
     setAssessments((a) => {
       const list = a[activeGroup] ?? [];
-      if (list.some((e) => e.npk === id)) return a; // no duplicates
-      const emp: MatrixEmployee = { npk: id, name: nm, levels: {} };
+      if (list.some((e) => e.npk === id)) return a;
       return { ...a, [activeGroup]: [...list, emp] };
     });
+    if (authed) apiSaveCompetencyAssessment(activeGroup, emp).catch(mOnErr);
     setAddName("");
   };
-  const removeEmployee = (npk: string) =>
+  const removeEmployee = (npk: string) => {
     setAssessments((a) => ({ ...a, [activeGroup]: (a[activeGroup] ?? []).filter((e) => e.npk !== npk) }));
-  const setActual = (npk: string, compId: string, level: number) =>
+    if (authed) apiDeleteCompetencyAssessment(activeGroup, npk).catch(mOnErr);
+  };
+  const setActual = (npk: string, compId: string, level: number) => {
+    const emp = groupEmps.find((e) => e.npk === npk);
     setAssessments((a) => ({
       ...a,
       [activeGroup]: (a[activeGroup] ?? []).map((e) => (e.npk === npk ? { ...e, levels: { ...e.levels, [compId]: level } } : e)),
     }));
+    if (authed && emp) apiSaveCompetencyAssessment(activeGroup, { ...emp, levels: { ...emp.levels, [compId]: level } }).catch(mOnErr);
+  };
 
   // readiness = % of standard-bearing competencies where actual >= required
   const readiness = (e: MatrixEmployee) => {

@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, SectionTitle, Badge, ProgressBar, Avatar } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { EmployeePicker } from "@/components/EmployeePicker";
 import { developmentPlans as mockDevelopmentPlans, trainingSessions as mockSessions, type TrainingSession } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
+import { apiGet, hasSession, apiSaveDevelopmentPlan, apiDeleteDevelopmentPlan } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
 import { useI18n } from "@/lib/i18n";
 
@@ -85,6 +86,31 @@ export default function DevelopmentPage() {
   const [sessions, setSessions] = useLocalState<TrainingSession[]>("training-calendar", mockSessions);
   const [dp, setDp] = useState(emptyDp);
   const [ss, setSs] = useState(emptySession);
+  const [live, setLive] = useState(false);
+
+  // Plans are server-backed (same rows the Competency hub writes). Hydrate from
+  // the API when signed in; localStorage stays the offline cache.
+  useEffect(() => {
+    if (!hasSession()) return;
+    let alive = true;
+    apiGet<{ developmentPlans?: DevPlan[] }>("/competency")
+      .then((res) => {
+        if (!alive || !res) return;
+        if (res.developmentPlans?.length) setPlans(res.developmentPlans.map((d, i) => ({ ...d, id: d.id ?? `dp-${i + 1}` })));
+        setLive(true);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const dpOnErr = (e: { status?: number }) =>
+    alert(
+      e?.status === 403
+        ? "Ditolak server: hanya peran dengan competency.manage yang dapat mengubah rencana pengembangan."
+        : "Gagal menyimpan ke server; perubahan tersimpan lokal saja."
+    );
 
   // --- development plan CRUD ---
   const openDpCreate = () => setDp({ ...emptyDp, open: true });
@@ -93,11 +119,15 @@ export default function DevelopmentPage() {
     const employee = dp.employee.trim();
     if (!employee) return;
     const body = { employee, avatar: initials(employee), role: dp.role.trim() || "—", readiness: clamp(dp.readiness, 0, 100), gaps: Math.max(0, dp.gaps), nextStep: dp.nextStep.trim() || "—" };
-    if (dp.id == null) setPlans((p) => [...p, { id: newId("dp"), ...body }]);
-    else setPlans((p) => p.map((x) => (x.id === dp.id ? { ...x, ...body } : x)));
+    const full: DevPlan = dp.id == null ? { id: newId("dp"), ...body } : { id: dp.id, ...body };
+    setPlans((p) => (p.some((x) => x.id === full.id) ? p.map((x) => (x.id === full.id ? full : x)) : [...p, full]));
+    if (hasSession()) apiSaveDevelopmentPlan(full).catch(dpOnErr);
     setDp(emptyDp);
   };
-  const removeDp = (d: DevPlan) => setPlans((p) => p.filter((x) => x.id !== d.id));
+  const removeDp = (d: DevPlan) => {
+    setPlans((p) => p.filter((x) => x.id !== d.id));
+    if (hasSession()) apiDeleteDevelopmentPlan(d.id).catch(dpOnErr);
+  };
 
   // --- training session CRUD ---
   const openSsCreate = () => setSs({ ...emptySession, open: true });
@@ -119,7 +149,7 @@ export default function DevelopmentPage() {
         subtitle="Operator · Supervisor · Leadership Development · Training Calendar · Learning Journey"
         actions={
           <>
-            <LiveBadge live={false} />
+            <LiveBadge live={live} />
             <Btn variant="primary" onClick={openDpCreate}>
               <Icon.plus className="h-4 w-4" /> {t("New Plan")}
             </Btn>

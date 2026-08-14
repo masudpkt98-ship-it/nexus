@@ -11,6 +11,8 @@ import { importJobProfile } from "@/lib/importJobProfile";
 import { downloadKpiTemplate, parseKpiExcel, exportJobKpiExcel, type Responsibility } from "@/lib/jobKpi";
 import { usedKpiNames, isKpiUsed } from "@/lib/kpiUsage";
 import { useLocalState } from "@/lib/useLocalState";
+import { apiGetJobDescriptions, apiSaveJobDescriptions } from "@/lib/api";
+import { useApiAuthed } from "@/lib/auth";
 import { type Employee, type JabatanCompetencyProfile } from "@/lib/data";
 import { useI18n } from "@/lib/i18n";
 
@@ -35,6 +37,26 @@ const respList = (d?: JobDesc): Responsibility[] => {
 export default function JobProfilePage() {
   const { t } = useI18n();
   const [descs, setDescs] = useLocalState<Record<string, JobDesc>>("compass-job-desc", {});
+  const authed = useApiAuthed();
+  // Job descriptions are server-backed: an imported .docx/.xlsx set is shared,
+  // not stranded in whichever browser ran the import.
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiGetJobDescriptions<JobDesc>().then((d) => { if (alive && Object.keys(d).length) setDescs(d); }).catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed]);
+  const jdOnErr = (e: { status?: number }) =>
+    alert(
+      e?.status === 403
+        ? "Ditolak server: hanya peran dengan competency.manage yang dapat mengubah profil jabatan."
+        : "Gagal menyimpan ke server; perubahan tersimpan lokal saja."
+    );
+  /** Persist a batch of job descriptions (one edit, or a whole import). */
+  const syncDescs = (batch: Record<string, JobDesc>) => {
+    if (authed) apiSaveJobDescriptions(batch).catch(jdOnErr);
+  };
   const [sel, setSel] = useState<JabatanCompetencyProfile | null>(null);
   const [title, setTitle] = useState("");
   const [descKey, setDescKey] = useState<string | null>(null);
@@ -76,7 +98,7 @@ export default function JobProfilePage() {
         ok++; if (m) matched++; lastKey = key; lastName = p.namaJabatan;
       } catch { failed++; }
     }
-    if (ok) { setDescs((mp) => ({ ...mp, ...added })); showJabatan(lastName, lastKey); }
+    if (ok) { setDescs((mp) => ({ ...mp, ...added })); syncDescs(added); showJabatan(lastName, lastKey); }
     setNote(ok || failed ? [`${ok} ${t("job profiles imported")}`, `${matched} ${t("matched to competency profiles")}`, ...(failed ? [`${failed} ${t("failed")}`] : [])].join(" · ") : t("Could not read a job profile from this file."));
     setBusy(false); if (docxRef.current) docxRef.current.value = "";
   };
@@ -95,6 +117,7 @@ export default function JobProfilePage() {
         lastKey = key; lastName = jabatan; nk += resps.reduce((s, r) => s + r.kpis.length, 0);
       }
       setDescs((mp) => ({ ...mp, ...upd }));
+      syncDescs(upd);
       showJabatan(lastName, lastKey);
       setNote(`${map.size} ${t("jobs")} · ${nk} KPI ${t("imported")}`);
     } catch { setNote(t("Could not read the file. Make sure it is a valid .xlsx.")); }
@@ -124,7 +147,10 @@ export default function JobProfilePage() {
   const usedKpi = resps.reduce((s, r) => s + r.kpis.filter((k) => isKpiUsed(used, k.name)).length, 0);
 
   const startEdit = () => { setDraft({ ...emptyDesc, ...desc, responsibilities: resps }); setEdit(true); };
-  const save = () => { if (descKey) setDescs((m) => ({ ...m, [descKey]: draft })); setEdit(false); };
+  const save = () => {
+    if (descKey) { setDescs((m) => ({ ...m, [descKey]: draft })); syncDescs({ [descKey]: draft }); }
+    setEdit(false);
+  };
   const field = (label: string, key: "purpose" | "authority" | "relations" | "dimensi" | "qualifications" | "certifications" | "risks", rows = 3) => (
     <div>
       <div className={lblCls}>{label}</div>

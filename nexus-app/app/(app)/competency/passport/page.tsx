@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, Badge, ProgressBar, Avatar } from "@/components/ui";
@@ -8,6 +8,8 @@ import { Icon } from "@/components/Icons";
 import { EmployeeSearch } from "@/components/EmployeeSearch";
 import { matchJabatan, resolveTech, behByName, norm, tierTone, levelTone } from "@/lib/compass";
 import { useLocalState } from "@/lib/useLocalState";
+import { apiGetCurrentLevels } from "@/lib/api";
+import { useApiAuthed } from "@/lib/auth";
 import { assessmentSeed, certificationSeed, type AssessmentRecord, type CertificationRecord } from "@/lib/compassSeed";
 import { type Employee, type JabatanCompetencyProfile } from "@/lib/data";
 import { useI18n } from "@/lib/i18n";
@@ -16,7 +18,17 @@ const initials = (n: string) => n.split(/\s+/).filter(Boolean).map((s) => s[0]).
 
 export default function PassportPage() {
   const { t } = useI18n();
-  const [current] = useLocalState<Record<string, number>>("compass-current-levels", {});
+  const [current, setCurrent] = useLocalState<Record<string, number>>("compass-current-levels", {});
+  const authed = useApiAuthed();
+  // Read-only view of the levels Gap Analysis writes — pull the server's copy so
+  // the passport reflects assessments made from any browser.
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiGetCurrentLevels().then((d) => { if (alive && Object.keys(d).length) setCurrent(d); }).catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed]);
   const [emp, setEmp] = useState<Employee | null>(null);
   const [sel, setSel] = useState<JabatanCompetencyProfile | null>(null);
   const pick = (e: Employee) => { setEmp(e); setSel(matchJabatan(e.position || "")); };

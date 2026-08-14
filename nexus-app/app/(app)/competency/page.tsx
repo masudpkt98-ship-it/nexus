@@ -8,7 +8,7 @@ import { Icon } from "@/components/Icons";
 import { EmployeePicker } from "@/components/EmployeePicker";
 import { competencies as mockCompetencies, developmentPlans as mockDevelopmentPlans } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
-import { apiGet, apiSend, apiDownload, hasSession } from "@/lib/api";
+import { apiGet, apiSend, apiDownload, hasSession, apiSaveDevelopmentPlan, apiDeleteDevelopmentPlan } from "@/lib/api";
 import { useApiAuthed } from "@/lib/auth";
 import { LiveBadge } from "@/components/LiveBadge";
 import { useI18n } from "@/lib/i18n";
@@ -77,8 +77,10 @@ export default function CompetencyPage() {
     apiGet<{ competencies?: Comp[]; developmentPlans?: DevPlan[] }>("/competency")
       .then((res) => {
         if (!active || !res) return;
-        if (Array.isArray(res.competencies)) setRows(res.competencies.map((c, i) => ({ ...c, id: c.id ?? i + 1 })));
-        if (Array.isArray(res.developmentPlans)) setPlans(res.developmentPlans.map((d, i) => ({ ...d, id: d.id ?? `dp-${i + 1}` })));
+        // Replace local only when the server actually has rows — a fresh/empty
+        // table must not wipe work that exists only in this browser.
+        if (res.competencies?.length) setRows(res.competencies.map((c, i) => ({ ...c, id: c.id ?? i + 1 })));
+        if (res.developmentPlans?.length) setPlans(res.developmentPlans.map((d, i) => ({ ...d, id: d.id ?? `dp-${i + 1}` })));
         setLive(true);
       })
       .catch(() => {});
@@ -91,6 +93,12 @@ export default function CompetencyPage() {
   const syncComp = (method: "POST" | "PUT" | "DELETE", path: string, body?: unknown) => {
     if (hasSession()) apiSend(method, path, body).catch(() => {});
   };
+  const dpOnErr = (e: { status?: number }) =>
+    alert(
+      e?.status === 403
+        ? "Ditolak server: hanya peran dengan competency.manage yang dapat mengubah rencana pengembangan."
+        : "Gagal menyimpan ke server; perubahan tersimpan lokal saja."
+    );
 
   // --- competency CRUD ---
   const openCreate = () => setForm({ ...emptyComp, open: true });
@@ -99,9 +107,18 @@ export default function CompetencyPage() {
     const body = { name: form.name.trim(), category: form.category.trim(), current: form.current, required: form.required };
     if (!body.name || !body.category) return;
     if (form.id == null) {
-      const id = Math.max(0, ...rows.map((x) => x.id)) + 1;
-      setRows((r) => [...r, { id, ...body }]);
-      syncComp("POST", "/competency", { id, ...body });
+      // The server owns the competency id (auto-increment), so the local id is a
+      // placeholder until the POST comes back — adopt the real one, otherwise a
+      // later edit/delete would address a row the server numbered differently.
+      const tempId = Math.max(0, ...rows.map((x) => x.id)) + 1;
+      setRows((r) => [...r, { id: tempId, ...body }]);
+      if (hasSession()) {
+        apiSend<Comp>("POST", "/competency", body)
+          .then((saved) => {
+            if (saved?.id != null) setRows((r) => r.map((x) => (x.id === tempId ? { ...x, id: saved.id } : x)));
+          })
+          .catch(() => {});
+      }
     } else {
       setRows((r) => r.map((x) => (x.id === form.id ? { ...x, ...body } : x)));
       syncComp("PUT", `/competency/${form.id}`, body);
@@ -120,11 +137,17 @@ export default function CompetencyPage() {
     const employee = dp.employee.trim();
     if (!employee) return;
     const body = { employee, avatar: initials(employee), role: dp.role.trim() || "—", readiness: clamp(dp.readiness, 0, 100), gaps: Math.max(0, dp.gaps), nextStep: dp.nextStep.trim() || "—" };
-    if (dp.id == null) setPlans((p) => [...p, { id: nextDpId(), ...body }]);
-    else setPlans((p) => p.map((x) => (x.id === dp.id ? { ...x, ...body } : x)));
+    // Plans carry a client-owned id, so the same id round-trips through the server
+    // and an edit made now still reaches the right row after a reload.
+    const full: DevPlan = dp.id == null ? { id: nextDpId(), ...body } : { id: dp.id, ...body };
+    setPlans((p) => (p.some((x) => x.id === full.id) ? p.map((x) => (x.id === full.id ? full : x)) : [...p, full]));
+    if (hasSession()) apiSaveDevelopmentPlan(full).catch(dpOnErr);
     setDp(emptyDp);
   };
-  const removeDp = (d: DevPlan) => setPlans((p) => p.filter((x) => x.id !== d.id));
+  const removeDp = (d: DevPlan) => {
+    setPlans((p) => p.filter((x) => x.id !== d.id));
+    if (hasSession()) apiDeleteDevelopmentPlan(d.id).catch(dpOnErr);
+  };
 
   const avgReq = rows.reduce((s, c) => s + c.required, 0);
   const avgCur = rows.reduce((s, c) => s + c.current, 0);

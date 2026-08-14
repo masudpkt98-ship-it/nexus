@@ -10,6 +10,8 @@ class DevelopmentPlanResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            // The client id the hub upserts against — never the auto-increment id.
+            'id' => $this->plan_id,
             'employee' => $this->employee,
             'avatar' => $this->avatar,
             'role' => $this->role,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, Badge, ProgressBar, cn } from "@/components/ui";
@@ -8,6 +8,8 @@ import { Icon } from "@/components/Icons";
 import { EmployeeSearch } from "@/components/EmployeeSearch";
 import { matchJabatan, resolveTech, levelTone } from "@/lib/compass";
 import { useLocalState } from "@/lib/useLocalState";
+import { apiGetCurrentLevels, apiSaveCurrentLevel } from "@/lib/api";
+import { useApiAuthed } from "@/lib/auth";
 import { type Employee, type JabatanCompetencyProfile } from "@/lib/data";
 import { useI18n } from "@/lib/i18n";
 
@@ -15,6 +17,17 @@ import { useI18n } from "@/lib/i18n";
 export default function GapAnalysisPage() {
   const { t } = useI18n();
   const [current, setCurrent] = useLocalState<Record<string, number>>("compass-current-levels", {});
+  const authed = useApiAuthed();
+
+  // Assessed levels are server-backed — the same rows the Competency Passport
+  // reads, so a gap set here is visible to anyone signed in, not just this browser.
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    apiGetCurrentLevels().then((d) => { if (alive && Object.keys(d).length) setCurrent(d); }).catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed]);
   const [emp, setEmp] = useState<Employee | null>(null);
   const [sel, setSel] = useState<JabatanCompetencyProfile | null>(null);
 
@@ -29,7 +42,18 @@ export default function GapAnalysisPage() {
   const totalGap = rows.reduce((s, r) => s + r.gap, 0);
   const met = rows.filter((r) => r.gap === 0 && r.current > 0).length;
   const readiness = rows.length ? Math.round((rows.reduce((s, r) => s + Math.min(r.current, r.level), 0) / rows.reduce((s, r) => s + r.level, 0)) * 100) : 0;
-  const setCur = (code: string, v: number) => setCurrent((m) => ({ ...m, [`${npk}|${code}`]: v }));
+  const setCur = (code: string, v: number) => {
+    setCurrent((m) => ({ ...m, [`${npk}|${code}`]: v }));
+    if (authed && npk) {
+      apiSaveCurrentLevel(npk, code, v).catch((e: { status?: number }) =>
+        alert(
+          e?.status === 403
+            ? "Ditolak server: hanya peran dengan competency.manage yang dapat menilai level kompetensi."
+            : "Gagal menyimpan ke server; perubahan tersimpan lokal saja."
+        )
+      );
+    }
+  };
 
   return (
     <>
