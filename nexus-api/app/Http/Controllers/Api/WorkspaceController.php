@@ -4,30 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ActivityResource;
-use App\Http\Resources\KnowledgeDocResource;
 use App\Http\Resources\NotificationResource;
 use App\Models\Activity;
-use App\Models\KnowledgeDoc;
 use App\Models\NotificationItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class WorkspaceController extends Controller
 {
-    public function knowledge(Request $request)
-    {
-        $query = KnowledgeDoc::query();
-
-        if ($request->filled('category') && $request->string('category') !== 'All') {
-            $query->where('category', $request->string('category'));
-        }
-        if ($request->filled('q')) {
-            $query->where('title', 'like', '%'.$request->string('q').'%');
-        }
-
-        return KnowledgeDocResource::collection($query->orderByDesc('updated_on')->get());
-    }
-
     public function notifications(Request $request)
     {
         $query = NotificationItem::query();

@@ -101,7 +101,8 @@ export default function KnowledgePage() {
     let active = true;
     apiGet<KnowledgeDoc[]>("/knowledge-docs")
       .then((res) => {
-        if (active && Array.isArray(res)) {
+        // An empty server table must not wipe docs that exist only locally.
+        if (active && res?.length) {
           setDocs(res);
           setLive(true);
         }
@@ -155,7 +156,7 @@ export default function KnowledgePage() {
       sync("POST", "/knowledge-docs", doc);
     } else {
       setDocs((r) => r.map((x) => (x.id === form.id ? { ...x, ...body, updated: today() } : x)));
-      sync("PUT", `/knowledge-docs/${form.id}`, body);
+      sync("PUT", `/knowledge-docs/${encodeURIComponent(form.id)}`, { ...body, updated: today() });
     }
     close();
   };
@@ -163,11 +164,11 @@ export default function KnowledgePage() {
   const newVersion = (d: KnowledgeDoc) => {
     const version = bumpVersion(d.version);
     setDocs((r) => r.map((x) => (x.id === d.id ? { ...x, version, updated: today() } : x)));
-    sync("PUT", `/knowledge-docs/${d.id}`, { version });
+    sync("PUT", `/knowledge-docs/${encodeURIComponent(d.id)}`, { version, updated: today() });
   };
   const remove = (d: KnowledgeDoc) => {
     setDocs((r) => r.filter((x) => x.id !== d.id));
-    sync("DELETE", `/knowledge-docs/${d.id}`);
+    sync("DELETE", `/knowledge-docs/${encodeURIComponent(d.id)}`);
   };
 
   return (

@@ -10,7 +10,8 @@ class KnowledgeDocResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => 'D'.$this->id,
+            // The client id the page upserts against — never the auto-increment id.
+            'id' => $this->doc_id,
             'title' => $this->title,
             'category' => $this->category,
             'version' => $this->version,

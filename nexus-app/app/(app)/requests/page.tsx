@@ -111,7 +111,8 @@ export default function RequestsPage() {
     let active = true;
     apiGet<ServiceRequest[]>("/service-requests")
       .then((res) => {
-        if (active && Array.isArray(res)) {
+        // An empty server table must not wipe requests that exist only locally.
+        if (active && res?.length) {
           setRows(res);
           setLive(true);
         }
@@ -151,18 +152,27 @@ export default function RequestsPage() {
       created: form.created || new Date().toISOString().slice(0, 10),
     };
     if (form.id == null) {
-      const r: ServiceRequest = { id: nextId(), ...body };
+      // The server assigns the request code (SR-nnnn); adopt it so later edits and
+      // deletes — which address /service-requests/{code} — reach the right row.
+      const tempId = nextId();
+      const r: ServiceRequest = { id: tempId, ...body };
       setRows((x) => [r, ...x]);
-      sync("POST", "/service-requests", r);
+      if (hasSession()) {
+        apiSend<ServiceRequest>("POST", "/service-requests", body)
+          .then((saved) => {
+            if (saved?.id) setRows((x) => x.map((y) => (y.id === tempId ? { ...y, id: saved.id } : y)));
+          })
+          .catch(() => {});
+      }
     } else {
       setRows((x) => x.map((y) => (y.id === form.id ? { ...y, ...body } : y)));
-      sync("PUT", `/service-requests/${form.id}`, body);
+      sync("PUT", `/service-requests/${encodeURIComponent(form.id)}`, body);
     }
     close();
   };
   const remove = (r: ServiceRequest) => {
     setRows((x) => x.filter((y) => y.id !== r.id));
-    sync("DELETE", `/service-requests/${r.id}`);
+    sync("DELETE", `/service-requests/${encodeURIComponent(r.id)}`);
   };
 
   return (

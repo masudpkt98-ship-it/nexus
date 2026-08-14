@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\CostActivityController;
 use App\Http\Controllers\Api\CompetencyController;
 use App\Http\Controllers\Api\CompetencyDictionaryController;
 use App\Http\Controllers\Api\CompetencyMatrixController;
+use App\Http\Controllers\Api\KnowledgeDocController;
 use App\Http\Controllers\Api\MeetingController;
 use App\Http\Controllers\Api\CorporateKpiController;
 use App\Http\Controllers\Api\JobProfileController;
@@ -195,9 +196,12 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::delete('/performance-kpis/{code}', [PerformanceKpiController::class, 'destroy'])->middleware('permission:performance.manage');
 
     // Customer requests
+    // Bound by {service_request:code} — ServiceRequestResource returns the code as
+    // `id`, so binding by the numeric id 404'd every edit.
     Route::get('/service-requests', [ServiceRequestController::class, 'index'])->middleware('permission:requests.view');
     Route::post('/service-requests', [ServiceRequestController::class, 'store'])->middleware('permission:requests.create');
-    Route::put('/service-requests/{service_request}', [ServiceRequestController::class, 'update'])->middleware('permission:requests.view');
+    Route::put('/service-requests/{service_request:code}', [ServiceRequestController::class, 'update'])->middleware('permission:requests.view');
+    Route::delete('/service-requests/{service_request:code}', [ServiceRequestController::class, 'destroy'])->middleware('permission:requests.view');
 
     // Satisfaction, Analytics & AI
     // Satisfaction. Writes share satisfaction.view — the page is ungated in the UI
@@ -252,7 +256,12 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/meeting-actions', [MeetingController::class, 'actions'])->middleware('permission:meetings.view');
     Route::post('/meeting-actions', [MeetingController::class, 'actionUpsert'])->middleware('permission:meetings.view');
     Route::delete('/meeting-actions/{itemId}', [MeetingController::class, 'actionDestroy'])->middleware('permission:meetings.view');
-    Route::get('/knowledge-docs', [WorkspaceController::class, 'knowledge'])->middleware('permission:knowledge.view');
+    // Knowledge base. Writes share knowledge.view — the module is ungated in the
+    // UI and the RBAC map has no knowledge.manage (same call as Documents).
+    Route::get('/knowledge-docs', [KnowledgeDocController::class, 'index'])->middleware('permission:knowledge.view');
+    Route::post('/knowledge-docs', [KnowledgeDocController::class, 'store'])->middleware('permission:knowledge.view');
+    Route::put('/knowledge-docs/{docId}', [KnowledgeDocController::class, 'update'])->middleware('permission:knowledge.view');
+    Route::delete('/knowledge-docs/{docId}', [KnowledgeDocController::class, 'destroy'])->middleware('permission:knowledge.view');
     Route::get('/notifications', [WorkspaceController::class, 'notifications'])->middleware('permission:notifications.view');
     Route::post('/notifications/read-all', [WorkspaceController::class, 'markAllRead'])->middleware('permission:notifications.view');
     Route::get('/activities', [WorkspaceController::class, 'activities'])->middleware('permission:dashboard.view');
