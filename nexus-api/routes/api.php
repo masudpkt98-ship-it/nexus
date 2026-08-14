@@ -166,6 +166,19 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::put('/job-descriptions', [CompassController::class, 'putJobDescriptions'])->middleware('permission:competency.manage');
     Route::get('/ojt-items', [CompassController::class, 'ojt'])->middleware('permission:competency.view');
     Route::post('/ojt-items', [CompassController::class, 'putOjt'])->middleware('permission:competency.manage');
+    // COMPASS tracking modules — LMS, Learning Journey, Mentoring, Certification,
+    // Assessment. Same shape throughout: list, upsert by client id, delete.
+    foreach ([
+        'lms-modules' => ['lms', 'putLms', 'destroyLms'],
+        'learning-journeys' => ['journeys', 'putJourney', 'destroyJourney'],
+        'mentoring-sessions' => ['mentoring', 'putMentoring', 'destroyMentoring'],
+        'certifications' => ['certifications', 'putCertification', 'destroyCertification'],
+        'assessment-records' => ['assessments', 'putAssessmentRecord', 'destroyAssessmentRecord'],
+    ] as $path => [$index, $store, $destroy]) {
+        Route::get("/{$path}", [CompassController::class, $index])->middleware('permission:competency.view');
+        Route::post("/{$path}", [CompassController::class, $store])->middleware('permission:competency.manage');
+        Route::delete("/{$path}/{id}", [CompassController::class, $destroy])->middleware('permission:competency.manage');
+    }
 
     // Corporate KPI catalogue (Performance Dictionary) — top of the KPI cascade,
     // global (not unit-scoped); performance.manage to write.

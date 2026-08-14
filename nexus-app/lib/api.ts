@@ -313,6 +313,35 @@ export async function apiDeleteTrainingSession(id: string): Promise<void> {
   await apiSend("DELETE", `/training-sessions/${encodeURIComponent(id)}`);
 }
 
+// ---- COMPASS tracking modules ----------------------------------------------
+// Five catalogues with identical mechanics (list · upsert by client id · delete),
+// so they share one set of helpers rather than fifteen near-identical functions.
+export type CompassKind =
+  | "lms-modules"
+  | "learning-journeys"
+  | "mentoring-sessions"
+  | "certifications"
+  | "assessment-records";
+
+export async function apiListCompass<T>(kind: CompassKind): Promise<T[]> {
+  return apiGet<T[]>(`/${kind}`);
+}
+/** Upsert one record by its client id. Needs competency.manage. */
+export async function apiSaveCompass<T extends { id: string }>(kind: CompassKind, item: T): Promise<void> {
+  await apiSend("POST", `/${kind}`, item);
+}
+export async function apiDeleteCompass(kind: CompassKind, id: string): Promise<void> {
+  await apiSend("DELETE", `/${kind}/${encodeURIComponent(id)}`);
+}
+/** Shared failure notice for the COMPASS pages. */
+export function compassOnErr(e: { status?: number }): void {
+  alert(
+    e?.status === 403
+      ? "Ditolak server: hanya peran dengan competency.manage yang dapat mengubah data ini."
+      : "Gagal menyimpan ke server; perubahan tersimpan lokal saja."
+  );
+}
+
 // ---- Cost Optimization (activity · proposal · realisasi · LPJ) -------------
 type CostActivityDTO = import("./costOpt").Activity;
 export async function apiListCostActivities(): Promise<CostActivityDTO[]> {
