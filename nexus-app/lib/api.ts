@@ -279,6 +279,40 @@ export async function apiPutCompetencyLevels(levels: import("./data").Competency
   await apiSend("PUT", "/competency-levels", { levels });
 }
 
+// ---- Top performers (Performance hub ranking) ------------------------------
+// Cached client-side under the "appraisals" key, which is unrelated to the KPI
+// cascade's /appraisals rows — same word, different data.
+export interface TopPerformerDTO {
+  id: string;
+  name: string;
+  avatar: string;
+  role: string;
+  score: number;
+}
+export async function apiListTopPerformers(): Promise<TopPerformerDTO[]> {
+  return apiGet<TopPerformerDTO[]>("/top-performers");
+}
+/** Upsert one performer by its client id. Needs performance.manage. */
+export async function apiSaveTopPerformer(p: TopPerformerDTO): Promise<void> {
+  await apiSend("POST", "/top-performers", p);
+}
+export async function apiDeleteTopPerformer(id: string): Promise<void> {
+  await apiSend("DELETE", `/top-performers/${encodeURIComponent(id)}`);
+}
+
+// ---- Training calendar (Development page) ----------------------------------
+type TrainingDTO = import("./data").TrainingSession;
+export async function apiListTrainingSessions(): Promise<TrainingDTO[]> {
+  return apiGet<TrainingDTO[]>("/training-sessions");
+}
+/** Upsert one training session by its client id. Needs competency.manage. */
+export async function apiSaveTrainingSession(s: TrainingDTO, position?: number): Promise<void> {
+  await apiSend("POST", "/training-sessions", { ...s, position });
+}
+export async function apiDeleteTrainingSession(id: string): Promise<void> {
+  await apiSend("DELETE", `/training-sessions/${encodeURIComponent(id)}`);
+}
+
 // ---- Cost Optimization (activity · proposal · realisasi · LPJ) -------------
 type CostActivityDTO = import("./costOpt").Activity;
 export async function apiListCostActivities(): Promise<CostActivityDTO[]> {

@@ -139,6 +139,10 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     // keyed by the client plan id so hub edits survive a reload.
     Route::post('/development-plans', [CompetencyController::class, 'planUpsert'])->middleware('permission:competency.manage');
     Route::delete('/development-plans/{planId}', [CompetencyController::class, 'planDestroy'])->middleware('permission:competency.manage');
+    // Training calendar — same Development page as the plans above.
+    Route::get('/training-sessions', [CompetencyController::class, 'trainingSessions'])->middleware('permission:competency.view');
+    Route::post('/training-sessions', [CompetencyController::class, 'trainingUpsert'])->middleware('permission:competency.manage');
+    Route::delete('/training-sessions/{sessionId}', [CompetencyController::class, 'trainingDestroy'])->middleware('permission:competency.manage');
 
     // Kamus Kompetensi — global catalogue + proficiency scale; competency.manage to write.
     Route::get('/competency-dictionary', [CompetencyDictionaryController::class, 'index'])->middleware('permission:competency.view');
@@ -179,6 +183,12 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::delete('/job-profiles/{profileId}', [JobProfileController::class, 'destroy'])->middleware('permission:performance.manage');
 
     // Performance
+    // Top performers — the hub's ranking (stored client-side under the "appraisals"
+    // key, but unrelated to the KPI cascade's /appraisals rows).
+    Route::get('/top-performers', [PerformanceKpiController::class, 'performers'])->middleware('permission:performance.view');
+    Route::post('/top-performers', [PerformanceKpiController::class, 'performerUpsert'])->middleware('permission:performance.manage');
+    Route::delete('/top-performers/{perfId}', [PerformanceKpiController::class, 'performerDestroy'])->middleware('permission:performance.manage');
+
     Route::get('/performance-kpis', [PerformanceKpiController::class, 'index'])->middleware('permission:performance.view');
     Route::post('/performance-kpis', [PerformanceKpiController::class, 'store'])->middleware('permission:performance.manage');
     Route::put('/performance-kpis/{code}', [PerformanceKpiController::class, 'update'])->middleware('permission:performance.manage');

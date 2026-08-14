@@ -7,7 +7,10 @@ import { Icon } from "@/components/Icons";
 import { EmployeePicker } from "@/components/EmployeePicker";
 import { developmentPlans as mockDevelopmentPlans, trainingSessions as mockSessions, type TrainingSession } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
-import { apiGet, hasSession, apiSaveDevelopmentPlan, apiDeleteDevelopmentPlan } from "@/lib/api";
+import {
+  apiGet, hasSession, apiSaveDevelopmentPlan, apiDeleteDevelopmentPlan,
+  apiListTrainingSessions, apiSaveTrainingSession, apiDeleteTrainingSession,
+} from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
 import { useI18n } from "@/lib/i18n";
 
@@ -100,6 +103,7 @@ export default function DevelopmentPage() {
         setLive(true);
       })
       .catch(() => {});
+    apiListTrainingSessions().then((d) => { if (alive && d.length) setSessions(d); }).catch(() => {});
     return () => {
       alive = false;
     };
@@ -136,11 +140,16 @@ export default function DevelopmentPage() {
     const name = ss.name.trim();
     if (!name) return;
     const body = { name, date: ss.date.trim() || "TBD", seats: ss.seats.trim() || "0 / 0" };
-    if (ss.id == null) setSessions((r) => [...r, { id: newId("ts"), ...body }]);
-    else setSessions((r) => r.map((x) => (x.id === ss.id ? { ...x, ...body } : x)));
+    const full: TrainingSession = ss.id == null ? { id: newId("ts"), ...body } : { id: ss.id, ...body };
+    const at = sessions.findIndex((x) => x.id === full.id);
+    setSessions((r) => (at >= 0 ? r.map((x) => (x.id === full.id ? full : x)) : [...r, full]));
+    if (hasSession()) apiSaveTrainingSession(full, at >= 0 ? at : sessions.length).catch(dpOnErr);
     setSs(emptySession);
   };
-  const removeSs = (s: TrainingSession) => setSessions((r) => r.filter((x) => x.id !== s.id));
+  const removeSs = (s: TrainingSession) => {
+    setSessions((r) => r.filter((x) => x.id !== s.id));
+    if (hasSession()) apiDeleteTrainingSession(s.id).catch(dpOnErr);
+  };
 
   return (
     <>

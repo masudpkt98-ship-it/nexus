@@ -8,7 +8,7 @@ import { Icon } from "@/components/Icons";
 import { EmployeePicker } from "@/components/EmployeePicker";
 import { performanceKpis as mockPerformanceKpis, kpiTrend, topPerformers as mockTop, corporateKpis as seedCorporateKpis, type CorporateKpi } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
-import { apiGet, apiSend, apiDownload, hasSession } from "@/lib/api";
+import { apiGet, apiSend, apiDownload, hasSession, apiListTopPerformers, apiSaveTopPerformer, apiDeleteTopPerformer } from "@/lib/api";
 import { useApiAuthed } from "@/lib/auth";
 import { LiveBadge } from "@/components/LiveBadge";
 import { useI18n } from "@/lib/i18n";
@@ -90,6 +90,9 @@ export default function PerformancePage() {
         }
       })
       .catch(() => {});
+    // The hub's ranking is server-backed too. Its localStorage key is "appraisals",
+    // but it shares nothing with the KPI cascade's /appraisals rows.
+    apiListTopPerformers().then((d) => { if (active && d.length) setPerfs(d); }).catch(() => {});
     return () => {
       active = false;
     };
@@ -146,11 +149,15 @@ export default function PerformancePage() {
     const name = pf.name.trim();
     if (!name) return;
     const body = { name, avatar: initials(name), role: pf.role.trim() || "—", score: clamp(pf.score, 0, 100) };
-    if (pf.id == null) setPerfs((r) => [...r, { id: newId("ap"), ...body }]);
-    else setPerfs((r) => r.map((x) => (x.id === pf.id ? { ...x, ...body } : x)));
+    const full: Perf = pf.id == null ? { id: newId("ap"), ...body } : { id: pf.id, ...body };
+    setPerfs((r) => (r.some((x) => x.id === full.id) ? r.map((x) => (x.id === full.id ? full : x)) : [...r, full]));
+    if (hasSession()) apiSaveTopPerformer(full).catch(() => setSyncErr(t("Could not save to the server — your change is kept locally and may be lost on reload.")));
     setPf(emptyPerf);
   };
-  const removePf = (p: Perf) => setPerfs((r) => r.filter((x) => x.id !== p.id));
+  const removePf = (p: Perf) => {
+    setPerfs((r) => r.filter((x) => x.id !== p.id));
+    if (hasSession()) apiDeleteTopPerformer(p.id).catch(() => setSyncErr(t("Could not save to the server — your change is kept locally and may be lost on reload.")));
+  };
 
   const weighted = rows.reduce((s, k) => s + Math.min(1.1, k.target ? k.actual / k.target : 0) * k.weight, 0);
   const score = Math.round(weighted);

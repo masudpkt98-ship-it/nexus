@@ -8,6 +8,7 @@ use App\Http\Resources\DevelopmentPlanResource;
 use App\Models\Competency;
 use App\Models\DevelopmentPlan;
 use App\Models\NotificationItem;
+use App\Models\TrainingSession;
 use App\Support\Audit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -89,6 +90,52 @@ class CompetencyController extends Controller
         Audit::record('development_plan.delete', ['user' => $request->user(), 'target' => $planId]);
 
         return response()->json(['data' => ['deleted' => $planId]]);
+    }
+
+    // ---- Training calendar (Development page, alongside the plans above) ----
+
+    public function trainingSessions(): JsonResponse
+    {
+        return response()->json(['data' => TrainingSession::orderBy('position')->orderBy('id')->get()->map(fn (TrainingSession $s) => $s->toClient())]);
+    }
+
+    public function trainingUpsert(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'id' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            // Both are display labels the page renders verbatim, not parsed values.
+            'date' => ['nullable', 'string', 'max:255'],
+            'seats' => ['nullable', 'string', 'max:64'],
+            'position' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $session = TrainingSession::updateOrCreate(
+            ['session_id' => $data['id']],
+            [
+                'name' => $data['name'],
+                'date' => $data['date'] ?? null,
+                'seats' => $data['seats'] ?? null,
+                'position' => $data['position'] ?? 0,
+                'updated_by' => $request->user()?->id,
+            ]
+        );
+
+        Audit::record('training_session.upsert', ['user' => $request->user(), 'target' => $session->session_id]);
+
+        return response()->json(['data' => $session->toClient()]);
+    }
+
+    public function trainingDestroy(Request $request, string $sessionId): JsonResponse
+    {
+        $session = TrainingSession::where('session_id', $sessionId)->first();
+        if (! $session) {
+            return response()->json(['message' => 'Not found.'], 404);
+        }
+        $session->delete();
+        Audit::record('training_session.delete', ['user' => $request->user(), 'target' => $sessionId]);
+
+        return response()->json(['data' => ['deleted' => $sessionId]]);
     }
 
     /** Validate the API payload and map current/required to the *_level columns. */

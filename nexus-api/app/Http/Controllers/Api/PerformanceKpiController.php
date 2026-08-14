@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\PerformanceKpiResource;
 use App\Models\NotificationItem;
 use App\Models\PerformanceKpi;
+use App\Models\TopPerformer;
+use App\Support\Audit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,6 +18,56 @@ class PerformanceKpiController extends Controller
         return PerformanceKpiResource::collection(
             PerformanceKpi::orderByDesc('weight')->get()
         );
+    }
+
+    /**
+     * The hub's top-performer ranking.
+     *
+     * Kept here rather than in AppraisalController: the page stores these under a
+     * localStorage key called "appraisals", but they share nothing with the KPI
+     * cascade's appraisal rows beyond that name.
+     */
+    public function performers(): JsonResponse
+    {
+        return response()->json(['data' => TopPerformer::orderByDesc('score')->get()->map(fn (TopPerformer $p) => $p->toClient())]);
+    }
+
+    public function performerUpsert(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'id' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'avatar' => ['nullable', 'string', 'max:4'],
+            'role' => ['nullable', 'string', 'max:255'],
+            'score' => ['required', 'integer', 'between:0,100'],
+        ]);
+
+        $performer = TopPerformer::updateOrCreate(
+            ['perf_id' => $data['id']],
+            [
+                'name' => $data['name'],
+                'avatar' => $data['avatar'] ?? null,
+                'role' => $data['role'] ?? null,
+                'score' => $data['score'],
+                'updated_by' => $request->user()?->id,
+            ]
+        );
+
+        Audit::record('top_performer.upsert', ['user' => $request->user(), 'target' => $performer->perf_id]);
+
+        return response()->json(['data' => $performer->toClient()]);
+    }
+
+    public function performerDestroy(Request $request, string $perfId): JsonResponse
+    {
+        $performer = TopPerformer::where('perf_id', $perfId)->first();
+        if (! $performer) {
+            return response()->json(['message' => 'Not found.'], 404);
+        }
+        $performer->delete();
+        Audit::record('top_performer.delete', ['user' => $request->user(), 'target' => $perfId]);
+
+        return response()->json(['data' => ['deleted' => $perfId]]);
     }
 
     public function store(Request $request): JsonResponse
