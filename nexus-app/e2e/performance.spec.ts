@@ -23,9 +23,10 @@ test("performance KPI: create → edit → delete", async ({ page }) => {
   const row = page.locator("div.group", { hasText: name });
   await expect(row).toContainText("Department"); // default level
 
-  // Edit — change level to Corporate
+  // Edit — change level to Corporate. The form has two selects (the other is
+  // "Adopt from Corporate KPI"), so target this one by its label.
   await page.getByRole("button", { name: `Edit ${name}` }).click();
-  await page.getByRole("combobox").selectOption("Corporate");
+  await page.getByLabel(/^Level/).selectOption("Corporate");
   await page.getByRole("button", { name: /^Save$/ }).click();
   await expect(row).toContainText("Corporate");
 

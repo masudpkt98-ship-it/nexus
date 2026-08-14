@@ -8,14 +8,15 @@ test.beforeEach(async ({ page }) => {
   await page.getByRole("button", { name: /Enter NEXUS/i }).click();
   await page.waitForURL("**/dashboard", { timeout: 25_000 });
   await page.goto("/strategy");
-  await expect(page.getByRole("button", { name: /New Objective/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add objective" })).toBeVisible();
 });
 
 test("objective: create → edit → delete", async ({ page }) => {
   const title = "E2E OKR " + Date.now();
 
-  // Create
-  await page.getByRole("button", { name: /New Objective/i }).click();
+  // Create — the trigger is a "+" icon button; its accessible name comes from
+  // aria-label, not the "New Objective" text (that is the modal's title).
+  await page.getByRole("button", { name: "Add objective" }).click();
   await page.getByPlaceholder("e.g. Launch Talent Marketplace").fill(title);
   await page.getByRole("button", { name: /^Create$/ }).click();
   await expect(page.getByText(title)).toBeVisible();
@@ -25,7 +26,7 @@ test("objective: create → edit → delete", async ({ page }) => {
 
   // Edit — change quarter to Q3
   await page.getByRole("button", { name: `Edit ${title}` }).click();
-  await page.getByRole("combobox").selectOption("Q3");
+  await page.getByLabel(/^Quarter/).selectOption("Q3");
   await page.getByRole("button", { name: /^Save$/ }).click();
   await expect(card).toContainText("Q3");
 
