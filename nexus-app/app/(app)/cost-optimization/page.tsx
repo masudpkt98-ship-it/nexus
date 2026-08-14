@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, Badge, ProgressBar, cn } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { useLocalState } from "@/lib/useLocalState";
+import { hasSession, apiListCostActivities, apiSaveCostActivity } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { costActivitiesSeed } from "@/lib/costOptSeed";
 import {
@@ -30,8 +31,31 @@ export default function CostOptimizationPage() {
 
   const open = activities.find((a) => a.id === openId) || null;
 
-  const upsert = (a: Activity) =>
+  // Activities are server-backed. The page saves an activity as one whole
+  // document (status changes and evidence ticks take the same path), so the sync
+  // sends the whole thing and stays idempotent.
+  useEffect(() => {
+    if (!hasSession()) return;
+    let active = true;
+    apiListCostActivities()
+      .then((d) => { if (active && d.length) setActivities(d); })
+      .catch(() => {});
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const upsert = (a: Activity) => {
     setActivities((prev) => (prev.some((x) => x.id === a.id) ? prev.map((x) => (x.id === a.id ? a : x)) : [a, ...prev]));
+    if (hasSession()) {
+      apiSaveCostActivity(a).catch((e: { status?: number }) =>
+        alert(
+          e?.status === 403
+            ? "Ditolak server: hanya peran dengan cost.manage yang dapat mengubah kegiatan & biaya."
+            : "Gagal menyimpan ke server; perubahan tersimpan lokal saja."
+        )
+      );
+    }
+  };
 
   // AVP dashboard metrics.
   const waitingProposals = activities.filter((a) => a.status === "Waiting Approval").length;

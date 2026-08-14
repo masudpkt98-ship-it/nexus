@@ -10,7 +10,8 @@ class MeetingResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => 'M'.$this->id,
+            // The client id the page upserts against — never the auto-increment id.
+            'id' => $this->meeting_id,
             'title' => $this->title,
             'time' => $this->scheduled_label,
             'attendees' => $this->attendees,

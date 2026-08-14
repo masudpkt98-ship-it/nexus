@@ -5,22 +5,15 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ActivityResource;
 use App\Http\Resources\KnowledgeDocResource;
-use App\Http\Resources\MeetingResource;
 use App\Http\Resources\NotificationResource;
 use App\Models\Activity;
 use App\Models\KnowledgeDoc;
-use App\Models\Meeting;
 use App\Models\NotificationItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class WorkspaceController extends Controller
 {
-    public function meetings()
-    {
-        return MeetingResource::collection(Meeting::orderBy('scheduled_at')->get());
-    }
-
     public function knowledge(Request $request)
     {
         $query = KnowledgeDoc::query();

@@ -279,6 +279,95 @@ export async function apiPutCompetencyLevels(levels: import("./data").Competency
   await apiSend("PUT", "/competency-levels", { levels });
 }
 
+// ---- Cost Optimization (activity · proposal · realisasi · LPJ) -------------
+type CostActivityDTO = import("./costOpt").Activity;
+export async function apiListCostActivities(): Promise<CostActivityDTO[]> {
+  return apiGet<CostActivityDTO[]>("/cost-activities");
+}
+/** Upsert one activity as a whole document. Needs cost.manage. */
+export async function apiSaveCostActivity(a: CostActivityDTO): Promise<void> {
+  await apiSend("POST", "/cost-activities", a);
+}
+export async function apiDeleteCostActivity(id: string): Promise<void> {
+  await apiSend("DELETE", `/cost-activities/${encodeURIComponent(id)}`);
+}
+
+// ---- Satisfaction (NPS + per-service scores) -------------------------------
+export interface SatisfactionDoc {
+  counts: { promoters: number; passives: number; detractors: number };
+  byService: { id: string; service: string; score: number }[];
+}
+export async function apiGetSatisfaction(): Promise<SatisfactionDoc> {
+  const d = await apiGet<Partial<SatisfactionDoc>>("/satisfaction");
+  return {
+    counts: d?.counts ?? { promoters: 0, passives: 0, detractors: 0 },
+    byService: d?.byService ?? [],
+  };
+}
+/** Record one survey response (1–5 rating, optionally about one service). */
+export async function apiSaveSatisfactionResponse(rating: number, serviceId?: string): Promise<void> {
+  await apiSend("POST", "/satisfaction/responses", { rating, service_id: serviceId || null });
+}
+export async function apiSaveSatisfactionService(s: { id: string; service: string; score: number }, position?: number): Promise<void> {
+  await apiSend("POST", "/satisfaction/services", { service_id: s.id, service: s.service, score: s.score, position });
+}
+export async function apiDeleteSatisfactionService(id: string): Promise<void> {
+  await apiSend("DELETE", `/satisfaction/services/${encodeURIComponent(id)}`);
+}
+
+// ---- Meetings (meeting · agenda · action items) ----------------------------
+type MeetingDTO = import("./data").Meeting;
+type AgendaDTO = import("./data").AgendaItem;
+type ActionDTO = import("./data").ActionItem;
+export async function apiListMeetings(): Promise<MeetingDTO[]> {
+  return apiGet<MeetingDTO[]>("/meetings");
+}
+/** Upsert one meeting by its client id. */
+export async function apiSaveMeeting(m: MeetingDTO): Promise<void> {
+  await apiSend("POST", "/meetings", m);
+}
+export async function apiDeleteMeeting(id: string): Promise<void> {
+  await apiSend("DELETE", `/meetings/${encodeURIComponent(id)}`);
+}
+export async function apiListMeetingAgenda(): Promise<AgendaDTO[]> {
+  return apiGet<AgendaDTO[]>("/meeting-agenda");
+}
+export async function apiSaveMeetingAgenda(a: AgendaDTO, position?: number): Promise<void> {
+  await apiSend("POST", "/meeting-agenda", { ...a, position });
+}
+export async function apiDeleteMeetingAgenda(id: string): Promise<void> {
+  await apiSend("DELETE", `/meeting-agenda/${encodeURIComponent(id)}`);
+}
+export async function apiListMeetingActions(): Promise<ActionDTO[]> {
+  return apiGet<ActionDTO[]>("/meeting-actions");
+}
+export async function apiSaveMeetingAction(a: ActionDTO, position?: number): Promise<void> {
+  await apiSend("POST", "/meeting-actions", { ...a, position });
+}
+export async function apiDeleteMeetingAction(id: string): Promise<void> {
+  await apiSend("DELETE", `/meeting-actions/${encodeURIComponent(id)}`);
+}
+
+// ---- Program milestones ----------------------------------------------------
+type MilestoneDTO = import("./data").Milestone;
+export async function apiListMilestones(): Promise<MilestoneDTO[]> {
+  return apiGet<MilestoneDTO[]>("/program-milestones");
+}
+/** Upsert one milestone by its client id. Needs programs.manage. */
+export async function apiSaveMilestone(m: MilestoneDTO): Promise<void> {
+  await apiSend("POST", "/program-milestones", {
+    milestone_id: m.id,
+    program_code: m.programId,
+    name: m.name,
+    due: m.due || null,
+    status: m.status,
+    progress: m.progress,
+  });
+}
+export async function apiDeleteMilestone(id: string): Promise<void> {
+  await apiSend("DELETE", `/program-milestones/${encodeURIComponent(id)}`);
+}
+
 // ---- COMPASS (gap levels · job descriptions · OJT) -------------------------
 /** Current assessed levels as the Gap Analysis page's flat `npk|code` map. */
 export async function apiGetCurrentLevels(): Promise<Record<string, number>> {

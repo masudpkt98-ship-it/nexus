@@ -34,28 +34,32 @@ class User extends Authenticatable
      */
     public const ROLE_PERMISSIONS = [
         'Administrator' => ['*'],
+        // cost.* gates Cost Optimization, which approves activity budgets and closes
+        // LPJ. Kept separate from programs.manage so approving spending is its own
+        // grant: VP and Manager may write, Executive and Supervisor only read.
         'VP' => [
             'dashboard.view', 'programs.view', 'programs.manage', 'tasks.view', 'tasks.manage',
             'tasks.approve', 'competency.view', 'competency.manage', 'performance.view',
             'performance.manage', 'requests.view', 'requests.approve', 'analytics.view',
             'objectives.view', 'objectives.manage', 'meetings.view', 'knowledge.view',
-            'notifications.view', 'satisfaction.view', 'ai.view',
+            'notifications.view', 'satisfaction.view', 'ai.view', 'cost.view', 'cost.manage',
         ],
         'Executive' => [
             'dashboard.view', 'programs.view', 'tasks.view', 'competency.view', 'performance.view',
             'requests.view', 'requests.approve', 'analytics.view', 'objectives.view', 'meetings.view',
-            'knowledge.view', 'notifications.view', 'satisfaction.view', 'ai.view',
+            'knowledge.view', 'notifications.view', 'satisfaction.view', 'ai.view', 'cost.view',
         ],
         'Manager' => [
             'dashboard.view', 'programs.view', 'programs.manage', 'tasks.view', 'tasks.manage',
             'tasks.approve', 'competency.view', 'competency.manage', 'performance.view',
             'requests.view', 'analytics.view', 'objectives.view', 'objectives.manage',
             'meetings.view', 'knowledge.view', 'notifications.view', 'satisfaction.view', 'ai.view',
+            'cost.view', 'cost.manage',
         ],
         'Supervisor' => [
             'dashboard.view', 'programs.view', 'tasks.view', 'tasks.manage', 'competency.view',
             'performance.view', 'requests.view', 'objectives.view', 'meetings.view',
-            'knowledge.view', 'notifications.view', 'satisfaction.view', 'ai.view',
+            'knowledge.view', 'notifications.view', 'satisfaction.view', 'ai.view', 'cost.view',
         ],
         'Staff' => [
             'dashboard.view', 'tasks.view', 'tasks.manage', 'competency.view', 'performance.view',

@@ -13,7 +13,10 @@ class ProgramResource extends JsonResource
             'id' => $this->code,
             'dbId' => $this->id,
             'name' => $this->name,
-            'owner' => $this->owner?->name,
+            // The form's free-text owner wins; the linked user is the fallback.
+            'owner' => $this->owner_name ?? $this->owner?->name,
+            'goalIds' => $this->goal_ids ?? [],
+            'okrIds' => $this->okr_ids ?? [],
             'status' => $this->status,
             'progress' => $this->progress,
             'budget' => $this->budget,

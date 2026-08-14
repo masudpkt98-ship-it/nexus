@@ -1,11 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { PageHeader, Btn } from "@/components/PageHeader";
 import { Card, SectionTitle, ProgressBar, DonutChart, LineChart } from "@/components/ui";
 import { Icon } from "@/components/Icons";
 import { LiveBadge } from "@/components/LiveBadge";
 import { useLocalState } from "@/lib/useLocalState";
+import {
+  hasSession,
+  apiGetSatisfaction,
+  apiSaveSatisfactionResponse,
+  apiSaveSatisfactionService,
+  apiDeleteSatisfactionService,
+} from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { npsData as mockNps, satisfactionByService as mockByService, satisfactionTrend } from "@/lib/data";
 
@@ -83,6 +90,32 @@ export default function SatisfactionPage() {
   );
   const [resp, setResp] = useState(emptyResponse);
   const [svcForm, setSvcForm] = useState(emptyService);
+  const [live, setLive] = useState(false);
+
+  // NPS tallies and service scores are server-backed. The server keeps raw survey
+  // responses and derives the buckets, so its counts replace the local ones only
+  // once at least one response exists — an empty table would otherwise zero the page.
+  useEffect(() => {
+    if (!hasSession()) return;
+    let active = true;
+    apiGetSatisfaction()
+      .then((d) => {
+        if (!active) return;
+        const { promoters, passives, detractors } = d.counts;
+        if (promoters + passives + detractors > 0) setNps(d.counts);
+        if (d.byService.length) setServices(d.byService);
+        setLive(true);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const sOnErr = (e: { status?: number }) =>
+    alert(
+      e?.status === 403
+        ? "Ditolak server: Anda tidak memiliki akses untuk mengubah data kepuasan pelanggan."
+        : "Gagal menyimpan ke server; perubahan tersimpan lokal saja."
+    );
 
   const total = Math.max(1, nps.promoters + nps.passives + nps.detractors);
   const pct = (n: number) => Math.round((n / total) * 100);
@@ -100,8 +133,13 @@ export default function SatisfactionPage() {
     const rating = resp.rating;
     const bucket: keyof Nps = rating >= 5 ? "promoters" : rating === 4 ? "passives" : "detractors";
     setNps((n) => ({ ...n, [bucket]: n[bucket] + 1 }));
+    // The server stores the raw rating and re-derives the buckets itself.
+    if (hasSession()) apiSaveSatisfactionResponse(rating, resp.serviceId || undefined).catch(sOnErr);
     if (resp.serviceId) {
-      setServices((r) => r.map((s) => (s.id === resp.serviceId ? { ...s, score: Math.round(clamp((s.score * 9 + rating) / 10, 1, 5) * 10) / 10 } : s)));
+      const svc = services.find((s) => s.id === resp.serviceId);
+      const next = svc && { ...svc, score: Math.round(clamp((svc.score * 9 + rating) / 10, 1, 5) * 10) / 10 };
+      setServices((r) => r.map((s) => (s.id === resp.serviceId ? next ?? s : s)));
+      if (hasSession() && next) apiSaveSatisfactionService(next).catch(sOnErr);
     }
     setResp(emptyResponse);
   };
@@ -113,11 +151,16 @@ export default function SatisfactionPage() {
     const name = svcForm.service.trim();
     if (!name) return;
     const score = clamp(Number(svcForm.score) || 0, 0, 5);
-    if (svcForm.id == null) setServices((r) => [...r, { id: nextId(), service: name, score }]);
-    else setServices((r) => r.map((s) => (s.id === svcForm.id ? { ...s, service: name, score } : s)));
+    const full: Service = svcForm.id == null ? { id: nextId(), service: name, score } : { id: svcForm.id, service: name, score };
+    const at = services.findIndex((s) => s.id === full.id);
+    setServices((r) => (at >= 0 ? r.map((s) => (s.id === full.id ? full : s)) : [...r, full]));
+    if (hasSession()) apiSaveSatisfactionService(full, at >= 0 ? at : services.length).catch(sOnErr);
     setSvcForm(emptyService);
   };
-  const removeService = (s: Service) => setServices((r) => r.filter((x) => x.id !== s.id));
+  const removeService = (s: Service) => {
+    setServices((r) => r.filter((x) => x.id !== s.id));
+    if (hasSession()) apiDeleteSatisfactionService(s.id).catch(sOnErr);
+  };
 
   return (
     <>
@@ -126,7 +169,7 @@ export default function SatisfactionPage() {
         subtitle="Survey · Rating · Net Promoter Score · Service Quality"
         actions={
           <>
-            <LiveBadge live={false} />
+            <LiveBadge live={live} />
             <Btn variant="primary" onClick={() => setResp({ ...emptyResponse, open: true, serviceId: services[0]?.id ?? "" })}>
               <Icon.plus className="h-4 w-4" /> {t("Record Response")}
             </Btn>

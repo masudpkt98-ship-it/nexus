@@ -10,9 +10,11 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatThreadController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\CompassController;
+use App\Http\Controllers\Api\CostActivityController;
 use App\Http\Controllers\Api\CompetencyController;
 use App\Http\Controllers\Api\CompetencyDictionaryController;
 use App\Http\Controllers\Api\CompetencyMatrixController;
+use App\Http\Controllers\Api\MeetingController;
 use App\Http\Controllers\Api\CorporateKpiController;
 use App\Http\Controllers\Api\JobProfileController;
 use App\Http\Controllers\Api\KpiTeknisController;
@@ -58,12 +60,23 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
     // Programs
     Route::get('/programs', [ProgramController::class, 'index'])->middleware('permission:programs.view');
-    Route::get('/programs/{program}', [ProgramController::class, 'show'])->middleware('permission:programs.view');
+    // Bound by {program:code} — the frontend only ever knows the code (PRG-01),
+    // which is what ProgramResource returns as `id`.
+    Route::get('/program-milestones', [ProgramController::class, 'milestones'])->middleware('permission:programs.view');
+    Route::post('/program-milestones', [ProgramController::class, 'milestoneUpsert'])->middleware('permission:programs.manage');
+    Route::delete('/program-milestones/{milestoneId}', [ProgramController::class, 'milestoneDestroy'])->middleware('permission:programs.manage');
+    Route::get('/programs/{program:code}', [ProgramController::class, 'show'])->middleware('permission:programs.view');
     Route::post('/programs', [ProgramController::class, 'store'])->middleware('permission:programs.manage');
-    Route::put('/programs/{program}', [ProgramController::class, 'update'])->middleware('permission:programs.manage');
-    Route::delete('/programs/{program}', [ProgramController::class, 'destroy'])->middleware('permission:programs.manage');
+    Route::put('/programs/{program:code}', [ProgramController::class, 'update'])->middleware('permission:programs.manage');
+    Route::delete('/programs/{program:code}', [ProgramController::class, 'destroy'])->middleware('permission:programs.manage');
 
     // Tasks
+    // Cost Optimization — activity budgets, realisasi and LPJ. cost.manage is a
+    // deliberate separation of duty: approving spending is not programs.manage.
+    Route::get('/cost-activities', [CostActivityController::class, 'index'])->middleware('permission:cost.view');
+    Route::post('/cost-activities', [CostActivityController::class, 'upsert'])->middleware('permission:cost.manage');
+    Route::delete('/cost-activities/{activityId}', [CostActivityController::class, 'destroy'])->middleware('permission:cost.manage');
+
     Route::get('/tasks', [TaskController::class, 'index'])->middleware('permission:tasks.view');
     Route::post('/tasks', [TaskController::class, 'store'])->middleware('permission:tasks.manage');
     // Bind by `code` (T-101) — that is the id the client holds (TaskResource.id).
@@ -177,7 +190,12 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::put('/service-requests/{service_request}', [ServiceRequestController::class, 'update'])->middleware('permission:requests.view');
 
     // Satisfaction, Analytics & AI
+    // Satisfaction. Writes share satisfaction.view — the page is ungated in the UI
+    // and the RBAC map has no satisfaction.manage.
     Route::get('/satisfaction', [SatisfactionController::class, 'index'])->middleware('permission:satisfaction.view');
+    Route::post('/satisfaction/responses', [SatisfactionController::class, 'storeResponse'])->middleware('permission:satisfaction.view');
+    Route::post('/satisfaction/services', [SatisfactionController::class, 'upsertService'])->middleware('permission:satisfaction.view');
+    Route::delete('/satisfaction/services/{serviceId}', [SatisfactionController::class, 'destroyService'])->middleware('permission:satisfaction.view');
     Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware('permission:analytics.view');
     Route::get('/ai/insights', [AiController::class, 'insights'])->middleware('permission:ai.view');
     Route::post('/ai/chat', [AiController::class, 'chat'])->middleware('permission:ai.view');
@@ -213,7 +231,17 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::delete('/documents/{docId}', [DocumentController::class, 'destroy'])->middleware('permission:knowledge.view');
 
     // Workspace
-    Route::get('/meetings', [WorkspaceController::class, 'meetings'])->middleware('permission:meetings.view');
+    // Meetings, agenda and action items. Writes share meetings.view: the module is
+    // ungated in the UI and the RBAC map has no meetings.manage.
+    Route::get('/meetings', [MeetingController::class, 'index'])->middleware('permission:meetings.view');
+    Route::post('/meetings', [MeetingController::class, 'upsert'])->middleware('permission:meetings.view');
+    Route::delete('/meetings/{meetingId}', [MeetingController::class, 'destroy'])->middleware('permission:meetings.view');
+    Route::get('/meeting-agenda', [MeetingController::class, 'agenda'])->middleware('permission:meetings.view');
+    Route::post('/meeting-agenda', [MeetingController::class, 'agendaUpsert'])->middleware('permission:meetings.view');
+    Route::delete('/meeting-agenda/{itemId}', [MeetingController::class, 'agendaDestroy'])->middleware('permission:meetings.view');
+    Route::get('/meeting-actions', [MeetingController::class, 'actions'])->middleware('permission:meetings.view');
+    Route::post('/meeting-actions', [MeetingController::class, 'actionUpsert'])->middleware('permission:meetings.view');
+    Route::delete('/meeting-actions/{itemId}', [MeetingController::class, 'actionDestroy'])->middleware('permission:meetings.view');
     Route::get('/knowledge-docs', [WorkspaceController::class, 'knowledge'])->middleware('permission:knowledge.view');
     Route::get('/notifications', [WorkspaceController::class, 'notifications'])->middleware('permission:notifications.view');
     Route::post('/notifications/read-all', [WorkspaceController::class, 'markAllRead'])->middleware('permission:notifications.view');

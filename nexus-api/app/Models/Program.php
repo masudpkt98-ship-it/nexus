@@ -12,8 +12,8 @@ class Program extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'code', 'name', 'owner_id', 'status', 'progress', 'budget', 'spent',
-        'risk', 'milestones', 'milestones_done', 'start_date', 'end_date',
+        'code', 'name', 'owner_id', 'owner_name', 'status', 'progress', 'budget', 'spent',
+        'risk', 'milestones', 'milestones_done', 'start_date', 'end_date', 'goal_ids', 'okr_ids',
     ];
 
     protected $casts = [
@@ -24,6 +24,8 @@ class Program extends Model
         'milestones_done' => 'integer',
         'start_date' => 'date:Y-m-d',
         'end_date' => 'date:Y-m-d',
+        'goal_ids' => 'array',
+        'okr_ids' => 'array',
     ];
 
     public function owner(): BelongsTo

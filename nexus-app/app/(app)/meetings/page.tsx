@@ -15,7 +15,12 @@ import {
 } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
-import { apiGet, apiSend, hasSession } from "@/lib/api";
+import {
+  hasSession,
+  apiListMeetings, apiSaveMeeting, apiDeleteMeeting,
+  apiListMeetingAgenda, apiSaveMeetingAgenda, apiDeleteMeetingAgenda,
+  apiListMeetingActions, apiSaveMeetingAction, apiDeleteMeetingAction,
+} from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
 
 const inputCls =
@@ -31,6 +36,15 @@ const nextId = (p: string) => {
     return `${p}-${++seq}-${Date.now()}`;
   }
 };
+
+// Shared by all three sections — meetings, agenda and action items all write to
+// the same module and fail the same way.
+const mtgOnErr = (e: { status?: number }) =>
+  alert(
+    e?.status === 403
+      ? "Ditolak server: Anda tidak memiliki akses untuk mengubah data rapat."
+      : "Gagal menyimpan ke server; perubahan tersimpan lokal saja."
+  );
 
 function Modal({
   title,
@@ -100,9 +114,10 @@ function Meetings() {
   useEffect(() => {
     if (!hasSession()) return;
     let active = true;
-    apiGet<Meeting[]>("/meetings")
+    apiListMeetings()
       .then((res) => {
-        if (active && Array.isArray(res)) {
+        // An empty server table must not wipe meetings that exist only locally.
+        if (active && res?.length) {
           setRows(res);
           setLive(true);
         }
@@ -114,10 +129,6 @@ function Meetings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const sync = (method: "POST" | "PUT" | "DELETE", path: string, body?: unknown) => {
-    if (hasSession()) apiSend(method, path, body).catch(() => {});
-  };
-
   const openCreate = () => setForm({ ...emptyMeeting, open: true });
   const openEdit = (m: Meeting) => setForm({ open: true, id: m.id, title: m.title, time: m.time, attendees: m.attendees, actionItems: m.actionItems });
   const close = () => setForm(emptyMeeting);
@@ -125,19 +136,16 @@ function Meetings() {
     const title = form.title.trim();
     if (!title) return;
     const body = { title, time: form.time.trim() || "TBD", attendees: form.attendees, actionItems: form.actionItems };
-    if (form.id == null) {
-      const m: Meeting = { id: nextId("mtg"), ...body };
-      setRows((r) => [...r, m]);
-      sync("POST", "/meetings", m);
-    } else {
-      setRows((r) => r.map((x) => (x.id === form.id ? { ...x, ...body } : x)));
-      sync("PUT", `/meetings/${form.id}`, body);
-    }
+    // The client owns the id, so the same id round-trips through the server and an
+    // edit made now still reaches the right row after a reload.
+    const m: Meeting = form.id == null ? { id: nextId("mtg"), ...body } : { id: form.id, ...body };
+    setRows((r) => (r.some((x) => x.id === m.id) ? r.map((x) => (x.id === m.id ? m : x)) : [...r, m]));
+    if (hasSession()) apiSaveMeeting(m).catch(mtgOnErr);
     close();
   };
   const remove = (m: Meeting) => {
     setRows((r) => r.filter((x) => x.id !== m.id));
-    sync("DELETE", `/meetings/${m.id}`);
+    if (hasSession()) apiDeleteMeeting(m.id).catch(mtgOnErr);
   };
 
   return (
@@ -248,17 +256,30 @@ function Agenda() {
   const [rows, setRows] = useLocalState<AgendaItem[]>("meeting-agenda", mockAgenda);
   const [form, setForm] = useState(emptyAgenda);
 
+  useEffect(() => {
+    if (!hasSession()) return;
+    let active = true;
+    apiListMeetingAgenda().then((d) => { if (active && d.length) setRows(d); }).catch(() => {});
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const openCreate = () => setForm({ ...emptyAgenda, open: true });
   const openEdit = (a: AgendaItem) => setForm({ open: true, id: a.id, text: a.text });
   const close = () => setForm(emptyAgenda);
   const save = () => {
     const text = form.text.trim();
     if (!text) return;
-    if (form.id == null) setRows((r) => [...r, { id: nextId("ag"), text }]);
-    else setRows((r) => r.map((x) => (x.id === form.id ? { ...x, text } : x)));
+    const a: AgendaItem = form.id == null ? { id: nextId("ag"), text } : { id: form.id, text };
+    const at = rows.findIndex((x) => x.id === a.id);
+    setRows((r) => (at >= 0 ? r.map((x) => (x.id === a.id ? a : x)) : [...r, a]));
+    if (hasSession()) apiSaveMeetingAgenda(a, at >= 0 ? at : rows.length).catch(mtgOnErr);
     close();
   };
-  const remove = (a: AgendaItem) => setRows((r) => r.filter((x) => x.id !== a.id));
+  const remove = (a: AgendaItem) => {
+    setRows((r) => r.filter((x) => x.id !== a.id));
+    if (hasSession()) apiDeleteMeetingAgenda(a.id).catch(mtgOnErr);
+  };
 
   return (
     <Card>
@@ -312,6 +333,14 @@ function ActionItems() {
   const [rows, setRows] = useLocalState<ActionItem[]>("meeting-actions", mockActions);
   const [form, setForm] = useState(emptyAction);
 
+  useEffect(() => {
+    if (!hasSession()) return;
+    let active = true;
+    apiListMeetingActions().then((d) => { if (active && d.length) setRows(d); }).catch(() => {});
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const openCreate = () => setForm({ ...emptyAction, open: true });
   const openEdit = (a: ActionItem) => setForm({ open: true, id: a.id, assignee: a.assignee, text: a.text, status: a.status });
   const close = () => setForm(emptyAction);
@@ -319,12 +348,21 @@ function ActionItems() {
     const text = form.text.trim();
     if (!text) return;
     const body = { assignee: initials(form.assignee.trim()) || "?", text, status: form.status };
-    if (form.id == null) setRows((r) => [...r, { id: nextId("ac"), ...body }]);
-    else setRows((r) => r.map((x) => (x.id === form.id ? { ...x, ...body } : x)));
+    const a: ActionItem = form.id == null ? { id: nextId("ac"), ...body } : { id: form.id, ...body };
+    const at = rows.findIndex((x) => x.id === a.id);
+    setRows((r) => (at >= 0 ? r.map((x) => (x.id === a.id ? a : x)) : [...r, a]));
+    if (hasSession()) apiSaveMeetingAction(a, at >= 0 ? at : rows.length).catch(mtgOnErr);
     close();
   };
-  const toggle = (a: ActionItem) => setRows((r) => r.map((x) => (x.id === a.id ? { ...x, status: x.status === "Done" ? "Open" : "Done" } : x)));
-  const remove = (a: ActionItem) => setRows((r) => r.filter((x) => x.id !== a.id));
+  const toggle = (a: ActionItem) => {
+    const next: ActionItem = { ...a, status: a.status === "Done" ? "Open" : "Done" };
+    setRows((r) => r.map((x) => (x.id === a.id ? next : x)));
+    if (hasSession()) apiSaveMeetingAction(next).catch(mtgOnErr);
+  };
+  const remove = (a: ActionItem) => {
+    setRows((r) => r.filter((x) => x.id !== a.id));
+    if (hasSession()) apiDeleteMeetingAction(a.id).catch(mtgOnErr);
+  };
 
   return (
     <Card>

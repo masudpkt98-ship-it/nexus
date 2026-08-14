@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class NpsResponse extends Model
 {
-    protected $fillable = ['score'];
+    protected $fillable = ['score', 'service_id'];
 
     protected $casts = ['score' => 'integer'];
 }

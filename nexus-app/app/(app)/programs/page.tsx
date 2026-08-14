@@ -17,7 +17,7 @@ import {
 } from "@/lib/data";
 import { useLocalState } from "@/lib/useLocalState";
 import { useI18n } from "@/lib/i18n";
-import { apiGet, apiSend, hasSession } from "@/lib/api";
+import { apiGet, apiSend, hasSession, apiListMilestones, apiSaveMilestone, apiDeleteMilestone } from "@/lib/api";
 import { LiveBadge } from "@/components/LiveBadge";
 import { milestoneProgress, milestoneStatus, programProgress, programStatus, programMilestonesDone, taskComplete } from "@/lib/rollup";
 
@@ -105,17 +105,26 @@ export default function ProgramsPage() {
     let active = true;
     apiGet<Program[]>("/programs")
       .then((res) => {
-        if (active && Array.isArray(res)) {
+        // Only replace the local cache when the server actually has programs, so
+        // a fresh (empty) table can't wipe work that exists only in this browser.
+        if (active && res?.length) {
           setRows(res);
           setLive(true);
         }
       })
       .catch(() => {});
+    apiListMilestones().then((d) => { if (active && d.length) setMiles(d); }).catch(() => {});
     return () => {
       active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const pOnErr = (e: { status?: number }) =>
+    alert(
+      e?.status === 403
+        ? "Ditolak server: hanya peran dengan programs.manage yang dapat mengubah program."
+        : "Gagal menyimpan ke server; perubahan tersimpan lokal saja."
+    );
 
   const sync = (method: "POST" | "PUT" | "DELETE", path: string, body?: unknown) => {
     if (hasSession()) apiSend(method, path, body).catch(() => {});
@@ -147,19 +156,28 @@ export default function ProgramsPage() {
     const today = new Date().toISOString().slice(0, 10);
     const body = { name, owner: form.owner.trim() || "You", status: form.status, risk: form.risk, progress: form.progress, budget: form.budget, spent: form.spent, start: form.start || today, end: form.end || today, milestones: 0, milestonesDone: 0, goalIds: form.goalIds, okrIds: form.okrIds };
     if (form.id == null) {
-      const p: Program = { id: newId("PRG"), ...body };
+      // The server assigns the program code; adopt it so later edits and deletes
+      // (which address /programs/{code}) reach the row the server created.
+      const tempId = newId("PRG");
+      const p: Program = { id: tempId, ...body };
       setRows((r) => [...r, p]);
-      sync("POST", "/programs", p);
+      if (hasSession()) {
+        apiSend<Program>("POST", "/programs", body)
+          .then((saved) => {
+            if (saved?.id) setRows((r) => r.map((x) => (x.id === tempId ? { ...x, id: saved.id } : x)));
+          })
+          .catch(pOnErr);
+      }
     } else {
       setRows((r) => r.map((x) => (x.id === form.id ? { ...x, ...body } : x)));
-      sync("PUT", `/programs/${form.id}`, body);
+      sync("PUT", `/programs/${encodeURIComponent(form.id)}`, body);
     }
     closeForm();
   };
   const removeProgram = (p: Program) => {
     setRows((r) => r.filter((x) => x.id !== p.id));
     setMiles((m) => m.filter((x) => x.programId !== p.id)); // cascade delete milestones
-    sync("DELETE", `/programs/${p.id}`);
+    sync("DELETE", `/programs/${encodeURIComponent(p.id)}`); // server cascades its own milestones
   };
   const toggleLink = (key: "goalIds" | "okrIds", id: string) =>
     setForm((f) => ({ ...f, [key]: f[key].includes(id) ? f[key].filter((x) => x !== id) : [...f[key], id] }));
@@ -171,11 +189,15 @@ export default function ProgramsPage() {
     const name = mForm.name.trim();
     if (!name) return;
     const body = { programId: mForm.programId, name, due: mForm.due || new Date().toISOString().slice(0, 10), status: mForm.status, progress: clamp(mForm.progress, 0, 100) };
-    if (mForm.id == null) setMiles((m) => [...m, { id: newId("mst"), ...body }]);
-    else setMiles((m) => m.map((x) => (x.id === mForm.id ? { ...x, ...body } : x)));
+    const full: Milestone = mForm.id == null ? { id: newId("mst"), ...body } : { id: mForm.id, ...body };
+    setMiles((m) => (m.some((x) => x.id === full.id) ? m.map((x) => (x.id === full.id ? full : x)) : [...m, full]));
+    if (hasSession()) apiSaveMilestone(full).catch(pOnErr);
     setMForm(emptyMilestone);
   };
-  const removeM = (m: Milestone) => setMiles((r) => r.filter((x) => x.id !== m.id));
+  const removeM = (m: Milestone) => {
+    setMiles((r) => r.filter((x) => x.id !== m.id));
+    if (hasSession()) apiDeleteMilestone(m.id).catch(pOnErr);
+  };
 
   const fmtDate = (d: string) => (d ? new Date(d).toLocaleDateString("en", { month: "short", year: "2-digit" }) : "—");
   const fmtDay = (d: string) => (d ? new Date(d).toLocaleDateString("en", { day: "numeric", month: "short" }) : "—");
