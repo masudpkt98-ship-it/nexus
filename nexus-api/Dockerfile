@@ -1,6 +1,6 @@
 # ---- NEXUS API (Laravel) ----
 # PHP 8.4 — required by the locked Symfony 8.1 packages (php >=8.4.1).
-FROM php:8.4-cli
+FROM php:8.5-cli
 
 # Robust PHP extension installer (handles pdo_pgsql, redis, etc. reliably)
 COPY --from=mlocati/php-extension-installer:latest /usr/bin/install-php-extensions /usr/local/bin/
