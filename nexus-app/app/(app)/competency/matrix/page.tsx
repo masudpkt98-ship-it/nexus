@@ -3,7 +3,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PageHeader, Btn } from "@/components/PageHeader";
-import { Card, Badge, Avatar, cn } from "@/components/ui";
+import { Card, Badge, Avatar, ProgressBar, SectionTitle, BarChart, cn } from "@/components/ui";
+import { levelTone } from "@/lib/compass";
 import { Icon } from "@/components/Icons";
 import { EmployeePicker } from "@/components/EmployeePicker";
 import {
@@ -41,7 +42,15 @@ function gapTone(actual: number, required: number): { cls: string; label: string
   return { cls: "bg-rose-500/20 text-rose-500", label: "below" };
 }
 
-type Tab = "Standar" | "Matriks";
+type Tab = "Standar" | "Matriks" | "Rekap";
+
+/** Readiness bands used by the distribution chart. */
+const BANDS = [
+  { label: "0–25%", min: 0, max: 25 },
+  { label: "26–50%", min: 26, max: 50 },
+  { label: "51–75%", min: 51, max: 75 },
+  { label: "76–100%", min: 76, max: 100 },
+];
 
 export default function CompetencyMatrixPage() {
   const { t } = useI18n();
@@ -134,6 +143,79 @@ export default function CompetencyMatrixPage() {
 
   const stdCount = groupComps.filter((c) => (groupStd[c.id] ?? 0) > 0).length;
 
+  // --- Rekap: everything below is derived from the standards and assessments
+  // already on screen. No new storage — this is the same data, aggregated.
+  const rekap = useMemo(() => {
+    const stdComps = groupComps.filter((c) => (groupStd[c.id] ?? 0) > 0);
+
+    // Per competency: who falls short of its standard, and by how much.
+    const perComp = stdComps.map((c) => {
+      const required = groupStd[c.id];
+      const assessed = groupEmps.filter((e) => (e.levels[c.id] ?? 0) > 0);
+      const below = assessed.filter((e) => e.levels[c.id] < required);
+      const unassessed = groupEmps.length - assessed.length;
+      const totalGap = below.reduce((s, e) => s + (required - e.levels[c.id]), 0);
+      return {
+        comp: c,
+        required,
+        assessedCount: assessed.length,
+        belowCount: below.length,
+        unassessed,
+        totalGap,
+        avgGap: below.length ? Math.round((totalGap / below.length) * 10) / 10 : 0,
+        // Share of assessed people meeting the standard; null when nobody is assessed.
+        metPct: assessed.length ? Math.round(((assessed.length - below.length) / assessed.length) * 100) : null,
+      };
+    });
+
+    // Biggest problems first: most people short, then deepest shortfall.
+    const ranked = [...perComp].sort((a, b) => b.belowCount - a.belowCount || b.totalGap - a.totalGap);
+
+    // Someone with no level recorded against any standard-bearing competency has
+    // not really been assessed, however many rows exist for them.
+    const notAssessed = groupEmps.filter((e) => stdComps.every((c) => (e.levels[c.id] ?? 0) === 0));
+
+    const readinessValues = groupEmps.map((e) => readiness(e)).filter((r): r is number => r !== null);
+    const avgReadiness = readinessValues.length
+      ? Math.round(readinessValues.reduce((s, r) => s + r, 0) / readinessValues.length)
+      : null;
+
+    const distribution = BANDS.map((b) => ({
+      label: b.label,
+      a: readinessValues.filter((r) => r >= b.min && r <= b.max).length,
+    }));
+
+    return {
+      stdComps,
+      ranked,
+      notAssessed,
+      avgReadiness,
+      distribution,
+      totalGap: perComp.reduce((s, p) => s + p.totalGap, 0),
+      // Cells still to fill in: assessed people × standard competencies, minus what is filled.
+      openCells: stdComps.length * groupEmps.length - groupEmps.reduce((s, e) => s + stdComps.filter((c) => (e.levels[c.id] ?? 0) > 0).length, 0),
+    };
+  }, [groupComps, groupStd, groupEmps]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Average readiness per group, so the worst-off Job Family is visible at a glance. */
+  const familySummary = useMemo(() => {
+    return groups
+      .map((g) => {
+        const gComps = comps.filter((c) => groupOf(c) === g);
+        const std = standards[g] ?? {};
+        const emps = assessments[g] ?? [];
+        const stdList = gComps.filter((c) => (std[c.id] ?? 0) > 0);
+        if (stdList.length === 0 || emps.length === 0) return { group: g, readiness: null, gap: 0, emps: emps.length };
+        const gap = emps.reduce(
+          (s, e) => s + stdList.reduce((t, c) => t + Math.max(0, std[c.id] - (e.levels[c.id] ?? 0)), 0),
+          0
+        );
+        const met = emps.reduce((s, e) => s + stdList.filter((c) => (e.levels[c.id] ?? 0) >= std[c.id]).length, 0);
+        return { group: g, readiness: Math.round((met / (stdList.length * emps.length)) * 100), gap, emps: emps.length };
+      })
+      .sort((a, b) => (a.readiness ?? 101) - (b.readiness ?? 101));
+  }, [groups, comps, standards, assessments]);
+
   // --- export the active group to a .xlsx (Standar / Penilaian / Gap sheets) ---
   const onExport = async () => {
     const XLSX = await import("xlsx");
@@ -202,9 +284,9 @@ export default function CompetencyMatrixPage() {
             </label>
             <span className="text-[12px] text-[var(--muted)]">{groupComps.length} {t("competencies")} · {stdCount} {t("with standard")} · {groupEmps.length} {t("assessed")}</span>
             <div className="ml-auto flex rounded-xl glass p-0.5">
-              {(["Standar", "Matriks"] as Tab[]).map((v) => (
+              {(["Standar", "Matriks", "Rekap"] as Tab[]).map((v) => (
                 <button key={v} onClick={() => setTab(v)} className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition", tab === v ? "bg-royal-500 text-white" : "text-[var(--muted)] hover:text-[var(--text)]")}>
-                  {v === "Standar" ? t("Standard") : t("Assessment Matrix")}
+                  {v === "Standar" ? t("Standard") : v === "Matriks" ? t("Assessment Matrix") : t("Rekap Gap")}
                 </button>
               ))}
             </div>
@@ -316,6 +398,158 @@ export default function CompetencyMatrixPage() {
                   </div>
                 </div>
               )}
+            </>
+          )}
+
+          {/* ---- Rekap: where the gaps actually are ---- */}
+          {tab === "Rekap" && (
+            <>
+              <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <Card>
+                  <div className="text-xs text-[var(--muted)]">{t("Rata-rata Readiness")}</div>
+                  <div className="mt-1 text-2xl font-bold gold-gradient">{rekap.avgReadiness === null ? "—" : `${rekap.avgReadiness}%`}</div>
+                  {rekap.avgReadiness !== null && <ProgressBar value={rekap.avgReadiness} tone="gold" className="mt-2" />}
+                </Card>
+                <Card>
+                  <div className="text-xs text-[var(--muted)]">{t("Total Gap")}</div>
+                  <div className="mt-1 text-2xl font-bold text-rose-400">{rekap.totalGap}</div>
+                  <div className="mt-1 text-[11px] text-[var(--muted)]">{t("level di bawah standar")}</div>
+                </Card>
+                <Card>
+                  <div className="text-xs text-[var(--muted)]">{t("Belum Dinilai")}</div>
+                  <div className="mt-1 text-2xl font-bold">{rekap.notAssessed.length}</div>
+                  <div className="mt-1 text-[11px] text-[var(--muted)]">{t("dari")} {groupEmps.length} {t("orang")}</div>
+                </Card>
+                <Card>
+                  <div className="text-xs text-[var(--muted)]">{t("Penilaian Kosong")}</div>
+                  <div className="mt-1 text-2xl font-bold">{rekap.openCells}</div>
+                  <div className="mt-1 text-[11px] text-[var(--muted)]">{t("sel belum diisi")}</div>
+                </Card>
+              </div>
+
+              {rekap.stdComps.length === 0 ? (
+                <Card className="flex min-h-[160px] items-center justify-center text-center text-[13px] text-[var(--muted)]">
+                  {t("Belum ada standar untuk grup ini — tetapkan di tab Standard lebih dulu.")}
+                </Card>
+              ) : (
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <div className="glass card overflow-hidden lg:col-span-2">
+                    <div className="border-b px-4 py-3">
+                      <div className="text-sm font-semibold">{t("Kompetensi dengan gap terbesar")}</div>
+                      <div className="text-[11px] text-[var(--muted)]">{t("Diurutkan dari yang paling banyak orang di bawah standar")}</div>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="border-b text-left text-xs text-[var(--muted)]">
+                          <tr>
+                            <th className="px-4 py-2.5 font-medium">{t("Competency")}</th>
+                            <th className="px-3 py-2.5 text-center font-medium">{t("Req")}</th>
+                            <th className="px-3 py-2.5 text-center font-medium">{t("Di bawah")}</th>
+                            <th className="px-3 py-2.5 text-center font-medium">{t("Rata gap")}</th>
+                            <th className="px-4 py-2.5 font-medium">{t("Memenuhi")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rekap.ranked.map((r) => (
+                            <tr key={r.comp.id} className="border-b last:border-0 hover:bg-black/5 dark:hover:bg-white/5">
+                              <td className="px-4 py-2.5">
+                                <div className="flex items-center gap-2">
+                                  <Badge tone="blue">{r.comp.code}</Badge>
+                                  <span className="text-[13px]">{r.comp.name}</span>
+                                </div>
+                                {r.unassessed > 0 && (
+                                  <div className="mt-0.5 text-[10px] text-amber-500">{r.unassessed} {t("belum dinilai")}</div>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5 text-center"><Badge tone={levelTone(r.required)}>L{r.required}</Badge></td>
+                              <td className="px-3 py-2.5 text-center">
+                                <span className={cn("font-semibold", r.belowCount === 0 ? "text-emerald-500" : "text-rose-400")}>{r.belowCount}</span>
+                                <span className="text-[11px] text-[var(--muted)]">/{r.assessedCount}</span>
+                              </td>
+                              <td className="px-3 py-2.5 text-center text-[13px]">{r.avgGap || "—"}</td>
+                              <td className="px-4 py-2.5">
+                                {r.metPct === null ? (
+                                  <span className="text-[11px] text-[var(--muted)]">{t("belum dinilai")}</span>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-9 text-[12px] font-semibold">{r.metPct}%</span>
+                                    <div className="w-20"><ProgressBar value={r.metPct} tone={r.metPct >= 80 ? "green" : r.metPct >= 50 ? "gold" : "red"} /></div>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Card>
+                      <SectionTitle title="Sebaran Readiness" subtitle={`${groupEmps.length} ${t("orang dinilai")}`} />
+                      <div className="mt-3"><BarChart data={rekap.distribution} height={140} /></div>
+                    </Card>
+
+                    {rekap.notAssessed.length > 0 && (
+                      <Card>
+                        <SectionTitle title="Belum Dinilai" subtitle={t("Tidak punya satu pun level tercatat")} />
+                        <div className="mt-2 space-y-1.5">
+                          {rekap.notAssessed.slice(0, 8).map((e) => (
+                            <div key={e.npk} className="flex items-center gap-2 rounded-lg border px-2.5 py-1.5">
+                              <Avatar initials={initials(e.name)} />
+                              <span className="truncate text-[12px]">{e.name}</span>
+                              <span className="ml-auto shrink-0 text-[10px] text-[var(--muted)]">{e.npk}</span>
+                            </div>
+                          ))}
+                          {rekap.notAssessed.length > 8 && (
+                            <div className="text-[11px] text-[var(--muted)]">+{rekap.notAssessed.length - 8} {t("lainnya")}</div>
+                          )}
+                        </div>
+                      </Card>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Which Job Family needs attention first. */}
+              <Card className="mt-4">
+                <SectionTitle title="Perbandingan Job Family" subtitle={t("Diurutkan dari readiness terendah")} />
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="border-b text-left text-xs text-[var(--muted)]">
+                      <tr>
+                        <th className="px-3 py-2 font-medium">{t("Job Family")}</th>
+                        <th className="px-3 py-2 text-center font-medium">{t("Dinilai")}</th>
+                        <th className="px-3 py-2 text-center font-medium">{t("Total Gap")}</th>
+                        <th className="px-3 py-2 font-medium">{t("Readiness")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {familySummary.map((f) => (
+                        <tr
+                          key={f.group}
+                          onClick={() => setGroup(f.group)}
+                          className={cn("cursor-pointer border-b last:border-0 hover:bg-black/5 dark:hover:bg-white/5", f.group === activeGroup && "bg-royal-500/5")}
+                        >
+                          <td className="px-3 py-2 text-[13px]">{f.group}</td>
+                          <td className="px-3 py-2 text-center text-[13px]">{f.emps}</td>
+                          <td className="px-3 py-2 text-center text-[13px]">{f.gap || "—"}</td>
+                          <td className="px-3 py-2">
+                            {f.readiness === null ? (
+                              <span className="text-[11px] text-[var(--muted)]">{t("belum ada standar/penilaian")}</span>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="w-9 text-[12px] font-semibold">{f.readiness}%</span>
+                                <div className="w-24"><ProgressBar value={f.readiness} tone={f.readiness >= 80 ? "green" : f.readiness >= 50 ? "gold" : "red"} /></div>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
             </>
           )}
         </>
